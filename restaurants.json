@@ -3,7 +3,15 @@
   "name": "Gasthof Glashütte",
   "location": "Kreuth",
   "category": "Restaurant",
-  "notes": ""
+  "notes": "",
+"address": "Glashütte 28, 83708 Kreuth",
+"phone": "08029 569",
+"website": "https://www.gasthof-glashuette-kreuth.de/",
+"email": "info@gasthof-glashuette-kreuth.de",
+"openingHours": "Mittwoch–Sonntag: 11:00–ca. 21:00 Uhr",
+"kitchenHours": "11:30–19:00 Uhr",
+"restDay": "Montag und Dienstag"
+
 },
   {
     "name": "Riedler Alm",
