@@ -1,9 +1,10 @@
 [
   {
-    "name": "Gasthof Glashütte",
-    "location": "Kreuth",
-    "category": "Restaurant"
-  },
+  "name": "Gasthof Glashütte",
+  "location": "Kreuth",
+  "category": "Restaurant",
+  "notes": ""
+},
   {
     "name": "Riedler Alm",
     "location": "Kreuth",
