@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Gasthof Glashütte",
+    "location": "Kreuth",
+    "category": "Restaurant"
+  },
+  {
+    "name": "Riedler Alm",
+    "location": "Kreuth",
+    "category": "Alm"
+  },
+  {
+    "name": "Haus Göttfried",
+    "location": "Kreuth",
+    "category": "Restaurant"
+  },
+  {
+    "name": "Gasthof zum Hahn",
+    "location": "Tegernsee",
+    "category": "Restaurant"
+  },
+  {
+    "name": "Bräustüberl Tegernsee",
+    "location": "Tegernsee",
+    "category": "Restaurant"
+  },
+  {
+    "name": "Wirtshaus Aibl Alm",
+    "location": "Kreuth",
+    "category": "Alm"
+  },
+  {
+    "name": "Almwirtschaft Siebenhütten",
+    "location": "Kreuth",
+    "category": "Alm"
+  },
+  {
+    "name": "Herzogliche Fischzucht Wildbad Kreuth",
+    "location": "Kreuth",
+    "category": "Restaurant"
+  },
+  {
+    "name": "Alpenwildpark",
+    "location": "Oberach",
+    "category": "Ausflugsziel"
+  },
+  {
+    "name": "Voitlhof 1532",
+    "location": "Rottach-Egern",
+    "category": "Restaurant"
+  },
+  {
+    "name": "Viet Cuisine",
+    "location": "Tegernsee",
+    "category": "Restaurant"
+  },
+  {
+    "name": "Cafe Restaurant Angermaier",
+    "location": "Rottach-Egern",
+    "category": "Restaurant"
+  },
+  {
+    "name": "Berggasthof Neureuth",
+    "location": "Tegernsee",
+    "category": "Alm"
+  },
+  {
+    "name": "Gasthaus Schießstätte",
+    "location": "Tegernsee",
+    "category": "Restaurant"
+  },
+  {
+    "name": "Schlosswirtschaft Tegernsee",
+    "location": "Tegernsee",
+    "category": "Restaurant"
+  },
+  {
+    "name": "Königslinde am Tegernsee",
+    "location": "Bad Wiessee",
+    "category": "Restaurant"
+  }
+]
