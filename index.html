@@ -175,16 +175,26 @@ html+=`<div class="detail"><b>Kategorie:</b> ${esc(x.category)}</div>`;
 html+=`<div class="detail"><b>Ort:</b> ${esc(x.location)}</div>`;
 
 if(x.address)
-html+=`<div class="detail"><b>Adresse:</b><br>${esc(x.address)}</div>`;
+html+=`<div
+class="detail"><b>Adresse:</b><br><a
+href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.address)}"
+target="_blank">${esc(x.address)}</a></div>`;
 
 if(x.phone)
-html+=`<div class="detail"><b>Telefon:</b><br>${esc(x.phone)}</div>`;
+html+=`<div
+class="detail"><b>Telefon:</b><br><a
+href="tel:${esc(x.phone)}">${esc(x.phone)}</a></div>`;
 
 if(x.website)
-html+=`<div class="detail"><b>Website:</b><br>${esc(x.website)}</div>`;
+html+=`<div
+class="detail"><b>Website:</b><br><a
+href="${esc(x.website)}"
+target="_blank">${esc(x.website)}</a></div>`;
 
 if(x.email)
-html+=`<div class="detail"><b>E-Mail:</b><br>${esc(x.email)}</div>`;
+html+=`<div
+class="detail"><b>E-Mail:</b><br><a
+href="mailto:${esc(x.email)}">${esc(x.email)}</a></div>`;
 
 if(x.openingHours)
 html+=`<div class="detail"><b>Öffnungszeiten:</b><br>${esc(x.openingHours)}</div>`;
