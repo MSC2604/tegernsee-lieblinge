@@ -245,7 +245,72 @@ m=>({
 
 }
 
-load();
+function verwaltung(){
+  if(!Array.isArray(restaurants) || !restaurants.length){
+    alert("Die Restaurantliste ist noch nicht geladen.");
+    return;
+  }
+
+  let auswahl = prompt(
+    "Restaurant auswählen:\n\n" +
+    restaurants.map((x,i)=>(i+1)+". "+x.name).join("\n") +
+    "\n\nNummer eingeben:"
+  );
+
+  if(auswahl===null) return;
+
+  let index = Number(auswahl)-1;
+
+  if(!Number.isInteger(index) || !restaurants[index]){
+    alert("Ungültige Auswahl.");
+    return;
+  }
+
+  let x = restaurants[index];
+
+  let name = prompt("Name:", x.name || "");
+  if(name===null) return;
+
+  let address = prompt("Adresse:", x.address || "");
+  if(address===null) return;
+
+  let phone = prompt("Telefon:", x.phone || "");
+  if(phone===null) return;
+
+  let website = prompt("Website:", x.website || "");
+  if(website===null) return;
+
+  let email = prompt("E-Mail:", x.email || "");
+  if(email===null) return;
+
+  let openingHours = prompt("Öffnungszeiten:", x.openingHours || "");
+  if(openingHours===null) return;
+
+  let kitchenHours = prompt("Küchenzeiten:", x.kitchenHours || "");
+  if(kitchenHours===null) return;
+
+  let restDay = prompt("Ruhetag:", x.restDay || "");
+  if(restDay===null) return;
+
+  let notes = prompt("Bemerkungen:", x.notes || "");
+  if(notes===null) return;
+
+  x.name = name;
+  x.address = address;
+  x.phone = phone;
+  x.website = website;
+  x.email = email;
+  x.openingHours = openingHours;
+  x.kitchenHours = kitchenHours;
+  x.restDay = restDay;
+  x.notes = notes;
+
+  localStorage.setItem("tegernseeRestaurants", JSON.stringify(restaurants));
+
+  render();
+
+  alert("Änderung gespeichert.");
+}load();
 
 </script>
 
