@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+
+<meta name="theme-color" content="#0b6b57">
+
+<title>Meine Tegernsee-Lieblinge</title>
+
+<style>
+body{
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  margin:0;
+  background:#f4f6f5;
+  color:#17201d
+}
+
+header{
+  background:#0b6b57;
+  color:white;
+  padding:22px 16px
+}
+
+h1{
+  margin:0 0 12px;
+  font-size:26px
+}
+
+main{
+  max-width:760px;
+  margin:auto;
+  padding:16px
+}
+
+input,select,button{
+  font:inherit
+}
+
+input{
+  width:100%;
+  box-sizing:border-box;
+  padding:13px;
+  border:1px solid #ccd5d1;
+  border-radius:12px;
+  margin-bottom:12px
+}
+
+.filters{
+  display:flex;
+  gap:8px;
+  overflow:auto;
+  padding-bottom:8px
+}
+
+button{
+  border:1px solid #ccd5d1;
+  background:white;
+  border-radius:10px;
+  padding:9px 12px;
+  cursor:pointer
+}
+
+button.active{
+  background:#0b6b57;
+  color:white;
+  border-color:#0b6b57
+}
+
+.card{
+  background:white;
+  border-radius:16px;
+  padding:16px;
+  margin:10px 0;
+  box-shadow:0 2px 8px #00000012
+}
+
+.name{
+  font-size:19px;
+  font-weight:700
+}
+
+.meta{
+  color:#66736e;
+  margin:5px 0 12px
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap
+}
+
+.actions button,
+.actions a{
+  display:inline-block;
+  text-decoration:none;
+  color:#0b6b57;
+  border:1px solid #ccd5d1;
+  border-radius:9px;
+  padding:8px 10px;
+  background:white
+}
+
+#status{
+  font-size:13px;
+  color:#66736e;
+  margin:8px 0
+}
+
+.addbutton{
+  width:100%;
+  margin:10px 0 15px;
+  background:#0b6b57;
+  color:white;
+  border-color:#0b6b57;
+  font-weight:600
+}
+
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:#0008;
+  z-index:10;
+  padding:20px;
+  box-sizing:border-box
+}
+
+.modal.show{
+  display:flex;
+  align-items:center;
+  justify-content:center
+}
+
+.modalbox{
+  background:white;
+  border-radius:18px;
+  padding:20px;
+  max-width:600px;
+  width:100%;
+  max-height:85vh;
+  overflow:auto
+}
+
+.modalbox h2{
+  margin-top:0
+}
+
+.detail{
+  margin:10px 0;
+  padding:10px;
+  background:#f4f6f5;
+  border-radius:10px
+}
+
+.close{
+  float:right;
+  font-size:25px;
+  border:0;
+  background:none
+}
+</style>
+</head>
+
+<body>
+
+<header>
+
+<h1>Meine Tegernsee-Lieblinge</h1>
+
+<div>Meine zentrale Restaurantliste</div>
+
+<br>
+
+<button onclick="verwaltung()">
+⚙️ Verwalten
+</button>
+
+</header>
+
+<main>
+
+<input
+  id="search"
+  placeholder="Restaurant suchen …"
+>
+
+<div class="filters" id="filters"></div>
+
+<button class="addbutton" onclick="restaurantHinzufuegen()">
+➕ Restaurant hinzufügen
+</button>
+
+<div id="status">
+Daten werden geladen …
+</div>
+
+<div id="list"></div>
+
+</main>
+
+<div class="modal" id="modal">
+
+<div class="modalbox">
+
+<button class="close" onclick="closeDetails()">
+✕
+</button>
+
+<h2 id="detailName"></h2>
+
+<div id="detailContent"></div>
+
+</div>
+
+</div>
+
+<script>
+
+let restaurants=[];
+let filter="Alle";
+
+const filters=[
+  "Alle",
+  "Restaurant",
+  "Alm",
+  "Ausflugsziel",
+  "Kreuth",
+  "Tegernsee"
+];
+
+const list=document.getElementById("list");
+const search=document.getElementById("search");
+
+document.getElementById("filters").innerHTML=
+filters.map(x=>
+  `<button data-f="${x}">${x}</button>`
+).join("");
+
+document.querySelectorAll("[data-f]").forEach(b=>{
+
+  b.onclick=()=>{
+
+    filter=b.dataset.f;
+
+    document.querySelectorAll("[data-f]").forEach(x=>
+      x.classList.toggle("active",x===b)
+    );
+
+    render();
+  };
+
+});
+
+document
+  .querySelector("[data-f='Alle']")
+  .classList.add("active");
+
+search.oninput=render;
+
+
+/* ------------------------------
+   DATEN LADEN
+-------------------------------- */
+
+async function load(){
+
+  try{
+
+    const gespeichert=
+      localStorage.getItem("tegernseeRestaurants");
+
+    if(gespeichert){
+
+      restaurants=JSON.parse(gespeichert);
+
+    }else{
+
+      const r=await fetch(
+        "./restaurants.json?v="+Date.now(),
+        {cache:"no-store"}
+      );
+
+      restaurants=await r.json();
+
+      localStorage.setItem(
+        "tegernseeRestaurants",
+        JSON.stringify(restaurants)
+      );
+
+    }
+
+    sortieren();
+
+    statusAktualisieren();
+
+    render();
+
+  }catch(e){
+
+    document.getElementById("status").textContent=
+      "Die Restaurantdaten konnten nicht geladen werden.";
+
+  }
+
+}
+
+
+/* ------------------------------
+   SORTIEREN
+-------------------------------- */
+
+function sortieren(){
+
+  restaurants.sort((a,b)=>
+    String(a.name || "")
+      .localeCompare(
+        String(b.name || ""),
+        "de"
+      )
+  );
+
+}
+
+
+/* ------------------------------
+   STATUS
+-------------------------------- */
+
+function statusAktualisieren(){
+
+  document.getElementById("status").textContent=
+    `${restaurants.length} Einträge · gespeichert auf diesem Gerät`;
+
+}
+
+
+/* ------------------------------
+   ANZEIGE
+-------------------------------- */
+
+function render(){
+
+  const q=
+    search.value
+      .toLowerCase()
+      .trim();
+
+  const data=
+    restaurants.filter(x=>{
+
+      const okFilter=
+        filter==="Alle" ||
+        x.category===filter ||
+        x.location===filter;
+
+      return okFilter &&
+        (
+          !q ||
+          (
+            (x.name || "")+" "+
+            (x.location || "")+" "+
+            (x.category || "")
+          )
+          .toLowerCase()
+          .includes(q)
+        );
+
+    });
+
+
+  list.innerHTML=
+
+    data.map(x=>{
+
+      const map=
+        "https://www.google.com/maps/search/?api=1&query="+
+        encodeURIComponent(
+          (x.name || "")+" "+(x.location || "")
+        );
+
+
+      return `
+
+        <div class="card">
+
+          <div class="name">
+            ${esc(x.name)}
+          </div>
+
+          <div class="meta">
+            ${esc(x.category || "")}
+            ·
+            ${esc(x.location || "")}
+          </div>
+
+          <div class="actions">
+
+            <button
+              onclick='showDetails(${JSON.stringify(x)})'
+            >
+              ℹ️ Details
+            </button>
+
+            <a
+              href="${map}"
+              target="_blank"
+              rel="noopener"
+            >
+              📍 Route
+            </a>
+
+          </div>
+
+        </div>
+
+      `;
+
+    }).join("")
+
+    || "<p>Keine Treffer.</p>";
+
+}
+
+
+/* ------------------------------
+   DETAILS
+-------------------------------- */
+
+function showDetails(x){
+
+  document.getElementById("detailName")
+    .textContent=x.name;
+
+  let html="";
+
+  html+=`
+    <div class="detail">
+      <b>Kategorie:</b>
+      ${esc(x.category)}
+    </div>
+  `;
+
+  html+=`
+    <div class="detail">
+      <b>Ort:</b>
+      ${esc(x.location)}
+    </div>
+  `;
+
+
+  if(x.address){
+
+    html+=`
+      <div class="detail">
+        <b>Adresse:</b><br>
+        <a
+          href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.address)}"
+          target="_blank"
+        >
+          ${esc(x.address)}
+        </a>
+      </div>
+    `;
+
+  }
+
+
+  if(x.phone){
+
+    html+=`
+      <div class="detail">
+        <b>Telefon:</b><br>
+        <a href="tel:${esc(x.phone)}">
+          ${esc(x.phone)}
+        </a>
+      </div>
+    `;
+
+  }
+
+
+  if(x.website){
+
+    html+=`
+      <div class="detail">
+        <b>Website:</b><br>
+        <a
+          href="${esc(x.website)}"
+          target="_blank"
+        >
+          ${esc(x.website)}
+        </a>
+      </div>
+    `;
+
+  }
+
+
+  if(x.email){
+
+    html+=`
+      <div class="detail">
+        <b>E-Mail:</b><br>
+        <a href="mailto:${esc(x.email)}">
+          ${esc(x.email)}
+        </a>
+      </div>
+    `;
+
+  }
+
+
+  if(x.openingHours){
+
+    html+=`
+      <div class="detail">
+        <b>Öffnungszeiten:</b><br>
+        ${esc(x.openingHours)}
+      </div>
+    `;
+
+  }
+
+
+  if(x.kitchenHours){
+
+    html+=`
+      <div class="detail">
+        <b>Küchenzeiten:</b><br>
+        ${esc(x.kitchenHours)}
+      </div>
+    `;
+
+  }
+
+
+  if(x.restDay){
+
+    html+=`
+      <div class="detail">
+        <b>Ruhetag:</b><br>
+        ${esc(x.restDay)}
+      </div>
+    `;
+
+  }
+
+
+  if(x.notes){
+
+    html+=`
+      <div class="detail">
+        <b>Bemerkungen:</b><br>
+        ${esc(x.notes)}
+      </div>
+    `;
+
+  }
+
+
+  document.getElementById("detailContent")
+    .innerHTML=html;
+
+  document.getElementById("modal")
+    .classList.add("show");
+
+}
+
+
+function closeDetails(){
+
+  document.getElementById("modal")
+    .classList.remove("show");
+
+}
+
+
+/* ------------------------------
+   VERWALTEN / ÄNDERN
+-------------------------------- */
+
+function verwaltung(){
+
+  if(
+    !Array.isArray(restaurants) ||
+    !restaurants.length
+  ){
+
+    alert(
+      "Die Restaurantliste ist noch nicht geladen."
+    );
+
+    return;
+  }
+
+
+  let auswahl=prompt(
+
+    "Restaurant auswählen:\n\n"+
+    restaurants
+      .map((x,i)=>
+        (i+1)+". "+x.name
+      )
+      .join("\n")+
+    "\n\nNummer eingeben:"
+
+  );
+
+
+  if(auswahl===null) return;
+
+
+  let index=Number(auswahl)-1;
+
+
+  if(
+    !Number.isInteger(index) ||
+    !restaurants[index]
+  ){
+
+    alert("Ungültige Auswahl.");
+
+    return;
+  }
+
+
+  let x=restaurants[index];
+
+
+  let name=prompt(
+    "Name:",
+    x.name || ""
+  );
+
+  if(name===null) return;
+
+
+  let address=prompt(
+    "Adresse:",
+    x.address || ""
+  );
+
+  if(address===null) return;
+
+
+  let phone=prompt(
+    "Telefon:",
+    x.phone || ""
+  );
+
+  if(phone===null) return;
+
+
+  let website=prompt(
+    "Website:",
+    x.website || ""
+  );
+
+  if(website===null) return;
+
+
+  let email=prompt(
+    "E-Mail:",
+    x.email || ""
+  );
+
+  if(email===null) return;
+
+
+  let openingHours=prompt(
+    "Öffnungszeiten:",
+    x.openingHours || ""
+  );
+
+  if(openingHours===null) return;
+
+
+  let kitchenHours=prompt(
+    "Küchenzeiten:",
+    x.kitchenHours || ""
+  );
+
+  if(kitchenHours===null) return;
+
+
+  let restDay=prompt(
+    "Ruhetag:",
+    x.restDay || ""
+  );
+
+  if(restDay===null) return;
+
+
+  let notes=prompt(
+    "Bemerkungen:",
+    x.notes || ""
+  );
+
+  if(notes===null) return;
+
+
+  x.name=name;
+  x.address=address;
+  x.phone=phone;
+  x.website=website;
+  x.email=email;
+  x.openingHours=openingHours;
+  x.kitchenHours=kitchenHours;
+  x.restDay=restDay;
+  x.notes=notes;
+
+
+  speichern();
+
+
+  render();
+
+  statusAktualisieren();
+
+
+  alert(
+    "Änderung gespeichert."
+  );
+
+}
+
+
+/* ------------------------------
+   RESTAURANT HINZUFÜGEN
+-------------------------------- */
+
+function restaurantHinzufuegen(){
+
+  let name=prompt(
+    "Name des Restaurants:"
+  );
+
+  if(name===null || !name.trim()) return;
+
+
+  let location=prompt(
+    "Ort:",
+    "Tegernsee"
+  );
+
+  if(location===null) return;
+
+
+  let category=prompt(
+    "Kategorie:",
+    "Restaurant"
+  );
+
+  if(category===null) return;
+
+
+  let address=prompt(
+    "Adresse:"
+  );
+
+  if(address===null) return;
+
+
+  let phone=prompt(
+    "Telefon:"
+  );
+
+  if(phone===null) return;
+
+
+  let website=prompt(
+    "Website:"
+  );
+
+  if(website===null) return;
+
+
+  let email=prompt(
+    "E-Mail:"
+  );
+
+  if(email===null) return;
+
+
+  let openingHours=prompt(
+    "Öffnungszeiten:"
+  );
+
+  if(openingHours===null) return;
+
+
+  let kitchenHours=prompt(
+    "Küchenzeiten:"
+  );
+
+  if(kitchenHours===null) return;
+
+
+  let restDay=prompt(
+    "Ruhetag:"
+  );
+
+  if(restDay===null) return;
+
+
+  let notes=prompt(
+    "Bemerkungen:"
+  );
+
+  if(notes===null) return;
+
+
+  const neu={
+
+    name:name.trim(),
+
+    location:location.trim(),
+
+    category:category.trim(),
+
+    address:address.trim(),
+
+    phone:phone.trim(),
+
+    website:website.trim(),
+
+    email:email.trim(),
+
+    openingHours:openingHours.trim(),
+
+    kitchenHours:kitchenHours.trim(),
+
+    restDay:restDay.trim(),
+
+    notes:notes.trim()
+
+  };
+
+
+  restaurants.push(neu);
+
+
+  sortieren();
+
+  speichern();
+
+  statusAktualisieren();
+
+  render();
+
+
+  alert(
+    "Restaurant wurde hinzugefügt."
+  );
+
+}
+
+
+/* ------------------------------
+   SPEICHERN
+-------------------------------- */
+
+function speichern(){
+
+  localStorage.setItem(
+    "tegernseeRestaurants",
+    JSON.stringify(restaurants)
+  );
+
+}
+
+
+/* ------------------------------
+   SICHERHEIT
+-------------------------------- */
+
+function esc(s){
+
+  return String(s ?? "")
+    .replace(
+      /[&<>"']/g,
+      m=>({
+
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        '"':"&quot;",
+        "'":"&#39;"
+
+      }[m])
+    );
+
+}
+
+
+/* ------------------------------
+   START
+-------------------------------- */
+
+load();
+
+</script>
+
+</body>
+</html>
