@@ -3,166 +3,104 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
-<link rel="icon" href="icon.svg">
-<link rel="apple-touch-icon" href="icon.svg">
-
 <meta name="theme-color" content="#0b6b57">
-
 <title>Meine Tegernsee-Lieblinge</title>
 
 <style>
-*{box-sizing:border-box}
-
 body{
   font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   margin:0;
   background:#f4f6f5;
   color:#17201d
 }
-
 header{
-  background:linear-gradient(135deg,#0b6b57,#084b40);
+  background:#0b6b57;
   color:white;
-  padding:24px 16px;
-  box-shadow:0 3px 12px #00000022
+  padding:22px 16px
 }
-
-header h1{
-  margin:0 0 8px;
-  font-size:27px
+h1{
+  margin:0 0 12px;
+  font-size:26px
 }
-
-.subtitle{
-  opacity:.9;
-  font-size:14px;
-  margin-bottom:16px
-}
-
 main{
   max-width:760px;
   margin:auto;
   padding:16px
 }
-
-input,select,textarea,button{font:inherit}
-
-input,select,textarea{
+input,select,button{
+  font:inherit
+}
+input{
   width:100%;
+  box-sizing:border-box;
   padding:13px;
   border:1px solid #ccd5d1;
   border-radius:12px;
-  background:white;
   margin-bottom:12px
 }
-
-textarea{
-  min-height:90px;
-  resize:vertical
+.filters{
+  display:flex;
+  gap:8px;
+  overflow:auto;
+  padding-bottom:8px
 }
-
 button{
   border:1px solid #ccd5d1;
   background:white;
   border-radius:10px;
-  padding:10px 13px;
+  padding:9px 12px;
   cursor:pointer
 }
-
-button:active{transform:scale(.98)}
-
 button.active{
   background:#0b6b57;
   color:white;
   border-color:#0b6b57
 }
-
-.filters{
-  display:flex;
-  gap:8px;
-  overflow-x:auto;
-  padding-bottom:8px;
-  margin-bottom:4px
-}
-
-.filters button{white-space:nowrap}
-
-.addbutton{
-  width:100%;
-  margin:8px 0 15px;
-  background:#0b6b57;
-  color:white;
-  border-color:#0b6b57;
-  font-weight:700;
-  padding:13px
-}
-
-.managebutton{
-  background:white;
-  color:#0b6b57;
-  border:0;
-  font-weight:700;
-  padding:10px 14px
-}
-
-#status{
-  font-size:13px;
-  color:#66736e;
-  margin:8px 0 12px
-}
-
 .card{
   background:white;
-  border-radius:17px;
+  border-radius:16px;
   padding:16px;
   margin:10px 0;
   box-shadow:0 2px 8px #00000012
 }
-
-.card.favorite{
-  border:2px solid #d6ad28
-}
-
-.nameRow{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:10px
-}
-
 .name{
   font-size:19px;
-  font-weight:750
+  font-weight:700
 }
-
-.favoriteButton{
-  border:0;
-  background:none;
-  padding:0;
-  font-size:24px;
-  line-height:1
-}
-
 .meta{
   color:#66736e;
-  margin:6px 0 12px;
+  margin:5px 0 9px
+}
+.statusline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:7px 0 12px;
   font-size:14px
 }
-
-.preview{
-  font-size:14px;
-  color:#4d5b56;
-  margin-bottom:12px
+.open{
+  color:#16784b;
+  font-weight:700
 }
-
+.closed{
+  color:#a72e39;
+  font-weight:700
+}
+.unknown{
+  color:#66736e
+}
+.updated{
+  font-size:12px;
+  color:#66736e;
+  margin:8px 0 12px
+}
 .actions{
   display:flex;
   gap:8px;
   flex-wrap:wrap
 }
-
-.actions button,
-.actions a{
+.actions a,
+.actions button{
   display:inline-block;
   text-decoration:none;
   color:#0b6b57;
@@ -171,511 +109,626 @@ button.active{
   padding:8px 10px;
   background:white
 }
-
-.actions .primary{
-  background:#0b6b57;
-  color:white;
-  border-color:#0b6b57
-}
-
-.empty{
-  text-align:center;
-  color:#66736e;
-  padding:30px 10px
-}
-
-.modal{
-  display:none;
-  position:fixed;
-  inset:0;
-  background:#0008;
-  z-index:100;
-  padding:16px
-}
-
-.modal.show{
-  display:flex;
-  align-items:center;
-  justify-content:center
-}
-
-.modalbox{
-  background:white;
-  border-radius:20px;
-  padding:20px;
-  max-width:620px;
-  width:100%;
-  max-height:90vh;
-  overflow:auto;
-  box-shadow:0 10px 40px #0005
-}
-
-.modalbox h2{margin-top:0}
-
-.close{
-  float:right;
+.favorite{
+  margin-left:auto;
+  border:0!important;
+  padding:2px 4px!important;
   font-size:25px;
-  border:0;
-  background:none;
-  padding:0
+  line-height:1;
+  color:#c3c9c6!important
 }
-
-.detail{
-  margin:10px 0;
-  padding:12px;
-  background:#f4f6f5;
-  border-radius:11px;
-  word-break:break-word
+.favorite.on{
+  color:#d59b00!important
 }
-
-.detail a{color:#0b6b57}
-
-.formTitle{
-  font-weight:700;
-  margin:14px 0 7px
-}
-
-.formActions{
+.cardhead{
   display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-top:15px
+  align-items:flex-start;
+  gap:8px
 }
-
-.saveButton{
-  background:#0b6b57;
-  color:white;
-  border-color:#0b6b57;
-  font-weight:700
-}
-
-.deleteButton{
-  background:#b42318;
-  color:white;
-  border-color:#b42318
-}
-
-.smallNote{
-  font-size:12px;
+#status{
+  font-size:13px;
   color:#66736e;
-  margin-top:8px
+  margin:8px 0
 }
-
-.manageList{margin-top:10px}
-
-.manageItem{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding:12px;
-  border-bottom:1px solid #e3e8e5
-}
-
-.manageItem:last-child{border-bottom:0}
-
-.manageItemName{font-weight:650}
-
-.manageItemMeta{
-  font-size:12px;
+#favInfo{
+  font-size:13px;
   color:#66736e;
-  margin-top:3px
+  margin:0 0 10px
 }
-
-.manageItem button{flex-shrink:0}
 </style>
 </head>
 
 <body>
 
 <header>
-<h1>Meine Tegernsee-Lieblinge</h1>
-
-<div class="subtitle">
-Meine zentrale Restaurantliste
-</div>
-
-<button class="managebutton" onclick="verwaltung()">
-⚙️ Verwalten
-</button>
+  <h1>Meine Tegernsee-Lieblinge</h1>
+  <div>Meine zentrale Restaurantliste</div>
 </header>
 
 <main>
 
-<input
-  id="search"
-  placeholder="🔎 Restaurant suchen …"
-  autocomplete="off"
->
+<input id="search" placeholder="Restaurant suchen …">
 
 <div class="filters" id="filters"></div>
 
-<button class="addbutton" onclick="restaurantHinzufuegen()">
-➕ Restaurant hinzufügen
-</button>
+<div id="favInfo">
+  ⭐ Meine Favoriten werden nur auf diesem Gerät gespeichert.
+</div>
 
 <div id="status">
-Daten werden geladen …
+  Daten werden geladen …
 </div>
 
 <div id="list"></div>
 
 </main>
 
-
-<!-- DETAILS -->
-
-<div class="modal" id="modal">
-<div class="modalbox">
-
-<button class="close" onclick="closeDetails()">✕</button>
-
-<h2 id="detailName"></h2>
-
-<div id="detailContent"></div>
-
-</div>
-</div>
-
-
-<!-- BEARBEITEN -->
-
-<div class="modal" id="editModal">
-<div class="modalbox">
-
-<button class="close" onclick="closeEdit()">✕</button>
-
-<h2 id="editTitle">Restaurant bearbeiten</h2>
-
-<div class="formTitle">Name</div>
-<input id="editName" placeholder="Name des Restaurants">
-
-<div class="formTitle">Ort</div>
-<input id="editLocation" placeholder="z. B. Tegernsee">
-
-<div class="formTitle">Kategorie</div>
-
-<select id="editCategory">
-<option value="Restaurant">Restaurant</option>
-<option value="Alm">Alm</option>
-<option value="Ausflugsziel">Ausflugsziel</option>
-<option value="Cafe">Café</option>
-<option value="Biergarten">Biergarten</option>
-<option value="Hotel">Hotel</option>
-<option value="Sonstiges">Sonstiges</option>
-</select>
-
-<div class="formTitle">Adresse</div>
-<input id="editAddress" placeholder="Straße, Ort">
-
-<div class="formTitle">Telefon</div>
-<input id="editPhone" placeholder="Telefonnummer" inputmode="tel">
-
-<div class="formTitle">Website</div>
-<input id="editWebsite" placeholder="https://..." inputmode="url">
-
-<div class="formTitle">E-Mail</div>
-<input id="editEmail" placeholder="E-Mail-Adresse" inputmode="email">
-
-<div class="formTitle">Öffnungszeiten</div>
-<textarea id="editOpeningHours" placeholder="z. B. Mo–So 11:00–22:00"></textarea>
-
-<div class="formTitle">Küchenzeiten</div>
-<textarea id="editKitchenHours" placeholder="z. B. 11:30–21:00"></textarea>
-
-<div class="formTitle">Ruhetag</div>
-<input id="editRestDay" placeholder="z. B. Montag">
-
-<div class="formTitle">Bemerkungen</div>
-<textarea id="editNotes" placeholder="Weitere Informationen"></textarea>
-
-<div class="formActions">
-
-<button class="saveButton" onclick="saveEdit()">
-💾 Speichern
-</button>
-
-<button class="deleteButton" onclick="deleteCurrentRestaurant()">
-🗑️ Löschen
-</button>
-
-<button onclick="closeEdit()">
-Abbrechen
-</button>
-
-</div>
-
-<div class="smallNote">
-Die zentrale Restaurantliste wird aus Google Sheets geladen.
-</div>
-
-</div>
-</div>
-
-
-<!-- VERWALTUNG -->
-
-<div class="modal" id="manageModal">
-<div class="modalbox">
-
-<button class="close" onclick="closeManage()">✕</button>
-
-<h2>⚙️ Restaurants verwalten</h2>
-
-<div id="manageList" class="manageList"></div>
-
-</div>
-</div>
-
-
 <script>
-
-/* ==================================================
-   GOOGLE SHEETS
-================================================== */
 
 const GOOGLE_SHEET_API =
 "https://script.google.com/macros/s/AKfycbxm492j7hZ6MFLoG2hZrrROy6Yej9WAwOtWIbckvXhFx3r9UO1KTz-uI_DfD_z0yWHE/exec";
 
-
-/* ==================================================
-   GRUNDDATEN
-================================================== */
-
 let restaurants=[];
 let filter="Alle";
-let editingIndex=-1;
 
-const STORAGE_KEY="tegernseeRestaurants";
-const FAVORITE_KEY="tegernseeFavorites";
-
+const favorites=new Set(
+  JSON.parse(localStorage.getItem("tegernseeFavorites")||"[]")
+);
 
 const filters=[
-"Alle",
-"Favoriten",
-"Restaurant",
-"Alm",
-"Ausflugsziel",
-"Cafe",
-"Biergarten",
-"Hotel",
-"Kreuth",
-"Tegernsee"
+  "Alle",
+  "Restaurant",
+  "Alm",
+  "Ausflugsziel",
+  "Kreuth",
+  "Tegernsee"
 ];
-
 
 const list=document.getElementById("list");
 const search=document.getElementById("search");
 
-
-/* ==================================================
-   FILTER
-================================================== */
-
 document.getElementById("filters").innerHTML=
+  filters.map(x=>
+    `<button data-f="${esc(x)}">${esc(x)}</button>`
+  ).join("");
 
-filters.map(x=>`
-<button data-f="${escAttr(x)}">${esc(x)}</button>
-`).join("");
+document.querySelectorAll("[data-f]").forEach(b=>{
+  b.onclick=()=>{
+    filter=b.dataset.f;
 
+    document.querySelectorAll("[data-f]")
+      .forEach(x=>x.classList.toggle("active",x===b));
 
-document.querySelectorAll("[data-f]").forEach(button=>{
-
-button.onclick=()=>{
-
-filter=button.dataset.f;
-
-document.querySelectorAll("[data-f]").forEach(x=>{
-x.classList.toggle("active",x===button);
+    render();
+  };
 });
 
-render();
-
-};
-
-});
-
-
-document.querySelector("[data-f='Alle']").classList.add("active");
+document.querySelector("[data-f='Alle']")
+  .classList.add("active");
 
 search.oninput=render;
 
 
-/* ==================================================
-   FAVORITEN
-================================================== */
+/* -------------------------
+   HILFSFUNKTIONEN
+------------------------- */
 
-function getFavorites(){
-
-try{
-return JSON.parse(
-localStorage.getItem(FAVORITE_KEY)||"[]"
-);
-}catch(e){
-return [];
+function esc(s){
+  return String(s??"").replace(
+    /[&<>\"']/g,
+    m=>({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      "\"":"&quot;",
+      "'":"&#39;"
+    }[m])
+  );
 }
 
+function safeUrl(url){
+  const s=String(url||"").trim();
+
+  if(!s) return "";
+
+  if(/^https?:\/\//i.test(s)){
+    return s;
+  }
+
+  return "https://"+s;
 }
 
-
-function saveFavorites(values){
-
-localStorage.setItem(
-FAVORITE_KEY,
-JSON.stringify(values)
-);
-
+function keyFor(x){
+  return String(
+    x.id ??
+    x.name ??
+    ""
+  ).trim().toLowerCase();
 }
 
+function toggleFavorite(key,button){
 
-function getRestaurantKey(x){
+  if(favorites.has(key)){
+    favorites.delete(key);
+    button.classList.remove("on");
+    button.textContent="☆";
+  }else{
+    favorites.add(key);
+    button.classList.add("on");
+    button.textContent="★";
+  }
 
-return [
-x.name||"",
-x.address||"",
-x.location||""
-].join("|").toLowerCase();
+  localStorage.setItem(
+    "tegernseeFavorites",
+    JSON.stringify([...favorites])
+  );
 
-}
-
-
-function isFavorite(x){
-
-return getFavorites().includes(
-getRestaurantKey(x)
-);
-
-}
-
-
-function toggleFavorite(index){
-
-const x=restaurants[index];
-
-if(!x)return;
-
-let favorites=getFavorites();
-
-const key=getRestaurantKey(x);
-
-if(favorites.includes(key)){
-
-favorites=favorites.filter(
-item=>item!==key
-);
-
-}else{
-
-favorites.push(key);
-
-}
-
-saveFavorites(favorites);
-
-render();
-
+  render();
 }
 
 
-/* ==================================================
-   DATEN LADEN
-================================================== */
-
-async function load(){
-
-try{
-
-document.getElementById("status").textContent=
-"Google-Tabelle wird geladen …";
-
-
-const r=await fetch(
-GOOGLE_SHEET_API+"?t="+Date.now(),
-{
-cache:"no-store"
-}
-);
-
-
-if(!r.ok){
-throw new Error("Google-Tabelle nicht erreichbar");
-}
-
-
-const data=await r.json();
-
-
-if(!Array.isArray(data)){
-throw new Error("Ungültige Daten von Google Sheets");
-}
-
-
-restaurants=data.map(normalizeRestaurant);
-
-
-sortieren();
-
-statusAktualisieren();
-
-render();
-
-
-}catch(e){
-
-console.error(e);
-
-document.getElementById("status").textContent=
-"Google-Tabelle konnte nicht geladen werden – lokale Daten werden verwendet.";
-
-
-try{
-
-const gespeichert=
-localStorage.getItem(STORAGE_KEY);
-
-if(gespeichert){
-
-restaurants=
-JSON.parse(gespeichert);
-
-restaurants=
-restaurants.map(normalizeRestaurant);
-
-sortieren();
-
-render();
-
-}
-
-}catch(error){
-
-console.error(error);
-
-}
-
-}
-
-}
-
-
-/* ==================================================
-   NORMALISIEREN
-================================================== */
+/* -------------------------
+   GOOGLE-SHEET DATEN
+------------------------- */
 
 function normalizeRestaurant(x){
 
-return{
+  return {
+    name:x.Name || "",
+    location:x.Ort || "",
+    category:x.Kategorie || "",
+    address:x.Adresse || "",
+    phone:x.Telefon || "",
+    website:x.Website || "",
+    email:x["E-Mail"] || "",
+    openingHours:x.Öffnungszeiten || "",
+    kitchenHours:x.Küchenzeiten || "",
+    restDay:x.Ruhetag || "",
+    notes:x.Hinweise || ""
+  };
+}
 
-name:String(
-x.name||""
-),
 
-location:String(
-x.location||x.Ort||""
-),
+/*
+   JSONP-LADEN
 
-category:String(
-x.category||x.Kategorie||"Restaurant"
-),
+   Dadurch umgehen wir das CORS-Problem
+   zwischen GitHub Pages und Google Apps Script.
+*/
 
-address
+function loadFromGoogleSheet(){
+
+  return new Promise((resolve,reject)=>{
+
+    const callbackName=
+      "tegernseeCallback_"+Date.now();
+
+    const script=document.createElement("script");
+
+    const timeout=setTimeout(()=>{
+      cleanup();
+      reject(new Error("Zeitüberschreitung"));
+    },10000);
+
+    function cleanup(){
+
+      clearTimeout(timeout);
+
+      try{
+        delete window[callbackName];
+      }catch(e){
+        window[callbackName]=undefined;
+      }
+
+      script.remove();
+    }
+
+    window[callbackName]=function(data){
+
+      cleanup();
+
+      try{
+
+        const result=(data||[])
+          .map(normalizeRestaurant)
+          .filter(x=>x.name);
+
+        resolve(result);
+
+      }catch(e){
+        reject(e);
+      }
+    };
+
+    script.onerror=function(){
+
+      cleanup();
+
+      reject(new Error(
+        "Google-Tabelle konnte nicht geladen werden"
+      ));
+    };
+
+    script.src=
+      GOOGLE_SHEET_API+
+      "?callback="+
+      encodeURIComponent(callbackName)+
+      "&t="+
+      Date.now();
+
+    document.body.appendChild(script);
+  });
+}
+
+
+/* -------------------------
+   ÖFFNUNGSZEITEN
+------------------------- */
+
+function todayKey(){
+
+  return [
+    "sun",
+    "mon",
+    "tue",
+    "wed",
+    "thu",
+    "fri",
+    "sat"
+  ][new Date().getDay()];
+}
+
+function dayNames(){
+
+  return {
+    mon:["montag","mo"],
+    tue:["dienstag","di"],
+    wed:["mittwoch","mi"],
+    thu:["donnerstag","do"],
+    fri:["freitag","fr"],
+    sat:["samstag","sa"],
+    sun:["sonntag","so"]
+  };
+}
+
+function parseTime(t){
+
+  const m=String(t||"").match(
+    /(\d{1,2})[:.](\d{2})\s*[–-]\s*(\d{1,2})[:.](\d{2})/
+  );
+
+  if(!m) return null;
+
+  return {
+    from:Number(m[1])*60+Number(m[2]),
+    to:Number(m[3])*60+Number(m[4])
+  };
+}
+
+function getTodayHours(x){
+
+  const h=x.openingHours || "";
+
+  if(!h) return null;
+
+  const names=dayNames()[todayKey()];
+
+  const lines=String(h).split(/[\n;]+/);
+
+  for(const line of lines){
+
+    const low=line.toLowerCase();
+
+    if(names.some(n=>low.includes(n))){
+
+      return line.replace(
+        /^.*?(?:montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag|mo|di|mi|do|fr|sa|so)\s*[:,-]?\s*/i,
+        ""
+      );
+    }
+  }
+
+  return h;
+}
+
+function openingStatus(x){
+
+  const hours=getTodayHours(x);
+
+  const closed=String(x.restDay||"").toLowerCase();
+
+  const names=dayNames()[todayKey()];
+
+  if(
+    closed &&
+    names.some(n=>closed.includes(n))
+  ){
+    return {
+      text:"Geschlossen heute",
+      cls:"closed"
+    };
+  }
+
+  if(
+    !hours ||
+    /ruhetag|geschlossen|closed/i.test(
+      String(hours)
+    )
+  ){
+    return {
+      text:"Öffnungszeit nicht hinterlegt",
+      cls:"unknown"
+    };
+  }
+
+  const ranges=String(hours).match(
+    /\d{1,2}[:.]\d{2}\s*[–-]\s*\d{1,2}[:.]\d{2}/g
+  );
+
+  if(!ranges){
+
+    return {
+      text:String(hours),
+      cls:"unknown"
+    };
+  }
+
+  const now=new Date();
+
+  const minutes=
+    now.getHours()*60+
+    now.getMinutes();
+
+  for(const range of ranges){
+
+    const p=parseTime(range);
+
+    if(
+      p &&
+      minutes>=p.from &&
+      minutes<=p.to
+    ){
+
+      return {
+        text:"Jetzt geöffnet",
+        cls:"open"
+      };
+    }
+  }
+
+  return {
+    text:"Jetzt geschlossen",
+    cls:"closed"
+  };
+}
+
+
+/* -------------------------
+   AKTUALISIERUNG
+------------------------- */
+
+function updatedText(){
+
+  return "Daten direkt aus der Google-Tabelle";
+}
+
+
+/* -------------------------
+   ANZEIGE
+------------------------- */
+
+function render(){
+
+  const q=
+    search.value
+      .toLowerCase()
+      .trim();
+
+  const data=restaurants.filter(x=>{
+
+    const okFilter=
+      filter==="Alle" ||
+      x.category===filter ||
+      x.location===filter;
+
+    const text=
+      (
+        x.name+" "+
+        x.location+" "+
+        x.category+" "+
+        x.address
+      ).toLowerCase();
+
+    return okFilter &&
+      (!q || text.includes(q));
+  });
+
+
+  data.sort((a,b)=>{
+
+    const af=favorites.has(keyFor(a));
+    const bf=favorites.has(keyFor(b));
+
+    if(af!==bf){
+      return bf-af;
+    }
+
+    return String(a.name||"")
+      .localeCompare(
+        String(b.name||""),
+        "de"
+      );
+  });
+
+
+  list.innerHTML=data.map(x=>{
+
+    const key=keyFor(x);
+    const fav=favorites.has(key);
+
+    const map=
+      "https://www.google.com/maps/search/?api=1&query="+
+      encodeURIComponent(
+        x.name+" "+(x.location||"")
+      );
+
+    const st=openingStatus(x);
+
+    const website=
+      safeUrl(x.website);
+
+    const phone=
+      String(x.phone||"")
+        .replace(/[^0-9+]/g,"");
+
+
+    return `
+      <div class="card">
+
+        <div class="cardhead">
+
+          <div style="flex:1">
+
+            <div class="name">
+              ${esc(x.name||"Unbenannt")}
+            </div>
+
+            <div class="meta">
+              ${esc(x.category||"")}
+              ${x.category && x.location ? " · " : ""}
+              ${esc(x.location||"")}
+            </div>
+
+          </div>
+
+          <button
+            class="favorite ${fav?"on":""}"
+            aria-label="Favorit"
+            onclick='toggleFavorite(${JSON.stringify(key)},this)'
+          >
+            ${fav?"★":"☆"}
+          </button>
+
+        </div>
+
+
+        <div class="statusline">
+          <span class="${st.cls}">
+            ● ${esc(st.text)}
+          </span>
+        </div>
+
+
+        <div class="updated">
+          ${esc(updatedText(x))}
+        </div>
+
+
+        ${
+          x.address
+          ?
+          `<div class="meta">
+            📍 ${esc(x.address)}
+          </div>`
+          :
+          ""
+        }
+
+
+        <div class="actions">
+
+          <a
+            href="${map}"
+            target="_blank"
+            rel="noopener"
+          >
+            📍 Route
+          </a>
+
+
+          ${
+            phone
+            ?
+            `<a href="tel:${phone}">
+              ☎️ Anrufen
+            </a>`
+            :
+            ""
+          }
+
+
+          ${
+            website
+            ?
+            `<a
+              href="${esc(website)}"
+              target="_blank"
+              rel="noopener"
+            >
+              🌐 Webseite
+            </a>`
+            :
+            ""
+          }
+
+        </div>
+
+      </div>
+    `;
+
+  }).join("") || "<p>Keine Treffer.</p>";
+}
+
+
+/* -------------------------
+   DATEN LADEN
+------------------------- */
+
+async function load(){
+
+  const status=
+    document.getElementById("status");
+
+  status.textContent=
+    "Google-Tabelle wird geladen …";
+
+  try{
+
+    restaurants=
+      await loadFromGoogleSheet();
+
+    restaurants.sort((a,b)=>
+      String(a.name||"").localeCompare(
+        String(b.name||""),
+        "de"
+      )
+    );
+
+    status.textContent=
+      `${restaurants.length} Einträge · Google-Tabelle`;
+
+    render();
+
+  }catch(e){
+
+    console.error(e);
+
+    status.textContent=
+      "Google-Tabelle konnte nicht geladen werden.";
+
+    list.innerHTML=
+      `
+      <div class="card">
+        <b>Die Restaurantdaten konnten gerade nicht geladen werden.</b>
+        <p>Bitte die App kurz neu laden.</p>
+      </div>
+      `;
+  }
+}
+
+load();
+
+</script>
+
+</body>
+</html>
