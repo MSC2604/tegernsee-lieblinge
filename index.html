@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#0b6b57">
-
 <title>Meine Tegernsee-Lieblinge</title>
 
 <style>
@@ -12,95 +11,81 @@ body{
   font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   margin:0;
   background:#f4f6f5;
-  color:#17201d;
+  color:#17201d
 }
-
 header{
   background:#0b6b57;
   color:white;
-  padding:22px 16px;
+  padding:22px 16px
 }
-
 h1{
   margin:0 0 12px;
-  font-size:26px;
+  font-size:26px
 }
-
 main{
   max-width:760px;
   margin:auto;
-  padding:16px;
+  padding:16px
 }
-
 input,select,button{
-  font:inherit;
+  font:inherit
 }
-
 input{
   width:100%;
   box-sizing:border-box;
   padding:13px;
   border:1px solid #ccd5d1;
   border-radius:12px;
-  margin-bottom:12px;
+  margin-bottom:12px
 }
-
 .filters{
   display:flex;
   gap:8px;
   overflow:auto;
-  padding-bottom:8px;
+  padding-bottom:8px
 }
-
 button{
   border:1px solid #ccd5d1;
   background:white;
   border-radius:10px;
-  padding:9px 12px;
+  padding:9px 12px
 }
-
 button.active{
   background:#0b6b57;
   color:white;
-  border-color:#0b6b57;
+  border-color:#0b6b57
 }
-
 .card{
   background:white;
   border-radius:16px;
   padding:16px;
   margin:10px 0;
-  box-shadow:0 2px 8px #00000012;
+  box-shadow:0 2px 8px #00000012
 }
-
 .name{
   font-size:19px;
-  font-weight:700;
+  font-weight:700
 }
-
 .meta{
   color:#66736e;
-  margin:5px 0 12px;
+  margin:5px 0 12px
 }
-
 .actions{
   display:flex;
-  gap:8px;
+  gap:8px
 }
-
 .actions a{
   display:inline-block;
   text-decoration:none;
   color:#0b6b57;
   border:1px solid #ccd5d1;
   border-radius:9px;
-  padding:8px 10px;
+  padding:8px 10px
 }
-
 #status{
   font-size:13px;
   color:#66736e;
-  margin:8px 0;
+  margin:8px 0
 }
 </style>
 </head>
@@ -108,8 +93,8 @@ button.active{
 <body>
 
 <header>
-<h1>Meine Tegernsee-Lieblinge</h1>
-<div>Meine zentrale Restaurantliste</div>
+  <h1>Meine Tegernsee-Lieblinge</h1>
+  <div>Meine zentrale Restaurantliste</div>
 </header>
 
 <main>
@@ -126,182 +111,137 @@ button.active{
 
 <script>
 
-let restaurants=[];
-let filter="Alle";
+let restaurants=[], filter="Alle";
 
 const filters=[
-"Alle",
-"Restaurant",
-"Alm",
-"Ausflugsziel",
-"Kreuth",
-"Tegernsee"
+  "Alle",
+  "Restaurant",
+  "Alm",
+  "Ausflugsziel",
+  "Kreuth",
+  "Tegernsee"
 ];
 
 const list=document.getElementById("list");
 const search=document.getElementById("search");
 
 document.getElementById("filters").innerHTML=
-filters.map(x=>
-`<button data-f="${esc(x)}">${esc(x)}</button>`
-).join("");
+  filters.map(x=>`<button data-f="${x}">${x}</button>`).join("");
 
-document
-.querySelectorAll("[data-f]")
-.forEach(b=>{
+document.querySelectorAll("[data-f]").forEach(b=>{
+  b.onclick=()=>{
+    filter=b.dataset.f;
 
-b.onclick=()=>{
+    document.querySelectorAll("[data-f]").forEach(x=>{
+      x.classList.toggle("active",x===b);
+    });
 
-filter=b.dataset.f;
-
-document
-.querySelectorAll("[data-f]")
-.forEach(x=>
-x.classList.toggle("active",x===b)
-);
-
-render();
-
-};
-
+    render();
+  };
 });
 
-document
-.querySelector("[data-f='Alle']")
-.classList.add("active");
+document.querySelector("[data-f='Alle']").classList.add("active");
 
 search.oninput=render;
 
 
 async function load(){
 
-try{
+  try{
 
-const r=
-await fetch(
-"./restaurants.json?v="+Date.now(),
-{cache:"no-store"}
-);
+    const r=await fetch(
+      "./restaurants.json?v="+Date.now(),
+      {cache:"no-store"}
+    );
 
-if(!r.ok){
-throw new Error("HTTP "+r.status);
-}
+    restaurants=await r.json();
 
-restaurants=await r.json();
+    restaurants.sort(
+      (a,b)=>a.name.localeCompare(b.name,"de")
+    );
 
-if(!Array.isArray(restaurants)){
-throw new Error("Keine Liste");
-}
+    document.getElementById("status").textContent=
+      `${restaurants.length} Einträge · zuletzt geladen: ${new Date().toLocaleString("de-DE")}`;
 
-restaurants.sort((a,b)=>
-String(a.name||"")
-.localeCompare(
-String(b.name||""),
-"de"
-)
-);
+    render();
 
-document.getElementById("status").textContent=
-restaurants.length+
-" Einträge · zuletzt geladen: "+
-new Date().toLocaleString("de-DE");
+  }catch(e){
 
-render();
+    document.getElementById("status").textContent=
+      "Die Restaurantdaten konnten nicht geladen werden.";
 
-}catch(e){
-
-document.getElementById("status").textContent=
-"Die Restaurantdaten konnten nicht geladen werden.";
-
-}
+  }
 
 }
 
 
 function render(){
 
-const q=
-search.value
-.toLowerCase()
-.trim();
+  const q=search.value.toLowerCase().trim();
 
-const data=
-restaurants.filter(x=>{
+  const data=restaurants.filter(x=>{
 
-const okFilter=
-filter==="Alle" ||
-x.category===filter ||
-x.location===filter;
+    const okFilter=
+      filter==="Alle" ||
+      x.category===filter ||
+      x.location===filter;
 
-const okSearch=
-!q ||
-(
-String(x.name||"")+" "+
-String(x.location||"")+" "+
-String(x.category||"")
-)
-.toLowerCase()
-.includes(q);
+    return okFilter &&
+      (!q ||
+       (x.name+" "+x.location+" "+x.category)
+       .toLowerCase()
+       .includes(q));
 
-return okFilter && okSearch;
+  });
 
-});
+  list.innerHTML=data.map(x=>{
 
-list.innerHTML=
-data.map(x=>{
+    const map=
+      "https://www.google.com/maps/search/?api=1&query="+
+      encodeURIComponent(x.name+" "+x.location);
 
-const map=
-"https://www.google.com/maps/search/?api=1&query="+
-encodeURIComponent(
-(x.name||"")+" "+
-(x.location||"")
-);
+    return `
+      <div class="card">
 
-return `
-<div class="card">
+        <div class="name">
+          ${esc(x.name)}
+        </div>
 
-<div class="name">
-${esc(x.name)}
-</div>
+        <div class="meta">
+          ${esc(x.category)} · ${esc(x.location)}
+        </div>
 
-<div class="meta">
-${esc(x.category||"")} · ${esc(x.location||"")}
-</div>
+        <div class="actions">
 
-<div class="actions">
+          <a
+            href="${map}"
+            target="_blank"
+            rel="noopener">
+            📍 Route
+          </a>
 
-<a
-href="${map}"
-target="_blank"
-rel="noopener"
->
-📍 Route
-</a>
+        </div>
 
-</div>
+      </div>
+    `;
 
-</div>
-`;
-
-}).join("") ||
-"<p>Keine Treffer.</p>";
+  }).join("") || "<p>Keine Treffer.</p>";
 
 }
 
 
 function esc(s){
 
-return String(s??"")
-.replace(
-/[&<>\"']/g,
-m=>({
-"&":"&amp;",
-"<":"&lt;",
-">":"&gt;",
-"\"":"&quot;",
-"'":"&#39;"
-}[m])
-);
+  return String(s).replace(
+    /[&<>"']/g,
+    m=>({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      "\"":"&quot;",
+      "'":"&#39;"
+    }[m])
+  );
 
 }
 
