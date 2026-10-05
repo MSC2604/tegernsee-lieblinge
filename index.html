@@ -45,7 +45,7 @@ button{font:inherit}
 .note{margin-top:12px;background:white;border:1px solid #e4e2da;border-radius:17px;padding:14px}
 .note textarea{width:100%;min-height:80px;border:0;outline:0;font:inherit}
 .modal{display:none;position:fixed;inset:0;background:#0008;z-index:20;align-items:flex-end}
-.modalbox{width:min(480px,100%);background:white;border-radius:23px 23px 0 0;padding:20px}
+.modalbox{width:min(480px,100%);background:white;border-radius:23px 23px 0 0;padding:20px;max-height:90vh;overflow:auto}
 .field{margin:10px 0}
 .field label{display:block;font-size:12px;color:#6f7d77;margin-bottom:5px}
 .field input,.field select{width:100%;padding:11px;border:1px solid #ddd;border-radius:11px;font:inherit}
@@ -56,6 +56,7 @@ button{font:inherit}
 .nav{text-align:center;font-size:11px;color:#6f7d77}
 .nav b{display:block;font-size:20px;color:#17352d}
 .empty{text-align:center;color:#6f7d77;padding:30px}
+a{color:#17352d}
 </style>
 </head>
 
@@ -207,11 +208,25 @@ let current=-1;
 let filter="Alle";
 let editMode=false;
 
-const favorites=
-new Set(JSON.parse(localStorage.getItem("tegernseeFavorites")||"[]"));
+let favorites=new Set();
 
-const notes=
-JSON.parse(localStorage.getItem("tegernseeNotes")||"{}");
+try{
+favorites=new Set(
+JSON.parse(localStorage.getItem("tegernseeFavorites")||"[]")
+);
+}catch(e){
+favorites=new Set();
+}
+
+let notes={};
+
+try{
+notes=JSON.parse(
+localStorage.getItem("tegernseeNotes")||"{}"
+);
+}catch(e){
+notes={};
+}
 
 async function loadRestaurants(){
 
@@ -222,16 +237,38 @@ await fetch("./restaurants.json?v="+Date.now(),{
 cache:"no-store"
 });
 
-if(!response.ok)
+if(!response.ok){
 throw new Error("HTTP "+response.status);
+}
 
 restaurants=await response.json();
 
-if(!Array.isArray(restaurants))
+if(!Array.isArray(restaurants)){
 throw new Error("Keine Liste");
+}
+
+const localChanges=
+localStorage.getItem("tegernseeLocalChanges");
+
+if(localChanges){
+
+try{
+
+const saved=JSON.parse(localChanges);
+
+if(Array.isArray(saved)){
+restaurants=saved;
+}
+
+}catch(e){}
+
+}
 
 restaurants.sort((a,b)=>
-(a.name||"").localeCompare(b.name||"","de")
+(a.name||"").localeCompare(
+(b.name||""),
+"de"
+)
 );
 
 render();
@@ -248,7 +285,9 @@ document.getElementById("cards").innerHTML=
 function render(){
 
 const q=
-document.getElementById("search").value.toLowerCase();
+(document.getElementById("search").value||"")
+.toLowerCase()
+.trim();
 
 const list=restaurants.filter(r=>{
 
@@ -259,7 +298,8 @@ r.location===filter;
 
 const searchOK=
 (r.name||"").toLowerCase().includes(q) ||
-(r.location||"").toLowerCase().includes(q);
+(r.location||"").toLowerCase().includes(q) ||
+(r.category||"").toLowerCase().includes(q);
 
 return filterOK && searchOK;
 
@@ -269,7 +309,7 @@ document.getElementById("count").textContent=
 list.length+" Einträge";
 
 document.getElementById("cards").innerHTML=
-list.map((r)=>{
+list.map(r=>{
 
 const index=restaurants.indexOf(r);
 
@@ -291,7 +331,8 @@ ${favorites.has(r.name)?"❤️":"♡"}
 
 <div class="tags">
 <span class="tag">${esc(r.category||"")}</span>
-${favorites.has(r.name)?'<span class="tag">Favorit</span>':""}
+${favorites.has(r.name)?
+'<span class="tag">Favorit</span>':""}
 </div>
 
 <div class="row">
@@ -314,11 +355,15 @@ current=index;
 
 const r=restaurants[index];
 
+if(!r)return;
+
 document.getElementById("home").style.display="none";
 document.getElementById("header").style.display="none";
 document.getElementById("detail").style.display="block";
 
-document.getElementById("dname").textContent=r.name;
+document.getElementById("dname").textContent=
+r.name||"";
+
 document.getElementById("dplace").textContent=
 "📍 "+(r.location||"");
 
@@ -340,7 +385,7 @@ r.email||"–";
 if(r.website){
 
 document.getElementById("dweb").innerHTML=
-`<a href="${safeUrl(r.website)}" target="_blank">Webseite öffnen</a>`;
+`<a href="${safeUrl(r.website)}" target="_blank" rel="noopener">Webseite öffnen</a>`;
 
 }else{
 
@@ -378,6 +423,8 @@ function openRoute(){
 
 const r=restaurants[current];
 
+if(!r)return;
+
 location.href=
 "https://www.google.com/maps/search/?api=1&query="+
 encodeURIComponent(
@@ -389,6 +436,8 @@ encodeURIComponent(
 function callPlace(){
 
 const r=restaurants[current];
+
+if(!r)return;
 
 if(!r.phone){
 
@@ -417,6 +466,8 @@ document.getElementById("modal").style.display="flex";
 
 function editPlace(){
 
+if(current<0 || !restaurants[current])return;
+
 editMode=true;
 
 const r=restaurants[current];
@@ -424,48 +475,84 @@ const r=restaurants[current];
 document.getElementById("modalTitle").textContent=
 "✏️ Restaurant bearbeiten";
 
-document.getElementById("fName").value=r.name||"";
-document.getElementById("fPlace").value=r.location||"";
-document.getElementById("document.getElementById("fCat").value=r.category||"Restaurant";
-document.getElementById("fAddress").value=r.address||"";
-document.getElementById("fPhone").value=r.phone||"";
-document.getElementById("fWeb").value=r.website||"";
-document.getElementById("fEmail").value=r.email||"";
-document.getElementById("fHours").value=r.openingHours||"";
-document.getElementById("fClosed").value=r.restDay||"";
+document.getElementById("fName").value=
+r.name||"";
+
+document.getElementById("fPlace").value=
+r.location||"";
+
+document.getElementById("fCat").value=
+r.category||"Restaurant";
+
+document.getElementById("fAddress").value=
+r.address||"";
+
+document.getElementById("fPhone").value=
+r.phone||"";
+
+document.getElementById("fWeb").value=
+r.website||"";
+
+document.getElementById("fEmail").value=
+r.email||"";
+
+document.getElementById("fHours").value=
+r.openingHours||"";
+
+document.getElementById("fClosed").value=
+r.restDay||"";
 
 document.getElementById("modal").style.display="flex";
+
 }
 
 function savePlace(){
 
-const name=document.getElementById("fName").value.trim();
+const name=
+document.getElementById("fName").value.trim();
 
 if(!name){
+
 alert("Bitte einen Namen eingeben.");
 return;
+
 }
 
 const r={
 name:name,
-location:document.getElementById("fPlace").value.trim(),
-category:document.getElementById("fCat").value,
-address:document.getElementById("fAddress").value.trim(),
-phone:document.getElementById("fPhone").value.trim(),
-website:document.getElementById("fWeb").value.trim(),
-email:document.getElementById("fEmail").value.trim(),
-openingHours:document.getElementById("fHours").value.trim(),
-restDay:document.getElementById("fClosed").value.trim()
+location:
+document.getElementById("fPlace").value.trim(),
+category:
+document.getElementById("fCat").value,
+address:
+document.getElementById("fAddress").value.trim(),
+phone:
+document.getElementById("fPhone").value.trim(),
+website:
+document.getElementById("fWeb").value.trim(),
+email:
+document.getElementById("fEmail").value.trim(),
+openingHours:
+document.getElementById("fHours").value.trim(),
+restDay:
+document.getElementById("fClosed").value.trim()
 };
 
 if(editMode){
+
 restaurants[current]=r;
+
 }else{
+
 restaurants.push(r);
+
 }
 
 restaurants.sort((a,b)=>
-(a.name||"").localeCompare(b.name||"","de")
+(a.name||"").localeCompare(
+(b.name||""),
+"de"
+)
 );
 
 localStorage.setItem(
@@ -474,11 +561,13 @@ JSON.stringify(restaurants)
 );
 
 closeModal();
+
 render();
 
 if(editMode){
 
-const newIndex=restaurants.findIndex(
+const newIndex=
+restaurants.findIndex(
 x=>x.name===r.name
 );
 
@@ -490,10 +579,13 @@ openDetail(newIndex);
 
 function deletePlace(){
 
+if(current<0 || !restaurants[current])return;
+
 const r=restaurants[current];
 
-if(!confirm("„"+r.name+"“ wirklich löschen?"))
-return;
+if(!confirm(
+"„"+r.name+"“ wirklich löschen?"
+))return;
 
 restaurants.splice(current,1);
 
@@ -501,6 +593,8 @@ localStorage.setItem(
 "tegernseeLocalChanges",
 JSON.stringify(restaurants)
 );
+
+current=-1;
 
 showHome();
 
@@ -518,16 +612,20 @@ function clearForm(){
 "fHours",
 "fClosed"
 ].forEach(id=>{
+
 document.getElementById(id).value="";
+
 });
 
-document.getElementById("fCat").value="Restaurant";
+document.getElementById("fCat").value=
+"Restaurant";
 
 }
 
 function closeModal(){
 
-document.getElementById("modal").style.display="none";
+document.getElementById("modal").style.display=
+"none";
 
 }
 
@@ -536,7 +634,9 @@ document.querySelectorAll(".chip").forEach(button=>{
 button.onclick=()=>{
 
 document.querySelectorAll(".chip")
-.forEach(x=>x.classList.remove("active"));
+.forEach(x=>
+x.classList.remove("active")
+);
 
 button.classList.add("active");
 
@@ -548,7 +648,8 @@ render();
 
 });
 
-document.getElementById("search").oninput=render;
+document.getElementById("search").oninput=
+render;
 
 function esc(value){
 
@@ -567,8 +668,14 @@ try{
 
 const u=new URL(url);
 
-if(u.protocol==="http:"||u.protocol==="https:")
+if(
+u.protocol==="http:" ||
+u.protocol==="https:"
+){
+
 return u.href;
+
+}
 
 }catch(e){}
 
