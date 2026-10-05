@@ -8,84 +8,83 @@
 
 <style>
 body{
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   margin:0;
-  background:#f4f6f5;
-  color:#17201d
+  font-family:Arial,sans-serif;
+  background:#f4f7f6;
+  color:#17332d;
 }
 header{
   background:#0b6b57;
   color:white;
-  padding:22px 16px
+  padding:24px 18px;
+  text-align:center;
 }
-h1{
-  margin:0 0 12px;
-  font-size:26px
+header h1{
+  margin:0 0 6px;
+  font-size:25px;
+}
+header div{
+  opacity:.9;
 }
 main{
-  max-width:760px;
+  max-width:900px;
   margin:auto;
-  padding:16px
-}
-input,select,button{
-  font:inherit
+  padding:18px;
 }
 input{
   width:100%;
   box-sizing:border-box;
-  padding:13px;
-  border:1px solid #ccd5d1;
+  padding:14px;
+  border:1px solid #ccd8d4;
   border-radius:12px;
-  margin-bottom:12px
+  font-size:16px;
+  margin-bottom:14px;
 }
 .filters{
   display:flex;
+  flex-wrap:wrap;
   gap:8px;
-  overflow:auto;
-  padding-bottom:8px
+  margin-bottom:16px;
 }
-button{
-  border:1px solid #ccd5d1;
-  background:white;
-  border-radius:10px;
-  padding:9px 12px
+.filters button{
+  border:0;
+  border-radius:20px;
+  padding:9px 14px;
+  background:#dce8e4;
+  color:#17332d;
 }
-button.active{
+.filters button.active{
   background:#0b6b57;
   color:white;
-  border-color:#0b6b57
+}
+#status{
+  margin:12px 0;
+  font-size:14px;
+  color:#52635e;
 }
 .card{
   background:white;
-  border-radius:16px;
+  border-radius:14px;
   padding:16px;
-  margin:10px 0;
-  box-shadow:0 2px 8px #00000012
+  margin-bottom:12px;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
 }
 .name{
   font-size:19px;
-  font-weight:700
+  font-weight:bold;
+  margin-bottom:5px;
 }
 .meta{
-  color:#66736e;
-  margin:5px 0 12px
-}
-.actions{
-  display:flex;
-  gap:8px
+  color:#60736d;
+  margin-bottom:12px;
 }
 .actions a{
   display:inline-block;
   text-decoration:none;
-  color:#0b6b57;
-  border:1px solid #ccd5d1;
+  background:#0b6b57;
+  color:white;
+  padding:9px 13px;
   border-radius:9px;
-  padding:8px 10px
-}
-#status{
-  font-size:13px;
-  color:#66736e;
-  margin:8px 0
 }
 </style>
 </head>
@@ -94,7 +93,7 @@ button.active{
 
 <header>
   <h1>Meine Tegernsee-Lieblinge</h1>
-  <div>Meine zentrale Restaurantliste</div>
+  <div>TEST – neue index.html</div>
 </header>
 
 <main>
@@ -103,7 +102,7 @@ button.active{
 
 <div class="filters" id="filters"></div>
 
-<div id="status">Daten werden geladen …</div>
+<div id="status">TEST – neue index.html</div>
 
 <div id="list"></div>
 
@@ -111,9 +110,10 @@ button.active{
 
 <script>
 
-let restaurants=[], filter="Alle";
+let restaurants = [];
+let filter = "Alle";
 
-const filters=[
+const filters = [
   "Alle",
   "Restaurant",
   "Alm",
@@ -122,18 +122,18 @@ const filters=[
   "Tegernsee"
 ];
 
-const list=document.getElementById("list");
-const search=document.getElementById("search");
+const list = document.getElementById("list");
+const search = document.getElementById("search");
 
-document.getElementById("filters").innerHTML=
-  filters.map(x=>`<button data-f="${x}">${x}</button>`).join("");
+document.getElementById("filters").innerHTML =
+  filters.map(x => `<button data-f="${x}">${x}</button>`).join("");
 
-document.querySelectorAll("[data-f]").forEach(b=>{
-  b.onclick=()=>{
-    filter=b.dataset.f;
+document.querySelectorAll("[data-f]").forEach(button => {
+  button.onclick = () => {
+    filter = button.dataset.f;
 
-    document.querySelectorAll("[data-f]").forEach(x=>{
-      x.classList.toggle("active",x===b);
+    document.querySelectorAll("[data-f]").forEach(x => {
+      x.classList.toggle("active", x === button);
     });
 
     render();
@@ -142,109 +142,114 @@ document.querySelectorAll("[data-f]").forEach(b=>{
 
 document.querySelector("[data-f='Alle']").classList.add("active");
 
-search.oninput=render;
-
+search.oninput = render;
 
 async function load(){
 
   try{
 
-    const r=await fetch(
-      "./restaurants.json?v="+Date.now(),
+    const response = await fetch(
+      "./restaurants.json?v=" + Date.now(),
       {cache:"no-store"}
     );
 
-    restaurants=await r.json();
+    if(!response.ok){
+      throw new Error("restaurants.json konnte nicht geladen werden");
+    }
 
-    restaurants.sort(
-      (a,b)=>a.name.localeCompare(b.name,"de")
+    restaurants = await response.json();
+
+    if(!Array.isArray(restaurants)){
+      throw new Error("Restaurantdaten sind kein Array");
+    }
+
+    restaurants.sort((a,b) =>
+      String(a.name || "").localeCompare(
+        String(b.name || ""),
+        "de"
+      )
     );
 
-    document.getElementById("status").textContent=
-      `${restaurants.length} Einträge · zuletzt geladen: ${new Date().toLocaleString("de-DE")}`;
+    document.getElementById("status").textContent =
+      restaurants.length +
+      " Restaurants geladen";
 
     render();
 
-  }catch(e){
+  }catch(error){
 
-    document.getElementById("status").textContent=
-      "Die Restaurantdaten konnten nicht geladen werden.";
+    document.getElementById("status").textContent =
+      "FEHLER: " + error.message;
 
   }
 
 }
 
-
 function render(){
 
-  const q=search.value.toLowerCase().trim();
+  const q = search.value.toLowerCase().trim();
 
-  const data=restaurants.filter(x=>{
+  const data = restaurants.filter(x => {
 
-    const okFilter=
-      filter==="Alle" ||
-      x.category===filter ||
-      x.location===filter;
+    const okFilter =
+      filter === "Alle" ||
+      x.category === filter ||
+      x.location === filter;
+
+    const text =
+      (x.name || "") + " " +
+      (x.location || "") + " " +
+      (x.category || "");
 
     return okFilter &&
-      (!q ||
-       (x.name+" "+x.location+" "+x.category)
-       .toLowerCase()
-       .includes(q));
+      (!q || text.toLowerCase().includes(q));
 
   });
 
-  list.innerHTML=data.map(x=>{
+  list.innerHTML =
+    data.map(x => {
 
-    const map=
-      "https://www.google.com/maps/search/?api=1&query="+
-      encodeURIComponent(x.name+" "+x.location);
+      const map =
+        "https://www.google.com/maps/search/?api=1&query=" +
+        encodeURIComponent(
+          (x.name || "") + " " + (x.location || "")
+        );
 
-    return `
-      <div class="card">
+      return `
+        <div class="card">
+          <div class="name">${esc(x.name || "")}</div>
 
-        <div class="name">
-          ${esc(x.name)}
+          <div class="meta">
+            ${esc(x.category || "")} ·
+            ${esc(x.location || "")}
+          </div>
+
+          <div class="actions">
+            <a href="${map}" target="_blank" rel="noopener">
+              📍 Route
+            </a>
+          </div>
         </div>
+      `;
 
-        <div class="meta">
-          ${esc(x.category)} · ${esc(x.location)}
-        </div>
-
-        <div class="actions">
-
-          <a
-            href="${map}"
-            target="_blank"
-            rel="noopener">
-            📍 Route
-          </a>
-
-        </div>
-
-      </div>
-    `;
-
-  }).join("") || "<p>Keine Treffer.</p>";
+    }).join("") || "<p>Keine Treffer.</p>";
 
 }
 
+function esc(value){
 
-function esc(s){
-
-  return String(s).replace(
+  return String(value).replace(
     /[&<>"']/g,
-    m=>({
+    m => ({
       "&":"&amp;",
       "<":"&lt;",
       ">":"&gt;",
-      "\"":"&quot;",
+      '"':"&quot;",
       "'":"&#39;"
     }[m])
   );
 
 }
-
 
 load();
 
