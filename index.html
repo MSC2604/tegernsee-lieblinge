@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0b6b57">
 <title>Meine Tegernsee-Lieblinge</title>
 
 <style>
@@ -22,9 +21,6 @@ header{
 header h1{
   margin:0 0 6px;
   font-size:25px;
-}
-header div{
-  opacity:.9;
 }
 main{
   max-width:900px;
@@ -51,7 +47,6 @@ input{
   border-radius:20px;
   padding:9px 14px;
   background:#dce8e4;
-  color:#17332d;
 }
 .filters button.active{
   background:#0b6b57;
@@ -59,8 +54,8 @@ input{
 }
 #status{
   margin:12px 0;
+  padding:10px;
   font-size:14px;
-  color:#52635e;
 }
 .card{
   background:white;
@@ -72,14 +67,15 @@ input{
 .name{
   font-size:19px;
   font-weight:bold;
-  margin-bottom:5px;
 }
 .meta{
   color:#60736d;
-  margin-bottom:12px;
+  margin-top:5px;
+}
+.actions{
+  margin-top:12px;
 }
 .actions a{
-  display:inline-block;
   text-decoration:none;
   background:#0b6b57;
   color:white;
@@ -92,8 +88,8 @@ input{
 <body>
 
 <header>
-  <h1>Meine Tegernsee-Lieblinge</h1>
-  <div>TEST – neue index.html</div>
+<h1>Meine Tegernsee-Lieblinge</h1>
+<div>Meine zentrale Restaurantliste</div>
 </header>
 
 <main>
@@ -102,7 +98,7 @@ input{
 
 <div class="filters" id="filters"></div>
 
-<div id="status">TEST – neue index.html</div>
+<div id="status">Daten werden geladen …</div>
 
 <div id="list"></div>
 
@@ -110,148 +106,184 @@ input{
 
 <script>
 
-let restaurants = [];
-let filter = "Alle";
+let restaurants=[];
+let filter="Alle";
 
-const filters = [
-  "Alle",
-  "Restaurant",
-  "Alm",
-  "Ausflugsziel",
-  "Kreuth",
-  "Tegernsee"
+const filterListe=[
+"Alle",
+"Restaurant",
+"Alm",
+"Ausflugsziel",
+"Kreuth",
+"Tegernsee"
 ];
 
-const list = document.getElementById("list");
-const search = document.getElementById("search");
+const status=document.getElementById("status");
+const list=document.getElementById("list");
+const search=document.getElementById("search");
 
-document.getElementById("filters").innerHTML =
-  filters.map(x => `<button data-f="${x}">${x}</button>`).join("");
+document.getElementById("filters").innerHTML=
+filterListe.map(x=>
+`<button data-filter="${x}">${x}</button>`
+).join("");
 
-document.querySelectorAll("[data-f]").forEach(button => {
-  button.onclick = () => {
-    filter = button.dataset.f;
+document.querySelectorAll("[data-filter]").forEach(button=>{
+button.onclick=()=>{
+filter=button.dataset.filter;
 
-    document.querySelectorAll("[data-f]").forEach(x => {
-      x.classList.toggle("active", x === button);
-    });
-
-    render();
-  };
+document.querySelectorAll("[data-filter]").forEach(b=>{
+b.classList.toggle("active",b===button);
 });
 
-document.querySelector("[data-f='Alle']").classList.add("active");
+anzeigen();
+};
+});
 
-search.oninput = render;
+document.querySelector('[data-filter="Alle"]').classList.add("active");
 
-async function load(){
+search.oninput=anzeigen;
 
-  try{
+async function laden(){
 
-    const response = await fetch(
-      "./restaurants.json?v=" + Date.now(),
-      {cache:"no-store"}
-    );
+status.textContent="Restaurantdaten werden geladen …";
 
-    if(!response.ok){
-      throw new Error("restaurants.json konnte nicht geladen werden");
-    }
+try{
 
-    restaurants = await response.json();
+const url="./restaurants.json?cache="+Date.now();
 
-    if(!Array.isArray(restaurants)){
-      throw new Error("Restaurantdaten sind kein Array");
-    }
+const antwort=await fetch(url,{
+cache:"no-store"
+});
 
-    restaurants.sort((a,b) =>
-      String(a.name || "").localeCompare(
-        String(b.name || ""),
-        "de"
-      )
-    );
+if(!antwort.ok){
+throw new Error(
+"HTTP-Fehler "+antwort.status
+);
+}
 
-    document.getElementById("status").textContent =
-      restaurants.length +
-      " Restaurants geladen";
+const text=await antwort.text();
 
-    render();
+if(!text){
+throw new Error("restaurants.json ist leer");
+}
 
-  }catch(error){
+try{
+restaurants=JSON.parse(text);
+}catch(e){
+throw new Error(
+"JSON konnte nicht gelesen werden"
+);
+}
 
-    document.getElementById("status").textContent =
-      "FEHLER: " + error.message;
+if(!Array.isArray(restaurants)){
+throw new Error(
+"Die JSON-Datei enthält keine Restaurantliste"
+);
+}
 
-  }
+restaurants.sort((a,b)=>
+String(a.name||"").localeCompare(
+String(b.name||""),
+"de"
+)
+);
+
+status.textContent=
+restaurants.length+
+" Restaurants geladen";
+
+anzeigen();
+
+}catch(e){
+
+status.textContent=
+"LADEFEHLER: "+e.message;
+
+console.error(e);
 
 }
 
-function render(){
+}
 
-  const q = search.value.toLowerCase().trim();
+function anzeigen(){
 
-  const data = restaurants.filter(x => {
+const suche=search.value
+.toLowerCase()
+.trim();
 
-    const okFilter =
-      filter === "Alle" ||
-      x.category === filter ||
-      x.location === filter;
+const ergebnis=restaurants.filter(r=>{
 
-    const text =
-      (x.name || "") + " " +
-      (x.location || "") + " " +
-      (x.category || "");
+const filterOK=
+filter==="Alle"||
+r.category===filter||
+r.location===filter;
 
-    return okFilter &&
-      (!q || text.toLowerCase().includes(q));
+const text=
+String(r.name||"")+" "+
+String(r.location||"")+" "+
+String(r.category||"");
 
-  });
+return filterOK &&
+(!suche||
+text.toLowerCase().includes(suche));
 
-  list.innerHTML =
-    data.map(x => {
+});
 
-      const map =
-        "https://www.google.com/maps/search/?api=1&query=" +
-        encodeURIComponent(
-          (x.name || "") + " " + (x.location || "")
-        );
+list.innerHTML=ergebnis.map(r=>{
 
-      return `
-        <div class="card">
-          <div class="name">${esc(x.name || "")}</div>
+const route=
+"https://www.google.com/maps/search/?api=1&query="+
+encodeURIComponent(
+String(r.name||"")+" "+
+String(r.location||"")
+);
 
-          <div class="meta">
-            ${esc(x.category || "")} ·
-            ${esc(x.location || "")}
-          </div>
+return `
+<div class="card">
 
-          <div class="actions">
-            <a href="${map}" target="_blank" rel="noopener">
-              📍 Route
-            </a>
-          </div>
-        </div>
-      `;
+<div class="name">
+${sicher(r.name)}
+</div>
 
-    }).join("") || "<p>Keine Treffer.</p>";
+<div class="meta">
+${sicher(r.category)} · ${sicher(r.location)}
+</div>
+
+<div class="actions">
+<a href="${route}"
+target="_blank"
+rel="noopener">
+📍 Route
+</a>
+</div>
+
+</div>
+`;
+
+}).join("");
+
+if(!ergebnis.length){
+list.innerHTML="<p>Keine Treffer.</p>";
+}
 
 }
 
-function esc(value){
+function sicher(wert){
 
-  return String(value).replace(
-    /[&<>"']/g,
-    m => ({
-      "&":"&amp;",
-      "<":"&lt;",
-      ">":"&gt;",
-      '"':"&quot;",
-      "'":"&#39;"
-    }[m])
-  );
+return String(wert||"").replace(
+/[&<>"']/g,
+zeichen=>({
+"&":"&amp;",
+"<":"&lt;",
+">":"&gt;",
+'"':"&quot;",
+"'":"&#39;"
+}[zeichen])
+);
 
 }
 
-load();
+laden();
 
 </script>
 
