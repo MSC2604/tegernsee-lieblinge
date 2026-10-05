@@ -4,98 +4,82 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Meine Tegernsee-Lieblinge</title>
+
 <style>
-:root{--bg:#f4f2ec;--card:#fff;--ink:#17352d;--muted:#6f7d77;--accent:#2d6a56;--line:#e4e2da;--gold:#c69a3b}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink)}
-.app{max-width:480px;margin:auto;min-height:100vh;background:var(--bg)}
-header{padding:26px 20px 18px;background:linear-gradient(150deg,#183f34,#2d6a56);color:#fff;border-radius:0 0 28px 28px}
-.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
-.title{font-size:29px;font-weight:800;margin:5px 0}
-.sub{opacity:.82}
-.search{margin-top:18px;background:#fff;border-radius:14px;padding:12px 14px;color:#667;display:flex;gap:9px;align-items:center}
-.search input{border:0;outline:0;width:100%;font-size:15px}
-main{padding:18px 16px 90px}
-.sectionhead{display:flex;justify-content:space-between;align-items:center;margin:5px 2px 12px}
-.sectionhead h2{font-size:18px;margin:0}
-.count{font-size:12px;color:var(--muted)}
-.filters{display:flex;gap:8px;overflow:auto;padding-bottom:14px}
-.chip{border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:20px;white-space:nowrap;color:var(--ink)}
-.chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
-.grid{display:grid;gap:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px;box-shadow:0 3px 12px #19352d0b;cursor:pointer}
-.top{display:flex;justify-content:space-between;gap:12px}
-.name{font-size:17px;font-weight:750}
-.place{font-size:13px;color:var(--muted);margin-top:4px}
-.heart{font-size:22px;color:#bd3944}
-.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
-.tag{font-size:11px;padding:5px 8px;background:#eef3ef;border-radius:10px}
-.row{display:flex;justify-content:space-between;margin-top:13px;font-size:12px;color:var(--muted)}
-.open{color:var(--accent);font-weight:700}
+body{margin:0;background:#f4f2ec;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#17352d}
+.app{max-width:480px;margin:auto;min-height:100vh}
+header{padding:25px 18px 18px;background:linear-gradient(150deg,#183f34,#2d6a56);color:white;border-radius:0 0 26px 26px}
+.title{font-size:28px;font-weight:800}
+.sub{opacity:.85;margin-top:4px}
+.search{margin-top:17px;background:white;border-radius:14px;padding:12px}
+.search input{border:0;outline:0;width:100%;font-size:16px}
+main{padding:17px 15px 90px}
+.section{display:flex;justify-content:space-between;align-items:center}
+.section h2{font-size:18px}
+.count{font-size:12px;color:#6f7d77}
+button{font:inherit}
+.add{width:100%;border:0;background:#17352d;color:white;border-radius:14px;padding:13px;margin:5px 0 12px;font-weight:700}
+.filters{display:flex;gap:8px;overflow:auto;padding-bottom:13px}
+.chip{border:1px solid #e4e2da;background:white;padding:8px 12px;border-radius:20px;white-space:nowrap}
+.chip.active{background:#17352d;color:white}
+.grid{display:grid;gap:11px}
+.card{background:white;border:1px solid #e4e2da;border-radius:17px;padding:15px;cursor:pointer}
+.top{display:flex;justify-content:space-between}
+.name{font-weight:750;font-size:17px}
+.place{font-size:13px;color:#6f7d77;margin-top:4px}
+.heart{font-size:22px}
+.tags{display:flex;gap:6px;margin-top:11px}
+.tag{font-size:11px;background:#eef3ef;padding:5px 8px;border-radius:10px}
+.row{margin-top:12px;font-size:12px;color:#6f7d77}
 .detail{display:none}
-.back{border:0;background:none;color:#fff;font-size:15px;padding:0;margin-bottom:28px}
-.hero{background:#dce6df;height:145px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:54px;margin-bottom:16px}
-.detail h1{font-size:27px;margin:0}
-.detail .place{font-size:14px;margin:5px 0 16px}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}
-.action{border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px;text-align:center;font-weight:650}
-.info{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px}
-.info div{padding:11px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}
+.back{background:none;border:0;color:white;margin-bottom:25px}
+.hero{height:130px;border-radius:18px;background:#dce6df;display:flex;align-items:center;justify-content:center;font-size:52px}
+.detail h1{font-size:27px;margin-bottom:3px}
+.actions,.tools{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}
+.action,.tool{background:white;border:1px solid #e4e2da;border-radius:13px;padding:12px;text-align:center;font-weight:650}
+.info{background:white;border:1px solid #e4e2da;border-radius:17px;padding:14px}
+.info div{padding:10px 0;border-bottom:1px solid #e4e2da;display:flex;justify-content:space-between;gap:12px}
 .info div:last-child{border:0}
-.label{color:var(--muted)}
-.note{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px}
-.note textarea{width:100%;min-height:90px;border:0;outline:0;resize:vertical;font:inherit}
-.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);max-width:480px;width:100%;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:10px 0 12px}
-.nav{font-size:11px;text-align:center;color:var(--muted)}
-.nav b{display:block;font-size:20px;color:var(--ink);margin-bottom:2px}
-.empty{padding:35px 10px;text-align:center;color:var(--muted)}
-.addbtn{width:100%;border:0;background:var(--ink);color:#fff;border-radius:15px;padding:13px;font-size:15px;font-weight:750;margin:2px 0 16px;cursor:pointer}
-.modal{display:none;position:fixed;inset:0;background:#0008;z-index:10;align-items:flex-end;justify-content:center}
-.modalbox{width:min(480px,100%);background:#fff;border-radius:24px 24px 0 0;padding:20px 18px 28px}
-.modalbox h2{margin:0 0 14px}
+.label{color:#6f7d77}
+.note{margin-top:12px;background:white;border:1px solid #e4e2da;border-radius:17px;padding:14px}
+.note textarea{width:100%;min-height:80px;border:0;outline:0;font:inherit}
+.modal{display:none;position:fixed;inset:0;background:#0008;z-index:20;align-items:flex-end}
+.modalbox{width:min(480px,100%);background:white;border-radius:23px 23px 0 0;padding:20px}
 .field{margin:10px 0}
-.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
-.field input,.field select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font:inherit}
-.modalactions{display:flex;gap:9px;margin-top:16px}
-.modalactions button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);font-weight:700}
-.save{background:var(--ink);color:#fff}
-.sync{display:flex;gap:8px;margin:0 0 14px}
-.sync button{flex:1;border:1px solid var(--line);background:#fff;border-radius:13px;padding:10px;font-weight:650;color:var(--ink)}
-.small{font-size:11px;color:var(--muted);text-align:center;margin:-5px 0 14px}
-.detailtools{display:flex;gap:8px;margin:12px 0}
-.detailtools button{flex:1;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;font-weight:650}
-.danger{color:#a72e39!important}
-.website{color:var(--accent);text-decoration:none;font-weight:650}
+.field label{display:block;font-size:12px;color:#6f7d77;margin-bottom:5px}
+.field input,.field select{width:100%;padding:11px;border:1px solid #ddd;border-radius:11px;font:inherit}
+.modalbuttons{display:flex;gap:8px;margin-top:15px}
+.modalbuttons button{flex:1;padding:12px;border-radius:12px;border:1px solid #ddd}
+.save{background:#17352d;color:white}
+.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);max-width:480px;width:100%;background:white;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:10px}
+.nav{text-align:center;font-size:11px;color:#6f7d77}
+.nav b{display:block;font-size:20px;color:#17352d}
+.empty{text-align:center;color:#6f7d77;padding:30px}
 </style>
 </head>
 
 <body>
+
 <div class="app">
 
-<header id="homeHeader">
-<div class="eyebrow">Deine persönliche Sammlung</div>
+<header id="header">
 <div class="title">Meine Tegernsee-Lieblinge</div>
 <div class="sub">Restaurants, Almen & besondere Plätze</div>
-<div class="search">🔎 <input id="search" placeholder="Restaurant suchen …"></div>
+
+<div class="search">
+🔎 <input id="search" placeholder="Restaurant suchen …">
+</div>
 </header>
 
 <main id="home">
 
-<div class="sectionhead">
+<div class="section">
 <h2>❤️ Meine Favoriten</h2>
 <span class="count" id="count"></span>
 </div>
 
-<button class="addbtn" onclick="openAdd()">＋ Restaurant hinzufügen</button>
-
-<div class="sync">
-<button onclick="refreshData()">↻ Daten aktualisieren</button>
-<button onclick="showSyncInfo()">☁ Auto-Update</button>
-</div>
-
-<div class="small" id="syncStatus">
-Daten lokal gespeichert
-</div>
+<button class="add" onclick="openAdd()">＋ Restaurant hinzufügen</button>
 
 <div class="filters">
 <button class="chip active" data-filter="Alle">Alle</button>
@@ -104,3 +88,342 @@ Daten lokal gespeichert
 <button class="chip" data-filter="Kreuth">Kreuth</button>
 <button class="chip" data-filter="Tegernsee">Tegernsee</button>
 </div>
+
+<div class="grid" id="cards"></div>
+
+</main>
+
+<main id="detail" class="detail">
+
+<button class="back" onclick="showHome()">‹ Zurück</button>
+
+<div class="hero" id="hero">🍽️</div>
+
+<h1 id="dname"></h1>
+<div class="place" id="dplace"></div>
+
+<div class="actions">
+<div class="action" onclick="openRoute()">📍 Route</div>
+<div class="action" onclick="callPlace()">☎️ Anrufen</div>
+</div>
+
+<div class="tools">
+<button class="tool" onclick="editPlace()">✏️ Bearbeiten</button>
+<button class="tool" onclick="deletePlace()">🗑️ Löschen</button>
+</div>
+
+<div class="info">
+<div><span class="label">📍 Adresse</span><span id="daddress">–</span></div>
+<div><span class="label">🕐 Öffnungszeiten</span><span id="dhours">–</span></div>
+<div><span class="label">🚫 Ruhetag</span><span id="dclosed">–</span></div>
+<div><span class="label">☎️ Telefon</span><span id="dphone">–</span></div>
+<div><span class="label">🌐 Webseite</span><span id="dweb">–</span></div>
+<div><span class="label">✉️ E-Mail</span><span id="demail">–</span></div>
+</div>
+
+<div class="note">
+<b>📝 Meine Notizen</b>
+<textarea id="note" placeholder="Was möchtest du dir merken?"></textarea>
+</div>
+
+</main>
+
+<div class="modal" id="modal">
+
+<div class="modalbox">
+
+<h2 id="modalTitle">＋ Restaurant hinzufügen</h2>
+
+<div class="field">
+<label>Name</label>
+<input id="fName">
+</div>
+
+<div class="field">
+<label>Ort</label>
+<input id="fPlace">
+</div>
+
+<div class="field">
+<label>Kategorie</label>
+<select id="fCat">
+<option>Restaurant</option>
+<option>Alm</option>
+<option>Café</option>
+<option>Biergarten</option>
+<option>Ausflugsziel</option>
+</select>
+</div>
+
+<div class="field">
+<label>Adresse</label>
+<input id="fAddress">
+</div>
+
+<div class="field">
+<label>Telefon</label>
+<input id="fPhone">
+</div>
+
+<div class="field">
+<label>Website</label>
+<input id="fWeb">
+</div>
+
+<div class="field">
+<label>E-Mail</label>
+<input id="fEmail">
+</div>
+
+<div class="field">
+<label>Öffnungszeiten</label>
+<input id="fHours">
+</div>
+
+<div class="field">
+<label>Ruhetag</label>
+<input id="fClosed">
+</div>
+
+<div class="modalbuttons">
+<button onclick="closeModal()">Abbrechen</button>
+<button class="save" onclick="savePlace()">Speichern</button>
+</div>
+
+</div>
+</div>
+
+<div class="bottom">
+<div class="nav" onclick="showHome()"><b>⌂</b>Start</div>
+<div class="nav" onclick="document.getElementById('search').focus()"><b>⌕</b>Suchen</div>
+</div>
+
+</div>
+
+<script>
+
+let restaurants=[];
+let current=-1;
+let filter="Alle";
+let editMode=false;
+
+const favorites=
+new Set(JSON.parse(localStorage.getItem("tegernseeFavorites")||"[]"));
+
+const notes=
+JSON.parse(localStorage.getItem("tegernseeNotes")||"{}");
+
+async function loadRestaurants(){
+
+try{
+
+const response=
+await fetch("./restaurants.json?v="+Date.now(),{
+cache:"no-store"
+});
+
+if(!response.ok)
+throw new Error("HTTP "+response.status);
+
+restaurants=await response.json();
+
+if(!Array.isArray(restaurants))
+throw new Error("Keine Liste");
+
+restaurants.sort((a,b)=>
+(a.name||"").localeCompare(b.name||"","de")
+);
+
+render();
+
+}catch(error){
+
+document.getElementById("cards").innerHTML=
+'<div class="empty">⚠️ Die Restaurantdaten konnten nicht geladen werden.</div>';
+
+}
+
+}
+
+function render(){
+
+const q=
+document.getElementById("search").value.toLowerCase();
+
+const list=restaurants.filter(r=>{
+
+const filterOK=
+filter==="Alle" ||
+r.category===filter ||
+r.location===filter;
+
+const searchOK=
+(r.name||"").toLowerCase().includes(q) ||
+(r.location||"").toLowerCase().includes(q);
+
+return filterOK && searchOK;
+
+});
+
+document.getElementById("count").textContent=
+list.length+" Einträge";
+
+document.getElementById("cards").innerHTML=
+list.map((r)=>{
+
+const index=restaurants.indexOf(r);
+
+return `
+<div class="card" onclick="openDetail(${index})">
+
+<div class="top">
+
+<div>
+<div class="name">${esc(r.name)}</div>
+<div class="place">📍 ${esc(r.location||"")}</div>
+</div>
+
+<div class="heart">
+${favorites.has(r.name)?"❤️":"♡"}
+</div>
+
+</div>
+
+<div class="tags">
+<span class="tag">${esc(r.category||"")}</span>
+${favorites.has(r.name)?'<span class="tag">Favorit</span>':""}
+</div>
+
+<div class="row">
+${r.openingHours?
+"🕐 "+esc(r.openingHours):
+"🕐 Öffnungszeiten ansehen"}
+</div>
+
+</div>
+`;
+
+}).join("") ||
+'<div class="empty">Keine Treffer gefunden.</div>';
+
+}
+
+function openDetail(index){
+
+current=index;
+
+const r=restaurants[index];
+
+document.getElementById("home").style.display="none";
+document.getElementById("header").style.display="none";
+document.getElementById("detail").style.display="block";
+
+document.getElementById("dname").textContent=r.name;
+document.getElementById("dplace").textContent=
+"📍 "+(r.location||"");
+
+document.getElementById("daddress").textContent=
+r.address||"–";
+
+document.getElementById("dhours").textContent=
+r.openingHours||"–";
+
+document.getElementById("dclosed").textContent=
+r.restDay||"–";
+
+document.getElementById("dphone").textContent=
+r.phone||"–";
+
+document.getElementById("demail").textContent=
+r.email||"–";
+
+if(r.website){
+
+document.getElementById("dweb").innerHTML=
+`<a href="${safeUrl(r.website)}" target="_blank">Webseite öffnen</a>`;
+
+}else{
+
+document.getElementById("dweb").textContent="–";
+
+}
+
+document.getElementById("note").value=
+notes[r.name]||"";
+
+document.getElementById("note").oninput=function(){
+
+notes[r.name]=this.value;
+
+localStorage.setItem(
+"tegernseeNotes",
+JSON.stringify(notes)
+);
+
+};
+
+}
+
+function showHome(){
+
+document.getElementById("detail").style.display="none";
+document.getElementById("home").style.display="block";
+document.getElementById("header").style.display="block";
+
+render();
+
+}
+
+function openRoute(){
+
+const r=restaurants[current];
+
+location.href=
+"https://www.google.com/maps/search/?api=1&query="+
+encodeURIComponent(
+(r.name||"")+" "+(r.location||"")+" Tegernsee"
+);
+
+}
+
+function callPlace(){
+
+const r=restaurants[current];
+
+if(!r.phone){
+
+alert("Keine Telefonnummer hinterlegt.");
+return;
+
+}
+
+location.href=
+"tel:"+r.phone.replace(/[^0-9+]/g,"");
+
+}
+
+function openAdd(){
+
+editMode=false;
+
+document.getElementById("modalTitle").textContent=
+"＋ Restaurant hinzufügen";
+
+clearForm();
+
+document.getElementById("modal").style.display="flex";
+
+}
+
+function editPlace(){
+
+editMode=true;
+
+const r=restaurants[current];
+
+document.getElementById("modalTitle").textContent=
+"✏️ Restaurant bearbeiten";
+
+document.getElementById("fName").value=r.name||"";
+document.getElementById("fPlace").value=r.location||"";
+document.getElementById("
