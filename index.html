@@ -3,50 +3,104 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0b6b57">
 <title>Meine Tegernsee-Lieblinge</title>
 <style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f4f6f5;color:#17201d}
-header{background:#0b6b57;color:white;padding:22px 16px}
-h1{margin:0 0 12px;font-size:26px}
-main{max-width:760px;margin:auto;padding:16px}
-input,select,button{font:inherit}
-input{width:100%;box-sizing:border-box;padding:13px;border:1px solid #ccd5d1;border-radius:12px;margin-bottom:12px}
-.filters{display:flex;gap:8px;overflow:auto;padding-bottom:8px}
-button{border:1px solid #ccd5d1;background:white;border-radius:10px;padding:9px 12px;cursor:pointer}
-button.active{background:#0b6b57;color:white;border-color:#0b6b57}
-.card{background:white;border-radius:16px;padding:16px;margin:10px 0;box-shadow:0 2px 8px #00000012}
-.name{font-size:19px;font-weight:700}
-.meta{color:#66736e;margin:5px 0 9px}
-.statusline{display:flex;align-items:center;gap:8px;margin:7px 0 12px;font-size:14px}
-.open{color:#16784b;font-weight:700}
-.closed{color:#a72e39;font-weight:700}
-.unknown{color:#66736e}
-.updated{font-size:12px;color:#66736e;margin:8px 0 12px}
-.actions{display:flex;gap:8px;flex-wrap:wrap}
-.actions a,.actions button{display:inline-block;text-decoration:none;color:#0b6b57;border:1px solid #ccd5d1;border-radius:9px;padding:8px 10px;background:white}
-.favorite{margin-left:auto;border:0!important;padding:2px 4px!important;font-size:25px;line-height:1;color:#c3c9c6!important}
-.favorite.on{color:#d59b00!important}
-.cardhead{display:flex;align-items:flex-start;gap:8px}
-#status{font-size:13px;color:#66736e;margin:8px 0}
-#favInfo{font-size:13px;color:#66736e;margin:0 0 10px}
+:root{--bg:#f4f2ec;--card:#fff;--ink:#17352d;--muted:#6f7d77;--accent:#2d6a56;--line:#e4e2da;--gold:#c69a3b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink)}
+.app{max-width:480px;margin:auto;min-height:100vh;background:var(--bg)}
+header{padding:26px 20px 18px;background:linear-gradient(150deg,#183f34,#2d6a56);color:#fff;border-radius:0 0 28px 28px}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+.title{font-size:29px;font-weight:800;margin:5px 0}
+.sub{opacity:.82}
+.search{margin-top:18px;background:#fff;border-radius:14px;padding:12px 14px;color:#667;display:flex;gap:9px;align-items:center}
+.search input{border:0;outline:0;width:100%;font-size:15px}
+main{padding:18px 16px 90px}
+.sectionhead{display:flex;justify-content:space-between;align-items:center;margin:5px 2px 12px}
+.sectionhead h2{font-size:18px;margin:0}
+.count{font-size:12px;color:var(--muted)}
+.filters{display:flex;gap:8px;overflow:auto;padding-bottom:14px}
+.chip{border:1px solid var(--line);background:#fff;padding:8px 12px;border-radius:20px;white-space:nowrap;color:var(--ink)}
+.chip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.grid{display:grid;gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px;box-shadow:0 3px 12px #19352d0b;cursor:pointer}
+.top{display:flex;justify-content:space-between;gap:12px}
+.name{font-size:17px;font-weight:750}
+.place{font-size:13px;color:var(--muted);margin-top:4px}
+.heart{font-size:22px;color:#bd3944}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.tag{font-size:11px;padding:5px 8px;background:#eef3ef;border-radius:10px}
+.row{display:flex;justify-content:space-between;margin-top:13px;font-size:12px;color:var(--muted)}
+.open{color:var(--accent);font-weight:700}
+.detail{display:none}
+.back{border:0;background:none;color:#fff;font-size:15px;padding:0;margin-bottom:28px}
+.hero{background:#dce6df;height:145px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:54px;margin-bottom:16px}
+.detail h1{font-size:27px;margin:0}
+.detail .place{font-size:14px;margin:5px 0 16px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0}
+.action{border:1px solid var(--line);background:#fff;border-radius:14px;padding:12px;text-align:center;font-weight:650}
+.info{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px}
+.info div{padding:11px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}
+.info div:last-child{border:0}
+.label{color:var(--muted)}
+.note{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px}
+.note textarea{width:100%;min-height:90px;border:0;outline:0;resize:vertical;font:inherit}
+.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);max-width:480px;width:100%;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:10px 0 12px}
+.nav{font-size:11px;text-align:center;color:var(--muted)}
+.nav b{display:block;font-size:20px;color:var(--ink);margin-bottom:2px}
+.empty{padding:35px 10px;text-align:center;color:var(--muted)}
+.addbtn{width:100%;border:0;background:var(--ink);color:#fff;border-radius:15px;padding:13px;font-size:15px;font-weight:750;margin:2px 0 16px;cursor:pointer}
+.modal{display:none;position:fixed;inset:0;background:#0008;z-index:10;align-items:flex-end;justify-content:center}
+.modalbox{width:min(480px,100%);background:#fff;border-radius:24px 24px 0 0;padding:20px 18px 28px}
+.modalbox h2{margin:0 0 14px}
+.field{margin:10px 0}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+.field input,.field select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font:inherit}
+.modalactions{display:flex;gap:9px;margin-top:16px}
+.modalactions button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);font-weight:700}
+.save{background:var(--ink);color:#fff}
+.sync{display:flex;gap:8px;margin:0 0 14px}
+.sync button{flex:1;border:1px solid var(--line);background:#fff;border-radius:13px;padding:10px;font-weight:650;color:var(--ink)}
+.small{font-size:11px;color:var(--muted);text-align:center;margin:-5px 0 14px}
+.detailtools{display:flex;gap:8px;margin:12px 0}
+.detailtools button{flex:1;border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;font-weight:650}
+.danger{color:#a72e39!important}
+.website{color:var(--accent);text-decoration:none;font-weight:650}
 </style>
 </head>
 
 <body>
+<div class="app">
 
-<header>
-  <h1>Meine Tegernsee-Lieblinge</h1>
-  <div>Meine zentrale Restaurantliste</div>
+<header id="homeHeader">
+<div class="eyebrow">Deine persönliche Sammlung</div>
+<div class="title">Meine Tegernsee-Lieblinge</div>
+<div class="sub">Restaurants, Almen & besondere Plätze</div>
+<div class="search">🔎 <input id="search" placeholder="Restaurant suchen …"></div>
 </header>
 
-<main>
-<input id="search" placeholder="Restaurant suchen …">
-<div class="filters" id="filters"></div>
-<div id="favInfo">⭐ Meine Favoriten werden nur auf diesem Gerät gespeichert.</div>
-<div id="status">Daten werden geladen …</div>
-<div id="list"></div>
-</main>
+<main id="home">
 
-<script>
-let restaurants=[], filter="Alle";
+<div class="sectionhead">
+<h2>❤️ Meine Favoriten</h2>
+<span class="count" id="count"></span>
+</div>
+
+<button class="addbtn" onclick="openAdd()">＋ Restaurant hinzufügen</button>
+
+<div class="sync">
+<button onclick="refreshData()">↻ Daten aktualisieren</button>
+<button onclick="showSyncInfo()">☁ Auto-Update</button>
+</div>
+
+<div class="small" id="syncStatus">
+Daten lokal gespeichert
+</div>
+
+<div class="filters">
+<button class="chip active" data-filter="Alle">Alle</button>
+<button class="chip" data-filter="Restaurant">Restaurants</button>
+<button class="chip" data-filter="Alm">Almen</button>
+<button class="chip" data-filter="Kreuth">Kreuth</button>
+<button class="chip" data-filter="Tegernsee">Tegernsee</button>
+</div>
