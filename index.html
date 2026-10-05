@@ -3,687 +3,310 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b6b57">
+
 <title>Meine Tegernsee-Lieblinge</title>
 
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#f4f2ec;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#17352d}
-.app{max-width:480px;margin:auto;min-height:100vh}
-header{padding:25px 18px 18px;background:linear-gradient(150deg,#183f34,#2d6a56);color:white;border-radius:0 0 26px 26px}
-.title{font-size:28px;font-weight:800}
-.sub{opacity:.85;margin-top:4px}
-.search{margin-top:17px;background:white;border-radius:14px;padding:12px}
-.search input{border:0;outline:0;width:100%;font-size:16px}
-main{padding:17px 15px 90px}
-.section{display:flex;justify-content:space-between;align-items:center}
-.section h2{font-size:18px}
-.count{font-size:12px;color:#6f7d77}
-button{font:inherit}
-.add{width:100%;border:0;background:#17352d;color:white;border-radius:14px;padding:13px;margin:5px 0 12px;font-weight:700}
-.filters{display:flex;gap:8px;overflow:auto;padding-bottom:13px}
-.chip{border:1px solid #e4e2da;background:white;padding:8px 12px;border-radius:20px;white-space:nowrap}
-.chip.active{background:#17352d;color:white}
-.grid{display:grid;gap:11px}
-.card{background:white;border:1px solid #e4e2da;border-radius:17px;padding:15px;cursor:pointer}
-.top{display:flex;justify-content:space-between}
-.name{font-weight:750;font-size:17px}
-.place{font-size:13px;color:#6f7d77;margin-top:4px}
-.heart{font-size:22px}
-.tags{display:flex;gap:6px;margin-top:11px}
-.tag{font-size:11px;background:#eef3ef;padding:5px 8px;border-radius:10px}
-.row{margin-top:12px;font-size:12px;color:#6f7d77}
-.detail{display:none}
-.back{background:none;border:0;color:white;margin-bottom:25px}
-.hero{height:130px;border-radius:18px;background:#dce6df;display:flex;align-items:center;justify-content:center;font-size:52px}
-.detail h1{font-size:27px;margin-bottom:3px}
-.actions,.tools{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}
-.action,.tool{background:white;border:1px solid #e4e2da;border-radius:13px;padding:12px;text-align:center;font-weight:650}
-.info{background:white;border:1px solid #e4e2da;border-radius:17px;padding:14px}
-.info div{padding:10px 0;border-bottom:1px solid #e4e2da;display:flex;justify-content:space-between;gap:12px}
-.info div:last-child{border:0}
-.label{color:#6f7d77}
-.note{margin-top:12px;background:white;border:1px solid #e4e2da;border-radius:17px;padding:14px}
-.note textarea{width:100%;min-height:80px;border:0;outline:0;font:inherit}
-.modal{display:none;position:fixed;inset:0;background:#0008;z-index:20;align-items:flex-end}
-.modalbox{width:min(480px,100%);background:white;border-radius:23px 23px 0 0;padding:20px;max-height:90vh;overflow:auto}
-.field{margin:10px 0}
-.field label{display:block;font-size:12px;color:#6f7d77;margin-bottom:5px}
-.field input,.field select{width:100%;padding:11px;border:1px solid #ddd;border-radius:11px;font:inherit}
-.modalbuttons{display:flex;gap:8px;margin-top:15px}
-.modalbuttons button{flex:1;padding:12px;border-radius:12px;border:1px solid #ddd}
-.save{background:#17352d;color:white}
-.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);max-width:480px;width:100%;background:white;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:10px}
-.nav{text-align:center;font-size:11px;color:#6f7d77}
-.nav b{display:block;font-size:20px;color:#17352d}
-.empty{text-align:center;color:#6f7d77;padding:30px}
-a{color:#17352d}
+body{
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  margin:0;
+  background:#f4f6f5;
+  color:#17201d;
+}
+
+header{
+  background:#0b6b57;
+  color:white;
+  padding:22px 16px;
+}
+
+h1{
+  margin:0 0 12px;
+  font-size:26px;
+}
+
+main{
+  max-width:760px;
+  margin:auto;
+  padding:16px;
+}
+
+input,select,button{
+  font:inherit;
+}
+
+input{
+  width:100%;
+  box-sizing:border-box;
+  padding:13px;
+  border:1px solid #ccd5d1;
+  border-radius:12px;
+  margin-bottom:12px;
+}
+
+.filters{
+  display:flex;
+  gap:8px;
+  overflow:auto;
+  padding-bottom:8px;
+}
+
+button{
+  border:1px solid #ccd5d1;
+  background:white;
+  border-radius:10px;
+  padding:9px 12px;
+}
+
+button.active{
+  background:#0b6b57;
+  color:white;
+  border-color:#0b6b57;
+}
+
+.card{
+  background:white;
+  border-radius:16px;
+  padding:16px;
+  margin:10px 0;
+  box-shadow:0 2px 8px #00000012;
+}
+
+.name{
+  font-size:19px;
+  font-weight:700;
+}
+
+.meta{
+  color:#66736e;
+  margin:5px 0 12px;
+}
+
+.actions{
+  display:flex;
+  gap:8px;
+}
+
+.actions a{
+  display:inline-block;
+  text-decoration:none;
+  color:#0b6b57;
+  border:1px solid #ccd5d1;
+  border-radius:9px;
+  padding:8px 10px;
+}
+
+#status{
+  font-size:13px;
+  color:#66736e;
+  margin:8px 0;
+}
 </style>
 </head>
 
 <body>
 
-<div class="app">
-
-<header id="header">
-<div class="title">Meine Tegernsee-Lieblinge</div>
-<div class="sub">Restaurants, Almen & besondere Plätze</div>
-
-<div class="search">
-🔎 <input id="search" placeholder="Restaurant suchen …">
-</div>
+<header>
+<h1>Meine Tegernsee-Lieblinge</h1>
+<div>Meine zentrale Restaurantliste</div>
 </header>
 
-<main id="home">
+<main>
 
-<div class="section">
-<h2>❤️ Meine Favoriten</h2>
-<span class="count" id="count"></span>
-</div>
+<input id="search" placeholder="Restaurant suchen …">
 
-<button class="add" onclick="openAdd()">＋ Restaurant hinzufügen</button>
+<div class="filters" id="filters"></div>
 
-<div class="filters">
-<button class="chip active" data-filter="Alle">Alle</button>
-<button class="chip" data-filter="Restaurant">Restaurants</button>
-<button class="chip" data-filter="Alm">Almen</button>
-<button class="chip" data-filter="Kreuth">Kreuth</button>
-<button class="chip" data-filter="Tegernsee">Tegernsee</button>
-</div>
+<div id="status">Daten werden geladen …</div>
 
-<div class="grid" id="cards"></div>
+<div id="list"></div>
 
 </main>
-
-<main id="detail" class="detail">
-
-<button class="back" onclick="showHome()">‹ Zurück</button>
-
-<div class="hero" id="hero">🍽️</div>
-
-<h1 id="dname"></h1>
-<div class="place" id="dplace"></div>
-
-<div class="actions">
-<div class="action" onclick="openRoute()">📍 Route</div>
-<div class="action" onclick="callPlace()">☎️ Anrufen</div>
-</div>
-
-<div class="tools">
-<button class="tool" onclick="editPlace()">✏️ Bearbeiten</button>
-<button class="tool" onclick="deletePlace()">🗑️ Löschen</button>
-</div>
-
-<div class="info">
-<div><span class="label">📍 Adresse</span><span id="daddress">–</span></div>
-<div><span class="label">🕐 Öffnungszeiten</span><span id="dhours">–</span></div>
-<div><span class="label">🚫 Ruhetag</span><span id="dclosed">–</span></div>
-<div><span class="label">☎️ Telefon</span><span id="dphone">–</span></div>
-<div><span class="label">🌐 Webseite</span><span id="dweb">–</span></div>
-<div><span class="label">✉️ E-Mail</span><span id="demail">–</span></div>
-</div>
-
-<div class="note">
-<b>📝 Meine Notizen</b>
-<textarea id="note" placeholder="Was möchtest du dir merken?"></textarea>
-</div>
-
-</main>
-
-<div class="modal" id="modal">
-
-<div class="modalbox">
-
-<h2 id="modalTitle">＋ Restaurant hinzufügen</h2>
-
-<div class="field">
-<label>Name</label>
-<input id="fName">
-</div>
-
-<div class="field">
-<label>Ort</label>
-<input id="fPlace">
-</div>
-
-<div class="field">
-<label>Kategorie</label>
-<select id="fCat">
-<option>Restaurant</option>
-<option>Alm</option>
-<option>Café</option>
-<option>Biergarten</option>
-<option>Ausflugsziel</option>
-</select>
-</div>
-
-<div class="field">
-<label>Adresse</label>
-<input id="fAddress">
-</div>
-
-<div class="field">
-<label>Telefon</label>
-<input id="fPhone">
-</div>
-
-<div class="field">
-<label>Website</label>
-<input id="fWeb">
-</div>
-
-<div class="field">
-<label>E-Mail</label>
-<input id="fEmail">
-</div>
-
-<div class="field">
-<label>Öffnungszeiten</label>
-<input id="fHours">
-</div>
-
-<div class="field">
-<label>Ruhetag</label>
-<input id="fClosed">
-</div>
-
-<div class="modalbuttons">
-<button onclick="closeModal()">Abbrechen</button>
-<button class="save" onclick="savePlace()">Speichern</button>
-</div>
-
-</div>
-</div>
-
-<div class="bottom">
-<div class="nav" onclick="showHome()"><b>⌂</b>Start</div>
-<div class="nav" onclick="document.getElementById('search').focus()"><b>⌕</b>Suchen</div>
-</div>
-
-</div>
 
 <script>
 
 let restaurants=[];
-let current=-1;
 let filter="Alle";
-let editMode=false;
 
-let favorites=new Set();
+const filters=[
+"Alle",
+"Restaurant",
+"Alm",
+"Ausflugsziel",
+"Kreuth",
+"Tegernsee"
+];
 
-try{
-favorites=new Set(
-JSON.parse(localStorage.getItem("tegernseeFavorites")||"[]")
+const list=document.getElementById("list");
+const search=document.getElementById("search");
+
+document.getElementById("filters").innerHTML=
+filters.map(x=>
+`<button data-f="${esc(x)}">${esc(x)}</button>`
+).join("");
+
+document
+.querySelectorAll("[data-f]")
+.forEach(b=>{
+
+b.onclick=()=>{
+
+filter=b.dataset.f;
+
+document
+.querySelectorAll("[data-f]")
+.forEach(x=>
+x.classList.toggle("active",x===b)
 );
-}catch(e){
-favorites=new Set();
-}
 
-let notes={};
+render();
 
-try{
-notes=JSON.parse(
-localStorage.getItem("tegernseeNotes")||"{}"
-);
-}catch(e){
-notes={};
-}
+};
 
-async function loadRestaurants(){
-
-try{
-
-const response=
-await fetch("./restaurants.json?v="+Date.now(),{
-cache:"no-store"
 });
 
-if(!response.ok){
-throw new Error("HTTP "+response.status);
+document
+.querySelector("[data-f='Alle']")
+.classList.add("active");
+
+search.oninput=render;
+
+
+async function load(){
+
+try{
+
+const r=
+await fetch(
+"./restaurants.json?v="+Date.now(),
+{cache:"no-store"}
+);
+
+if(!r.ok){
+throw new Error("HTTP "+r.status);
 }
 
-restaurants=await response.json();
+restaurants=await r.json();
 
 if(!Array.isArray(restaurants)){
 throw new Error("Keine Liste");
 }
 
-const localChanges=
-localStorage.getItem("tegernseeLocalChanges");
-
-if(localChanges){
-
-try{
-
-const saved=JSON.parse(localChanges);
-
-if(Array.isArray(saved)){
-restaurants=saved;
-}
-
-}catch(e){}
-
-}
-
 restaurants.sort((a,b)=>
-(a.name||"").localeCompare(
-(b.name||""),
+String(a.name||"")
+.localeCompare(
+String(b.name||""),
 "de"
 )
 );
 
+document.getElementById("status").textContent=
+restaurants.length+
+" Einträge · zuletzt geladen: "+
+new Date().toLocaleString("de-DE");
+
 render();
 
-}catch(error){
+}catch(e){
 
-document.getElementById("cards").innerHTML=
-'<div class="empty">⚠️ Die Restaurantdaten konnten nicht geladen werden.</div>';
+document.getElementById("status").textContent=
+"Die Restaurantdaten konnten nicht geladen werden.";
+
+}
 
 }
 
-}
 
 function render(){
 
 const q=
-(document.getElementById("search").value||"")
+search.value
 .toLowerCase()
 .trim();
 
-const list=restaurants.filter(r=>{
+const data=
+restaurants.filter(x=>{
 
-const filterOK=
+const okFilter=
 filter==="Alle" ||
-r.category===filter ||
-r.location===filter;
+x.category===filter ||
+x.location===filter;
 
-const searchOK=
-(r.name||"").toLowerCase().includes(q) ||
-(r.location||"").toLowerCase().includes(q) ||
-(r.category||"").toLowerCase().includes(q);
+const okSearch=
+!q ||
+(
+String(x.name||"")+" "+
+String(x.location||"")+" "+
+String(x.category||"")
+)
+.toLowerCase()
+.includes(q);
 
-return filterOK && searchOK;
+return okFilter && okSearch;
 
 });
 
-document.getElementById("count").textContent=
-list.length+" Einträge";
+list.innerHTML=
+data.map(x=>{
 
-document.getElementById("cards").innerHTML=
-list.map(r=>{
-
-const index=restaurants.indexOf(r);
+const map=
+"https://www.google.com/maps/search/?api=1&query="+
+encodeURIComponent(
+(x.name||"")+" "+
+(x.location||"")
+);
 
 return `
-<div class="card" onclick="openDetail(${index})">
+<div class="card">
 
-<div class="top">
-
-<div>
-<div class="name">${esc(r.name)}</div>
-<div class="place">📍 ${esc(r.location||"")}</div>
+<div class="name">
+${esc(x.name)}
 </div>
 
-<div class="heart">
-${favorites.has(r.name)?"❤️":"♡"}
+<div class="meta">
+${esc(x.category||"")} · ${esc(x.location||"")}
 </div>
 
-</div>
+<div class="actions">
 
-<div class="tags">
-<span class="tag">${esc(r.category||"")}</span>
-${favorites.has(r.name)?
-'<span class="tag">Favorit</span>':""}
-</div>
+<a
+href="${map}"
+target="_blank"
+rel="noopener"
+>
+📍 Route
+</a>
 
-<div class="row">
-${r.openingHours?
-"🕐 "+esc(r.openingHours):
-"🕐 Öffnungszeiten ansehen"}
 </div>
 
 </div>
 `;
 
 }).join("") ||
-'<div class="empty">Keine Treffer gefunden.</div>';
+"<p>Keine Treffer.</p>";
 
 }
 
-function openDetail(index){
 
-current=index;
+function esc(s){
 
-const r=restaurants[index];
-
-if(!r)return;
-
-document.getElementById("home").style.display="none";
-document.getElementById("header").style.display="none";
-document.getElementById("detail").style.display="block";
-
-document.getElementById("dname").textContent=
-r.name||"";
-
-document.getElementById("dplace").textContent=
-"📍 "+(r.location||"");
-
-document.getElementById("daddress").textContent=
-r.address||"–";
-
-document.getElementById("dhours").textContent=
-r.openingHours||"–";
-
-document.getElementById("dclosed").textContent=
-r.restDay||"–";
-
-document.getElementById("dphone").textContent=
-r.phone||"–";
-
-document.getElementById("demail").textContent=
-r.email||"–";
-
-if(r.website){
-
-document.getElementById("dweb").innerHTML=
-`<a href="${safeUrl(r.website)}" target="_blank" rel="noopener">Webseite öffnen</a>`;
-
-}else{
-
-document.getElementById("dweb").textContent="–";
-
-}
-
-document.getElementById("note").value=
-notes[r.name]||"";
-
-document.getElementById("note").oninput=function(){
-
-notes[r.name]=this.value;
-
-localStorage.setItem(
-"tegernseeNotes",
-JSON.stringify(notes)
-);
-
-};
-
-}
-
-function showHome(){
-
-document.getElementById("detail").style.display="none";
-document.getElementById("home").style.display="block";
-document.getElementById("header").style.display="block";
-
-render();
-
-}
-
-function openRoute(){
-
-const r=restaurants[current];
-
-if(!r)return;
-
-location.href=
-"https://www.google.com/maps/search/?api=1&query="+
-encodeURIComponent(
-(r.name||"")+" "+(r.location||"")+" Tegernsee"
+return String(s??"")
+.replace(
+/[&<>\"']/g,
+m=>({
+"&":"&amp;",
+"<":"&lt;",
+">":"&gt;",
+"\"":"&quot;",
+"'":"&#39;"
+}[m])
 );
 
 }
 
-function callPlace(){
 
-const r=restaurants[current];
-
-if(!r)return;
-
-if(!r.phone){
-
-alert("Keine Telefonnummer hinterlegt.");
-return;
-
-}
-
-location.href=
-"tel:"+r.phone.replace(/[^0-9+]/g,"");
-
-}
-
-function openAdd(){
-
-editMode=false;
-
-document.getElementById("modalTitle").textContent=
-"＋ Restaurant hinzufügen";
-
-clearForm();
-
-document.getElementById("modal").style.display="flex";
-
-}
-
-function editPlace(){
-
-if(current<0 || !restaurants[current])return;
-
-editMode=true;
-
-const r=restaurants[current];
-
-document.getElementById("modalTitle").textContent=
-"✏️ Restaurant bearbeiten";
-
-document.getElementById("fName").value=
-r.name||"";
-
-document.getElementById("fPlace").value=
-r.location||"";
-
-document.getElementById("fCat").value=
-r.category||"Restaurant";
-
-document.getElementById("fAddress").value=
-r.address||"";
-
-document.getElementById("fPhone").value=
-r.phone||"";
-
-document.getElementById("fWeb").value=
-r.website||"";
-
-document.getElementById("fEmail").value=
-r.email||"";
-
-document.getElementById("fHours").value=
-r.openingHours||"";
-
-document.getElementById("fClosed").value=
-r.restDay||"";
-
-document.getElementById("modal").style.display="flex";
-
-}
-
-function savePlace(){
-
-const name=
-document.getElementById("fName").value.trim();
-
-if(!name){
-
-alert("Bitte einen Namen eingeben.");
-return;
-
-}
-
-const r={
-name:name,
-location:
-document.getElementById("fPlace").value.trim(),
-category:
-document.getElementById("fCat").value,
-address:
-document.getElementById("fAddress").value.trim(),
-phone:
-document.getElementById("fPhone").value.trim(),
-website:
-document.getElementById("fWeb").value.trim(),
-email:
-document.getElementById("fEmail").value.trim(),
-openingHours:
-document.getElementById("fHours").value.trim(),
-restDay:
-document.getElementById("fClosed").value.trim()
-};
-
-if(editMode){
-
-restaurants[current]=r;
-
-}else{
-
-restaurants.push(r);
-
-}
-
-restaurants.sort((a,b)=>
-(a.name||"").localeCompare(
-(b.name||""),
-"de"
-)
-);
-
-localStorage.setItem(
-"tegernseeLocalChanges",
-JSON.stringify(restaurants)
-);
-
-closeModal();
-
-render();
-
-if(editMode){
-
-const newIndex=
-restaurants.findIndex(
-x=>x.name===r.name
-);
-
-openDetail(newIndex);
-
-}
-
-}
-
-function deletePlace(){
-
-if(current<0 || !restaurants[current])return;
-
-const r=restaurants[current];
-
-if(!confirm(
-"„"+r.name+"“ wirklich löschen?"
-))return;
-
-restaurants.splice(current,1);
-
-localStorage.setItem(
-"tegernseeLocalChanges",
-JSON.stringify(restaurants)
-);
-
-current=-1;
-
-showHome();
-
-}
-
-function clearForm(){
-
-[
-"fName",
-"fPlace",
-"fAddress",
-"fPhone",
-"fWeb",
-"fEmail",
-"fHours",
-"fClosed"
-].forEach(id=>{
-
-document.getElementById(id).value="";
-
-});
-
-document.getElementById("fCat").value=
-"Restaurant";
-
-}
-
-function closeModal(){
-
-document.getElementById("modal").style.display=
-"none";
-
-}
-
-document.querySelectorAll(".chip").forEach(button=>{
-
-button.onclick=()=>{
-
-document.querySelectorAll(".chip")
-.forEach(x=>
-x.classList.remove("active")
-);
-
-button.classList.add("active");
-
-filter=button.dataset.filter;
-
-render();
-
-};
-
-});
-
-document.getElementById("search").oninput=
-render;
-
-function esc(value){
-
-return String(value||"")
-.replace(/&/g,"&amp;")
-.replace(/</g,"&lt;")
-.replace(/>/g,"&gt;")
-.replace(/"/g,"&quot;")
-.replace(/'/g,"&#039;");
-
-}
-
-function safeUrl(url){
-
-try{
-
-const u=new URL(url);
-
-if(
-u.protocol==="http:" ||
-u.protocol==="https:"
-){
-
-return u.href;
-
-}
-
-}catch(e){}
-
-return "#";
-
-}
-
-loadRestaurants();
+load();
 
 </script>
 
