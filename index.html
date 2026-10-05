@@ -426,4 +426,159 @@ document.getElementById("modalTitle").textContent=
 
 document.getElementById("fName").value=r.name||"";
 document.getElementById("fPlace").value=r.location||"";
-document.getElementById("
+document.getElementById("document.getElementById("fCat").value=r.category||"Restaurant";
+document.getElementById("fAddress").value=r.address||"";
+document.getElementById("fPhone").value=r.phone||"";
+document.getElementById("fWeb").value=r.website||"";
+document.getElementById("fEmail").value=r.email||"";
+document.getElementById("fHours").value=r.openingHours||"";
+document.getElementById("fClosed").value=r.restDay||"";
+
+document.getElementById("modal").style.display="flex";
+}
+
+function savePlace(){
+
+const name=document.getElementById("fName").value.trim();
+
+if(!name){
+alert("Bitte einen Namen eingeben.");
+return;
+}
+
+const r={
+name:name,
+location:document.getElementById("fPlace").value.trim(),
+category:document.getElementById("fCat").value,
+address:document.getElementById("fAddress").value.trim(),
+phone:document.getElementById("fPhone").value.trim(),
+website:document.getElementById("fWeb").value.trim(),
+email:document.getElementById("fEmail").value.trim(),
+openingHours:document.getElementById("fHours").value.trim(),
+restDay:document.getElementById("fClosed").value.trim()
+};
+
+if(editMode){
+restaurants[current]=r;
+}else{
+restaurants.push(r);
+}
+
+restaurants.sort((a,b)=>
+(a.name||"").localeCompare(b.name||"","de")
+);
+
+localStorage.setItem(
+"tegernseeLocalChanges",
+JSON.stringify(restaurants)
+);
+
+closeModal();
+render();
+
+if(editMode){
+
+const newIndex=restaurants.findIndex(
+x=>x.name===r.name
+);
+
+openDetail(newIndex);
+
+}
+
+}
+
+function deletePlace(){
+
+const r=restaurants[current];
+
+if(!confirm("„"+r.name+"“ wirklich löschen?"))
+return;
+
+restaurants.splice(current,1);
+
+localStorage.setItem(
+"tegernseeLocalChanges",
+JSON.stringify(restaurants)
+);
+
+showHome();
+
+}
+
+function clearForm(){
+
+[
+"fName",
+"fPlace",
+"fAddress",
+"fPhone",
+"fWeb",
+"fEmail",
+"fHours",
+"fClosed"
+].forEach(id=>{
+document.getElementById(id).value="";
+});
+
+document.getElementById("fCat").value="Restaurant";
+
+}
+
+function closeModal(){
+
+document.getElementById("modal").style.display="none";
+
+}
+
+document.querySelectorAll(".chip").forEach(button=>{
+
+button.onclick=()=>{
+
+document.querySelectorAll(".chip")
+.forEach(x=>x.classList.remove("active"));
+
+button.classList.add("active");
+
+filter=button.dataset.filter;
+
+render();
+
+};
+
+});
+
+document.getElementById("search").oninput=render;
+
+function esc(value){
+
+return String(value||"")
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+
+}
+
+function safeUrl(url){
+
+try{
+
+const u=new URL(url);
+
+if(u.protocol==="http:"||u.protocol==="https:")
+return u.href;
+
+}catch(e){}
+
+return "#";
+
+}
+
+loadRestaurants();
+
+</script>
+
+</body>
+</html>
