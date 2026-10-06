@@ -220,6 +220,9 @@ let current=-1;
 let filter="Alle";
 let editMode=false;
 
+/* Merkt sich den ursprünglichen Datensatz beim Bearbeiten */
+let editOriginal=null;
+
 let favorites=new Set();
 
 try{
@@ -510,7 +513,6 @@ restaurants[index];
 
 if(!r)return;
 
-
 document.getElementById("home").style.display="none";
 
 document.getElementById("header").style.display="none";
@@ -521,26 +523,20 @@ document.getElementById("detail").style.display="block";
 document.getElementById("dname").textContent=
 r.name||"";
 
-
 document.getElementById("dplace").textContent=
 "📍 "+(r.location||"");
-
 
 document.getElementById("daddress").textContent=
 r.address||"–";
 
-
 document.getElementById("dhours").textContent=
 r.openingHours||"–";
-
 
 document.getElementById("dclosed").textContent=
 r.restDay||"–";
 
-
 document.getElementById("dphone").textContent=
 r.phone||"";
-
 
 document.getElementById("demail").textContent=
 r.email||"";
@@ -661,14 +657,12 @@ r.phone.replace(
 function openAdd(){
 
 editMode=false;
-
+editOriginal=null;
 
 document.getElementById("modalTitle").textContent=
 "＋ Restaurant hinzufügen";
 
-
 clearForm();
-
 
 document.getElementById("modal").style.display=
 "flex";
@@ -688,52 +682,45 @@ current<0 ||
 )return;
 
 
-editMode=true;
+/* Ursprünglichen Datensatz exakt merken */
+editOriginal={
+...restaurants[current]
+};
 
+editMode=true;
 
 const r=
 restaurants[current];
 
-
 document.getElementById("modalTitle").textContent=
 "✏️ Restaurant bearbeiten";
-
 
 document.getElementById("fName").value=
 r.name||"";
 
-
 document.getElementById("fPlace").value=
 r.location||"";
-
 
 document.getElementById("fCat").value=
 r.category||"Restaurant";
 
-
 document.getElementById("fAddress").value=
 r.address||"";
-
 
 document.getElementById("fPhone").value=
 r.phone||"";
 
-
 document.getElementById("fWeb").value=
 r.website||"";
-
 
 document.getElementById("fEmail").value=
 r.email||"";
 
-
 document.getElementById("fHours").value=
 r.openingHours||"";
 
-
 document.getElementById("fClosed").value=
 r.restDay||"";
-
 
 document.getElementById("modal").style.display=
 "flex";
@@ -810,14 +797,32 @@ document.getElementById("fClosed")
 };
 
 
-/*
-   Momentan lokal im Gerät speichern.
-   Die echte Synchronisierung mit Google Sheets
-   bauen wir im nächsten Schritt ein.
-*/
+/* =========================================================
+   WICHTIGE KORREKTUR:
+   Beim Bearbeiten wird der ursprüngliche Datensatz
+   zuerst gesucht und dann ersetzt.
+   Dadurch kann er beim Sortieren nicht verschwinden.
+   ========================================================= */
 
-if(editMode){
+let detailName=r.name;
 
+if(editMode && editOriginal){
+
+const oldIndex=
+restaurants.findIndex(item=>
+item.name===editOriginal.name &&
+item.address===editOriginal.address &&
+item.location===editOriginal.location
+);
+
+/* Falls der genaue Datensatz gefunden wurde */
+if(oldIndex!==-1){
+
+restaurants[oldIndex]=r;
+
+}else if(current>=0 && current<restaurants.length){
+
+/* Sicherheitsfallback */
 restaurants[current]=r;
 
 }else{
@@ -826,6 +831,14 @@ restaurants.push(r);
 
 }
 
+}else{
+
+restaurants.push(r);
+
+}
+
+
+/* Alphabetisch sortieren */
 
 restaurants.sort((a,b)=>
 (a.name||"").localeCompare(
@@ -835,6 +848,12 @@ restaurants.sort((a,b)=>
 );
 
 
+/*
+   Lokalen Stand sichern.
+   Die Google-Tabelle bleibt weiterhin
+   die zentrale Datenquelle.
+*/
+
 localStorage.setItem(
 "tegernseeLocalChanges",
 JSON.stringify(restaurants)
@@ -843,21 +862,39 @@ JSON.stringify(restaurants)
 
 closeModal();
 
-
 render();
 
+
+/* Nach dem Bearbeiten wieder den richtigen Eintrag öffnen */
 
 if(editMode){
 
 const newIndex=
 restaurants.findIndex(
-x=>x.name===r.name
+x=>
+x.name===detailName &&
+x.address===r.address &&
+x.location===r.location
 );
 
 
+if(newIndex!==-1){
+
 openDetail(newIndex);
 
+}else{
+
+showHome();
+
 }
+
+}
+
+
+/* Bearbeitungsmodus zurücksetzen */
+
+editMode=false;
+editOriginal=null;
 
 }
 
@@ -943,6 +980,9 @@ function closeModal(){
 
 document.getElementById("modal").style.display=
 "none";
+
+editMode=false;
+editOriginal=null;
 
 }
 
