@@ -203,6 +203,18 @@ a{color:#17352d}
 
 <script>
 
+/* =========================================================
+   GOOGLE-TABELLE
+   ========================================================= */
+
+const DATA_URL =
+"https://script.google.com/macros/s/AKfycbzTWDyY2p9qBM1bzAyFm1W46lO6TWQpMZUpL6uUPtYp6k2koxCXknfwQ2k2g_LcmMmq/exec";
+
+
+/* =========================================================
+   APP-VARIABLEN
+   ========================================================= */
+
 let restaurants=[];
 let current=-1;
 let filter="Alle";
@@ -211,58 +223,79 @@ let editMode=false;
 let favorites=new Set();
 
 try{
+
 favorites=new Set(
-JSON.parse(localStorage.getItem("tegernseeFavorites")||"[]")
+JSON.parse(
+localStorage.getItem("tegernseeFavorites")||"[]"
+)
 );
+
 }catch(e){
+
 favorites=new Set();
+
 }
 
 let notes={};
 
 try{
+
 notes=JSON.parse(
 localStorage.getItem("tegernseeNotes")||"{}"
 );
+
 }catch(e){
+
 notes={};
+
 }
+
+
+/* =========================================================
+   RESTAURANT-DATEN AUS GOOGLE-TABELLE LADEN
+   ========================================================= */
 
 async function loadRestaurants(){
 
 try{
 
 const response=
-await fetch("./restaurants.json?v="+Date.now(),{
+await fetch(
+DATA_URL+"?v="+Date.now(),
+{
 cache:"no-store"
-});
+}
+);
 
 if(!response.ok){
-throw new Error("HTTP "+response.status);
-}
 
-restaurants=await response.json();
-
-if(!Array.isArray(restaurants)){
-throw new Error("Keine Liste");
-}
-
-const localChanges=
-localStorage.getItem("tegernseeLocalChanges");
-
-if(localChanges){
-
-try{
-
-const saved=JSON.parse(localChanges);
-
-if(Array.isArray(saved)){
-restaurants=saved;
-}
-
-}catch(e){}
+throw new Error(
+"HTTP "+response.status
+);
 
 }
+
+const data=
+await response.json();
+
+if(!Array.isArray(data)){
+
+throw new Error(
+"Die Google-Tabelle hat keine gültige Datenliste geliefert."
+);
+
+}
+
+
+/* Daten aus Google-Tabelle in das App-Format umwandeln */
+
+restaurants=
+data
+.map(normalizeRestaurant)
+.filter(r=>r.name);
+
+
+/* alphabetisch sortieren */
 
 restaurants.sort((a,b)=>
 (a.name||"").localeCompare(
@@ -271,16 +304,92 @@ restaurants.sort((a,b)=>
 )
 );
 
+
+/* App anzeigen */
+
 render();
+
 
 }catch(error){
 
+console.error(error);
+
 document.getElementById("cards").innerHTML=
-'<div class="empty">⚠️ Die Restaurantdaten konnten nicht geladen werden.</div>';
+'<div class="empty">'+
+'⚠️ Die Restaurantdaten konnten nicht aus der Google-Tabelle geladen werden.'+
+'</div>';
 
 }
 
 }
+
+
+/* =========================================================
+   GOOGLE-TABELLE → APP
+   ========================================================= */
+
+function normalizeRestaurant(r){
+
+return{
+
+name:
+r.name||
+r.Name||
+"",
+
+location:
+r.location||
+r.Ort||
+"",
+
+category:
+r.category||
+r.Kategorie||
+"Restaurant",
+
+address:
+r.address||
+r.Adresse||
+"",
+
+phone:
+r.phone||
+r.Telefon||
+"",
+
+website:
+r.website||
+r.Website||
+"",
+
+email:
+r.email||
+r["E-Mail"]||
+"",
+
+openingHours:
+r.openingHours||
+r.Öffnungszeiten||
+"",
+
+restDay:
+r.restDay||
+r.Ruhetag||
+"",
+
+notes:
+r.notes||
+r.Notizen||
+""
+
+};
+
+}
+
+
+/* =========================================================
+   HAUPTLISTE
+   ========================================================= */
 
 function render(){
 
@@ -289,38 +398,64 @@ const q=
 .toLowerCase()
 .trim();
 
-const list=restaurants.filter(r=>{
+
+const list=
+restaurants.filter(r=>{
 
 const filterOK=
 filter==="Alle" ||
 r.category===filter ||
 r.location===filter;
 
+
 const searchOK=
-(r.name||"").toLowerCase().includes(q) ||
-(r.location||"").toLowerCase().includes(q) ||
-(r.category||"").toLowerCase().includes(q);
+(r.name||"")
+.toLowerCase()
+.includes(q) ||
+
+(r.location||"")
+.toLowerCase()
+.includes(q) ||
+
+(r.category||"")
+.toLowerCase()
+.includes(q);
+
 
 return filterOK && searchOK;
 
 });
 
+
 document.getElementById("count").textContent=
 list.length+" Einträge";
 
+
 document.getElementById("cards").innerHTML=
+
 list.map(r=>{
 
-const index=restaurants.indexOf(r);
+const index=
+restaurants.indexOf(r);
+
 
 return `
-<div class="card" onclick="openDetail(${index})">
+
+<div class="card"
+onclick="openDetail(${index})">
 
 <div class="top">
 
 <div>
-<div class="name">${esc(r.name)}</div>
-<div class="place">📍 ${esc(r.location||"")}</div>
+
+<div class="name">
+${esc(r.name)}
+</div>
+
+<div class="place">
+📍 ${esc(r.location||"")}
+</div>
+
 </div>
 
 <div class="heart">
@@ -330,71 +465,108 @@ ${favorites.has(r.name)?"❤️":"♡"}
 </div>
 
 <div class="tags">
-<span class="tag">${esc(r.category||"")}</span>
+
+<span class="tag">
+${esc(r.category||"")}
+</span>
+
 ${favorites.has(r.name)?
-'<span class="tag">Favorit</span>':""}
+'<span class="tag">Favorit</span>':
+""}
+
 </div>
 
 <div class="row">
+
 ${r.openingHours?
 "🕐 "+esc(r.openingHours):
 "🕐 Öffnungszeiten ansehen"}
+
 </div>
 
 </div>
+
 `;
 
-}).join("") ||
+}).join("")
+
+||
+
 '<div class="empty">Keine Treffer gefunden.</div>';
 
 }
+
+
+/* =========================================================
+   DETAILANSICHT
+   ========================================================= */
 
 function openDetail(index){
 
 current=index;
 
-const r=restaurants[index];
+const r=
+restaurants[index];
 
 if(!r)return;
 
+
 document.getElementById("home").style.display="none";
+
 document.getElementById("header").style.display="none";
+
 document.getElementById("detail").style.display="block";
+
 
 document.getElementById("dname").textContent=
 r.name||"";
 
+
 document.getElementById("dplace").textContent=
 "📍 "+(r.location||"");
+
 
 document.getElementById("daddress").textContent=
 r.address||"–";
 
+
 document.getElementById("dhours").textContent=
 r.openingHours||"–";
+
 
 document.getElementById("dclosed").textContent=
 r.restDay||"–";
 
+
 document.getElementById("dphone").textContent=
-r.phone||"–";
+r.phone||"";
+
 
 document.getElementById("demail").textContent=
-r.email||"–";
+r.email||"";
+
 
 if(r.website){
 
 document.getElementById("dweb").innerHTML=
-`<a href="${safeUrl(r.website)}" target="_blank" rel="noopener">Webseite öffnen</a>`;
+
+`<a href="${safeUrl(r.website)}"
+target="_blank"
+rel="noopener">
+Webseite öffnen
+</a>`;
 
 }else{
 
-document.getElementById("dweb").textContent="–";
+document.getElementById("dweb").textContent=
+"–";
 
 }
 
+
 document.getElementById("note").value=
 notes[r.name]||"";
+
 
 document.getElementById("note").oninput=function(){
 
@@ -409,134 +581,240 @@ JSON.stringify(notes)
 
 }
 
+
+/* =========================================================
+   ZURÜCK
+   ========================================================= */
+
 function showHome(){
 
 document.getElementById("detail").style.display="none";
+
 document.getElementById("home").style.display="block";
+
 document.getElementById("header").style.display="block";
 
 render();
 
 }
 
+
+/* =========================================================
+   GOOGLE MAPS ROUTE
+   ========================================================= */
+
 function openRoute(){
 
-const r=restaurants[current];
+const r=
+restaurants[current];
 
 if(!r)return;
+
 
 location.href=
 "https://www.google.com/maps/search/?api=1&query="+
 encodeURIComponent(
-(r.name||"")+" "+(r.location||"")+" Tegernsee"
+(r.name||"")+" "+
+(r.location||"")+" Tegernsee"
 );
 
 }
 
+
+/* =========================================================
+   ANRUFEN
+   ========================================================= */
+
 function callPlace(){
 
-const r=restaurants[current];
+const r=
+restaurants[current];
 
 if(!r)return;
 
+
 if(!r.phone){
 
-alert("Keine Telefonnummer hinterlegt.");
+alert(
+"Keine Telefonnummer hinterlegt."
+);
+
 return;
 
 }
 
+
 location.href=
-"tel:"+r.phone.replace(/[^0-9+]/g,"");
+"tel:"+
+r.phone.replace(
+/[^0-9+]/g,
+""
+);
 
 }
+
+
+/* =========================================================
+   RESTAURANT HINZUFÜGEN
+   ========================================================= */
 
 function openAdd(){
 
 editMode=false;
 
+
 document.getElementById("modalTitle").textContent=
 "＋ Restaurant hinzufügen";
 
+
 clearForm();
 
-document.getElementById("modal").style.display="flex";
+
+document.getElementById("modal").style.display=
+"flex";
 
 }
 
+
+/* =========================================================
+   RESTAURANT BEARBEITEN
+   ========================================================= */
+
 function editPlace(){
 
-if(current<0 || !restaurants[current])return;
+if(
+current<0 ||
+!restaurants[current]
+)return;
+
 
 editMode=true;
 
-const r=restaurants[current];
+
+const r=
+restaurants[current];
+
 
 document.getElementById("modalTitle").textContent=
 "✏️ Restaurant bearbeiten";
 
+
 document.getElementById("fName").value=
 r.name||"";
+
 
 document.getElementById("fPlace").value=
 r.location||"";
 
+
 document.getElementById("fCat").value=
 r.category||"Restaurant";
+
 
 document.getElementById("fAddress").value=
 r.address||"";
 
+
 document.getElementById("fPhone").value=
 r.phone||"";
+
 
 document.getElementById("fWeb").value=
 r.website||"";
 
+
 document.getElementById("fEmail").value=
 r.email||"";
+
 
 document.getElementById("fHours").value=
 r.openingHours||"";
 
+
 document.getElementById("fClosed").value=
 r.restDay||"";
 
-document.getElementById("modal").style.display="flex";
+
+document.getElementById("modal").style.display=
+"flex";
 
 }
+
+
+/* =========================================================
+   RESTAURANT SPEICHERN
+   ========================================================= */
 
 function savePlace(){
 
 const name=
-document.getElementById("fName").value.trim();
+document.getElementById("fName")
+.value
+.trim();
+
 
 if(!name){
 
-alert("Bitte einen Namen eingeben.");
+alert(
+"Bitte einen Namen eingeben."
+);
+
 return;
 
 }
 
+
 const r={
+
 name:name,
+
 location:
-document.getElementById("fPlace").value.trim(),
+document.getElementById("fPlace")
+.value
+.trim(),
+
 category:
-document.getElementById("fCat").value,
+document.getElementById("fCat")
+.value,
+
 address:
-document.getElementById("fAddress").value.trim(),
+document.getElementById("fAddress")
+.value
+.trim(),
+
 phone:
-document.getElementById("fPhone").value.trim(),
+document.getElementById("fPhone")
+.value
+.trim(),
+
 website:
-document.getElementById("fWeb").value.trim(),
+document.getElementById("fWeb")
+.value
+.trim(),
+
 email:
-document.getElementById("fEmail").value.trim(),
+document.getElementById("fEmail")
+.value
+.trim(),
+
 openingHours:
-document.getElementById("fHours").value.trim(),
+document.getElementById("fHours")
+.value
+.trim(),
+
 restDay:
-document.getElementById("fClosed").value.trim()
+document.getElementById("fClosed")
+.value
+.trim()
+
 };
+
+
+/*
+   Momentan lokal im Gerät speichern.
+   Die echte Synchronisierung mit Google Sheets
+   bauen wir im nächsten Schritt ein.
+*/
 
 if(editMode){
 
@@ -548,6 +826,7 @@ restaurants.push(r);
 
 }
 
+
 restaurants.sort((a,b)=>
 (a.name||"").localeCompare(
 (b.name||""),
@@ -555,14 +834,18 @@ restaurants.sort((a,b)=>
 )
 );
 
+
 localStorage.setItem(
 "tegernseeLocalChanges",
 JSON.stringify(restaurants)
 );
 
+
 closeModal();
 
+
 render();
+
 
 if(editMode){
 
@@ -571,34 +854,62 @@ restaurants.findIndex(
 x=>x.name===r.name
 );
 
+
 openDetail(newIndex);
 
 }
 
 }
 
+
+/* =========================================================
+   RESTAURANT LÖSCHEN
+   ========================================================= */
+
 function deletePlace(){
 
-if(current<0 || !restaurants[current])return;
+if(
+current<0 ||
+!restaurants[current]
+)return;
 
-const r=restaurants[current];
+
+const r=
+restaurants[current];
+
 
 if(!confirm(
 "„"+r.name+"“ wirklich löschen?"
-))return;
+)){
 
-restaurants.splice(current,1);
+return;
+
+}
+
+
+restaurants.splice(
+current,
+1
+);
+
 
 localStorage.setItem(
 "tegernseeLocalChanges",
 JSON.stringify(restaurants)
 );
 
+
 current=-1;
+
 
 showHome();
 
 }
+
+
+/* =========================================================
+   FORMULAR LEEREN
+   ========================================================= */
 
 function clearForm(){
 
@@ -617,10 +928,16 @@ document.getElementById(id).value="";
 
 });
 
+
 document.getElementById("fCat").value=
 "Restaurant";
 
 }
+
+
+/* =========================================================
+   MODAL SCHLIESSEN
+   ========================================================= */
 
 function closeModal(){
 
@@ -629,7 +946,13 @@ document.getElementById("modal").style.display=
 
 }
 
-document.querySelectorAll(".chip").forEach(button=>{
+
+/* =========================================================
+   FILTER
+   ========================================================= */
+
+document.querySelectorAll(".chip")
+.forEach(button=>{
 
 button.onclick=()=>{
 
@@ -638,9 +961,13 @@ document.querySelectorAll(".chip")
 x.classList.remove("active")
 );
 
+
 button.classList.add("active");
 
-filter=button.dataset.filter;
+
+filter=
+button.dataset.filter;
+
 
 render();
 
@@ -648,25 +975,62 @@ render();
 
 });
 
+
+/* =========================================================
+   SUCHE
+   ========================================================= */
+
 document.getElementById("search").oninput=
 render;
+
+
+/* =========================================================
+   SICHERER TEXT
+   ========================================================= */
 
 function esc(value){
 
 return String(value||"")
-.replace(/&/g,"&amp;")
-.replace(/</g,"&lt;")
-.replace(/>/g,"&gt;")
-.replace(/"/g,"&quot;")
-.replace(/'/g,"&#039;");
+
+.replace(
+/&/g,
+"&amp;"
+)
+
+.replace(
+/</g,
+"&lt;"
+)
+
+.replace(
+/>/g,
+"&gt;"
+)
+
+.replace(
+/"/g,
+"&quot;"
+)
+
+.replace(
+/'/g,
+"&#039;"
+);
 
 }
+
+
+/* =========================================================
+   SICHERE WEBSEITE
+   ========================================================= */
 
 function safeUrl(url){
 
 try{
 
-const u=new URL(url);
+const u=
+new URL(url);
+
 
 if(
 u.protocol==="http:" ||
@@ -679,9 +1043,15 @@ return u.href;
 
 }catch(e){}
 
+
 return "#";
 
 }
+
+
+/* =========================================================
+   APP STARTEN
+   ========================================================= */
 
 loadRestaurants();
 
