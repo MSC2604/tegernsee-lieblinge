@@ -219,8 +219,6 @@ let restaurants=[];
 let current=-1;
 let filter="Alle";
 let editMode=false;
-
-/* Merkt sich den ursprünglichen Datensatz beim Bearbeiten */
 let editOriginal=null;
 
 let favorites=new Set();
@@ -255,7 +253,7 @@ notes={};
 
 
 /* =========================================================
-   RESTAURANT-DATEN AUS GOOGLE-TABELLE LADEN
+   RESTAURANTS AUS GOOGLE-TABELLE LADEN
    ========================================================= */
 
 async function loadRestaurants(){
@@ -284,21 +282,15 @@ await response.json();
 if(!Array.isArray(data)){
 
 throw new Error(
-"Die Google-Tabelle hat keine gültige Datenliste geliefert."
+"Ungültige Datenliste"
 );
 
 }
-
-
-/* Daten aus Google-Tabelle in das App-Format umwandeln */
 
 restaurants=
 data
 .map(normalizeRestaurant)
 .filter(r=>r.name);
-
-
-/* alphabetisch sortieren */
 
 restaurants.sort((a,b)=>
 (a.name||"").localeCompare(
@@ -307,11 +299,7 @@ restaurants.sort((a,b)=>
 )
 );
 
-
-/* App anzeigen */
-
 render();
-
 
 }catch(error){
 
@@ -328,7 +316,7 @@ document.getElementById("cards").innerHTML=
 
 
 /* =========================================================
-   GOOGLE-TABELLE → APP
+   GOOGLE-TABELLE → APP-FORMAT
    ========================================================= */
 
 function normalizeRestaurant(r){
@@ -391,6 +379,53 @@ r.Notizen||
 
 
 /* =========================================================
+   NEU:
+   AKTUELLEN RESTAURANTSTAND IN GOOGLE-TABELLE SPEICHERN
+   ========================================================= */
+
+async function saveToGoogleSheet(){
+
+const response=
+await fetch(
+DATA_URL,
+{
+method:"POST",
+headers:{
+"Content-Type":
+"text/plain;charset=utf-8"
+},
+body:JSON.stringify({
+restaurants:restaurants
+})
+}
+);
+
+if(!response.ok){
+
+throw new Error(
+"HTTP "+response.status
+);
+
+}
+
+const result=
+await response.json();
+
+if(!result.ok){
+
+throw new Error(
+result.error||
+"Speichern in Google-Tabelle fehlgeschlagen."
+);
+
+}
+
+return result;
+
+}
+
+
+/* =========================================================
    HAUPTLISTE
    ========================================================= */
 
@@ -401,7 +436,6 @@ const q=
 .toLowerCase()
 .trim();
 
-
 const list=
 restaurants.filter(r=>{
 
@@ -409,7 +443,6 @@ const filterOK=
 filter==="Alle" ||
 r.category===filter ||
 r.location===filter;
-
 
 const searchOK=
 (r.name||"")
@@ -424,15 +457,12 @@ const searchOK=
 .toLowerCase()
 .includes(q);
 
-
 return filterOK && searchOK;
 
 });
 
-
 document.getElementById("count").textContent=
 list.length+" Einträge";
-
 
 document.getElementById("cards").innerHTML=
 
@@ -440,7 +470,6 @@ list.map(r=>{
 
 const index=
 restaurants.indexOf(r);
-
 
 return `
 
@@ -514,11 +543,8 @@ restaurants[index];
 if(!r)return;
 
 document.getElementById("home").style.display="none";
-
 document.getElementById("header").style.display="none";
-
 document.getElementById("detail").style.display="block";
-
 
 document.getElementById("dname").textContent=
 r.name||"";
@@ -541,7 +567,6 @@ r.phone||"";
 document.getElementById("demail").textContent=
 r.email||"";
 
-
 if(r.website){
 
 document.getElementById("dweb").innerHTML=
@@ -559,10 +584,8 @@ document.getElementById("dweb").textContent=
 
 }
 
-
 document.getElementById("note").value=
 notes[r.name]||"";
-
 
 document.getElementById("note").oninput=function(){
 
@@ -585,9 +608,7 @@ JSON.stringify(notes)
 function showHome(){
 
 document.getElementById("detail").style.display="none";
-
 document.getElementById("home").style.display="block";
-
 document.getElementById("header").style.display="block";
 
 render();
@@ -596,7 +617,7 @@ render();
 
 
 /* =========================================================
-   GOOGLE MAPS ROUTE
+   ROUTE
    ========================================================= */
 
 function openRoute(){
@@ -605,7 +626,6 @@ const r=
 restaurants[current];
 
 if(!r)return;
-
 
 location.href=
 "https://www.google.com/maps/search/?api=1&query="+
@@ -628,7 +648,6 @@ restaurants[current];
 
 if(!r)return;
 
-
 if(!r.phone){
 
 alert(
@@ -638,7 +657,6 @@ alert(
 return;
 
 }
-
 
 location.href=
 "tel:"+
@@ -681,8 +699,6 @@ current<0 ||
 !restaurants[current]
 )return;
 
-
-/* Ursprünglichen Datensatz exakt merken */
 editOriginal={
 ...restaurants[current]
 };
@@ -732,13 +748,12 @@ document.getElementById("modal").style.display=
    RESTAURANT SPEICHERN
    ========================================================= */
 
-function savePlace(){
+async function savePlace(){
 
 const name=
 document.getElementById("fName")
 .value
 .trim();
-
 
 if(!name){
 
@@ -749,6 +764,18 @@ alert(
 return;
 
 }
+
+
+/*
+   Sicherheitskopie.
+   Falls das Speichern in Google fehlschlägt,
+   können wir den alten Stand wiederherstellen.
+*/
+
+const backup=
+JSON.parse(
+JSON.stringify(restaurants)
+);
 
 
 const r={
@@ -792,19 +819,16 @@ document.getElementById("fHours")
 restDay:
 document.getElementById("fClosed")
 .value
-.trim()
+.trim(),
+
+notes:""
 
 };
 
 
 /* =========================================================
-   WICHTIGE KORREKTUR:
-   Beim Bearbeiten wird der ursprüngliche Datensatz
-   zuerst gesucht und dann ersetzt.
-   Dadurch kann er beim Sortieren nicht verschwinden.
+   DATENSATZ ÄNDERN ODER NEU ANLEGEN
    ========================================================= */
-
-let detailName=r.name;
 
 if(editMode && editOriginal){
 
@@ -815,14 +839,15 @@ item.address===editOriginal.address &&
 item.location===editOriginal.location
 );
 
-/* Falls der genaue Datensatz gefunden wurde */
 if(oldIndex!==-1){
 
 restaurants[oldIndex]=r;
 
-}else if(current>=0 && current<restaurants.length){
+}else if(
+current>=0 &&
+current<restaurants.length
+){
 
-/* Sicherheitsfallback */
 restaurants[current]=r;
 
 }else{
@@ -838,7 +863,7 @@ restaurants.push(r);
 }
 
 
-/* Alphabetisch sortieren */
+/* alphabetisch sortieren */
 
 restaurants.sort((a,b)=>
 (a.name||"").localeCompare(
@@ -848,24 +873,49 @@ restaurants.sort((a,b)=>
 );
 
 
-/*
-   Lokalen Stand sichern.
-   Die Google-Tabelle bleibt weiterhin
-   die zentrale Datenquelle.
-*/
+/* =========================================================
+   JETZT WIRKLICH IN GOOGLE-TABELLE SPEICHERN
+   ========================================================= */
+
+try{
+
+await saveToGoogleSheet();
+
+
+/* Lokalen Stand ebenfalls sichern */
 
 localStorage.setItem(
 "tegernseeLocalChanges",
 JSON.stringify(restaurants)
 );
 
+}catch(error){
+
+console.error(error);
+
+
+/* Alten Stand wiederherstellen */
+
+restaurants=backup;
+
+alert(
+"⚠️ Das Restaurant konnte nicht in der Google-Tabelle gespeichert werden.\n\n"+
+"Bitte prüfe deine Internetverbindung und versuche es noch einmal."
+);
+
+return;
+
+}
+
+
+const detailName=r.name;
 
 closeModal();
 
 render();
 
 
-/* Nach dem Bearbeiten wieder den richtigen Eintrag öffnen */
+/* Nach Bearbeitung direkt wieder zum Restaurant */
 
 if(editMode){
 
@@ -876,7 +926,6 @@ x.name===detailName &&
 x.address===r.address &&
 x.location===r.location
 );
-
 
 if(newIndex!==-1){
 
@@ -903,17 +952,15 @@ editOriginal=null;
    RESTAURANT LÖSCHEN
    ========================================================= */
 
-function deletePlace(){
+async function deletePlace(){
 
 if(
 current<0 ||
 !restaurants[current]
 )return;
 
-
 const r=
 restaurants[current];
-
 
 if(!confirm(
 "„"+r.name+"“ wirklich löschen?"
@@ -924,20 +971,50 @@ return;
 }
 
 
+/* Sicherheitskopie */
+
+const backup=
+JSON.parse(
+JSON.stringify(restaurants)
+);
+
+
+/* Restaurant entfernen */
+
 restaurants.splice(
 current,
 1
 );
 
 
+/* =========================================================
+   LÖSCHUNG IN GOOGLE-TABELLE SPEICHERN
+   ========================================================= */
+
+try{
+
+await saveToGoogleSheet();
+
 localStorage.setItem(
 "tegernseeLocalChanges",
 JSON.stringify(restaurants)
 );
 
+}catch(error){
+
+console.error(error);
+
+restaurants=backup;
+
+alert(
+"⚠️ Das Restaurant konnte nicht aus der Google-Tabelle gelöscht werden."
+);
+
+return;
+
+}
 
 current=-1;
-
 
 showHome();
 
@@ -964,7 +1041,6 @@ function clearForm(){
 document.getElementById(id).value="";
 
 });
-
 
 document.getElementById("fCat").value=
 "Restaurant";
@@ -1001,13 +1077,10 @@ document.querySelectorAll(".chip")
 x.classList.remove("active")
 );
 
-
 button.classList.add("active");
-
 
 filter=
 button.dataset.filter;
-
 
 render();
 
@@ -1071,7 +1144,6 @@ try{
 const u=
 new URL(url);
 
-
 if(
 u.protocol==="http:" ||
 u.protocol==="https:"
@@ -1082,7 +1154,6 @@ return u.href;
 }
 
 }catch(e){}
-
 
 return "#";
 
