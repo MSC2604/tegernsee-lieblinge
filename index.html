@@ -196,6 +196,13 @@ main{
   display:grid;
   place-items:center;
   font-size:25px;
+  overflow:hidden;
+}
+
+.icon img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
 }
 
 .cardmain{
@@ -267,13 +274,20 @@ main{
 }
 
 .hero{
-  height:150px;
+  height:190px;
   border-radius:22px;
   background:linear-gradient(145deg,#dceae4,#aac8bb);
   display:grid;
   place-items:center;
   font-size:55px;
   margin-bottom:15px;
+  overflow:hidden;
+}
+
+.hero img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
 }
 
 .detail h1{
@@ -445,6 +459,39 @@ main{
   min-height:75px;
 }
 
+.imagepreview{
+  width:100%;
+  height:160px;
+  border-radius:16px;
+  background:#eef2ef;
+  display:none;
+  place-items:center;
+  overflow:hidden;
+  margin-top:4px;
+}
+
+.imagepreview img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.imagehint{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:-3px;
+}
+
+.removeimage{
+  border:1px solid var(--line);
+  background:#f7f5f0;
+  color:var(--danger);
+  border-radius:11px;
+  padding:9px;
+  font-size:12px;
+  display:none;
+}
+
 .modalbuttons{
   display:flex;
   gap:8px;
@@ -482,6 +529,69 @@ a{
   word-break:break-word;
 }
 
+/* Passwortfenster */
+.passwordmodal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  z-index:100;
+  padding:20px;
+  align-items:center;
+  justify-content:center;
+}
+
+.passwordbox{
+  width:min(100%,420px);
+  background:white;
+  border-radius:22px;
+  padding:20px;
+  box-shadow:0 15px 45px rgba(0,0,0,.22);
+}
+
+.passwordbox h2{
+  margin:0 0 7px;
+  font-size:21px;
+}
+
+.passwordbox p{
+  margin:0 0 15px;
+  color:var(--muted);
+  font-size:13px;
+}
+
+.passwordbox input{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:13px;
+  padding:13px;
+  outline:none;
+}
+
+.passwordbuttons{
+  display:flex;
+  gap:8px;
+  margin-top:13px;
+}
+
+.passwordbuttons button{
+  flex:1;
+  border:0;
+  border-radius:13px;
+  padding:12px;
+  font-weight:700;
+}
+
+.passwordok{
+  background:var(--accent);
+  color:white;
+}
+
+.passwordcancel{
+  background:#eef0ed;
+  color:var(--ink);
+}
+
 @media(min-width:700px){
   .grid{
     grid-template-columns:1fr 1fr;
@@ -510,14 +620,18 @@ a{
     <span class="count" id="count">0</span>
   </div>
 
-  <button class="addbtn" onclick="openAdd()">＋ Restaurant hinzufügen</button>
+  <button class="addbtn" onclick="openAdd()">
+    ＋ Restaurant hinzufügen
+  </button>
 
   <div class="sync">
     <button onclick="refreshData()">↻ Daten aktualisieren</button>
     <button onclick="showSyncInfo()">☁ Auto-Update</button>
   </div>
 
-  <div class="small" id="syncStatus">Daten werden geladen …</div>
+  <div class="small" id="syncStatus">
+    Daten werden geladen …
+  </div>
 
   <div class="filters">
     <button class="chip active" data-filter="Alle">Alle</button>
@@ -531,7 +645,10 @@ a{
 </main>
 
 <main id="detail" class="detail">
-  <button class="back" onclick="showHome()">‹ Zurück zu meinen Favoriten</button>
+
+  <button class="back" onclick="showHome()">
+    ‹ Zurück zu meinen Favoriten
+  </button>
 
   <div class="hero" id="hero">🍽️</div>
 
@@ -549,6 +666,7 @@ a{
   </div>
 
   <div class="info">
+
     <div>
       <span class="label">📍 Adresse</span>
       <span id="daddress">Noch ergänzen</span>
@@ -583,21 +701,38 @@ a{
       <span class="label">✉️ E-Mail</span>
       <span id="demail">Noch ergänzen</span>
     </div>
+
   </div>
 
   <div class="note">
     <b>📝 Meine Notizen</b>
-    <textarea id="note" placeholder="Was möchtest du dir merken?"></textarea>
+    <textarea
+      id="note"
+      placeholder="Was möchtest du dir merken?"
+    ></textarea>
   </div>
+
 </main>
 
 <div class="bottomnav">
-  <button class="active" onclick="showHome()">🏠<br>Start</button>
-  <button onclick="focusSearch()">🔎<br>Suchen</button>
-  <button onclick="showFavorites()">❤️<br>Favoriten</button>
+  <button class="active" onclick="showHome()">
+    🏠<br>Start
+  </button>
+
+  <button onclick="focusSearch()">
+    🔎<br>Suchen
+  </button>
+
+  <button onclick="showFavorites()">
+    ❤️<br>Favoriten
+  </button>
 </div>
 
+
+<!-- Restaurant-Dialog -->
+
 <div class="modal" id="modal">
+
   <div class="modalbox">
 
     <h2 id="modalTitle">Restaurant hinzufügen</h2>
@@ -638,17 +773,91 @@ a{
       <label>Notizen</label>
       <textarea id="f_notizen"></textarea>
 
+      <label>🖼️ Bild</label>
+
+      <input
+        id="f_bild"
+        type="url"
+        placeholder="Bild-URL einfügen"
+        oninput="previewImage()"
+      >
+
+      <div class="imagehint">
+        Hier kannst du später die URL eines Restaurantbildes eintragen.
+      </div>
+
+      <div class="imagepreview" id="imagepreview">
+        <img id="previewimg" alt="Bildvorschau">
+      </div>
+
+      <button
+        type="button"
+        class="removeimage"
+        id="removeimage"
+        onclick="removeImage()"
+      >
+        🗑️ Bild entfernen
+      </button>
+
     </div>
 
     <div class="modalbuttons">
-      <button class="cancel" onclick="closeModal()">Abbrechen</button>
-      <button class="save" onclick="savePlace()">Speichern</button>
+      <button class="cancel" onclick="closeModal()">
+        Abbrechen
+      </button>
+
+      <button class="save" onclick="savePlace()">
+        Speichern
+      </button>
     </div>
 
   </div>
 </div>
 
+
+<!-- Passwort-Dialog -->
+
+<div class="passwordmodal" id="passwordModal">
+
+  <div class="passwordbox">
+
+    <h2>🔒 Admin-Passwort</h2>
+
+    <p id="passwordText">
+      Bitte Admin-Passwort eingeben.
+    </p>
+
+    <input
+      id="passwordInput"
+      type="password"
+      autocomplete="off"
+      placeholder="Passwort"
+    >
+
+    <div class="passwordbuttons">
+
+      <button
+        class="passwordcancel"
+        onclick="cancelPassword()"
+      >
+        Abbrechen
+      </button>
+
+      <button
+        class="passwordok"
+        onclick="confirmPassword()"
+      >
+        Weiter
+      </button>
+
+    </div>
+
+  </div>
+</div>
+
+
 <script>
+
 const API_URL =
   "https://tegernsee-restaurants-api.msc4021.workers.dev";
 
@@ -658,69 +867,200 @@ let currentPlace = null;
 let editId = null;
 
 const favorites =
-  JSON.parse(localStorage.getItem("tegernseeFavorites") || "[]");
+  JSON.parse(
+    localStorage.getItem("tegernseeFavorites") || "[]"
+  );
+
+
+/* --------------------------------------------------
+   PASSWORT
+-------------------------------------------------- */
+
+let passwordResolver = null;
+
+function askAdminPassword(message){
+
+  return new Promise(resolve => {
+
+    passwordResolver = resolve;
+
+    document.getElementById("passwordText").textContent =
+      message || "Bitte Admin-Passwort eingeben.";
+
+    const input =
+      document.getElementById("passwordInput");
+
+    input.value = "";
+
+    document.getElementById("passwordModal")
+      .style.display = "flex";
+
+    setTimeout(() => input.focus(),100);
+  });
+}
+
+function confirmPassword(){
+
+  const input =
+    document.getElementById("passwordInput");
+
+  const password = input.value;
+
+  document.getElementById("passwordModal")
+    .style.display = "none";
+
+  if(passwordResolver){
+    const resolve = passwordResolver;
+    passwordResolver = null;
+    resolve(password);
+  }
+}
+
+function cancelPassword(){
+
+  document.getElementById("passwordModal")
+    .style.display = "none";
+
+  if(passwordResolver){
+    const resolve = passwordResolver;
+    passwordResolver = null;
+    resolve(null);
+  }
+}
+
+document.getElementById("passwordInput")
+  .addEventListener("keydown",function(event){
+
+    if(event.key === "Enter"){
+      confirmPassword();
+    }
+
+    if(event.key === "Escape"){
+      cancelPassword();
+    }
+
+  });
+
+
+/* --------------------------------------------------
+   HILFSFUNKTIONEN
+-------------------------------------------------- */
 
 function cleanValue(value){
-  if(value === null || value === undefined) return "";
+
+  if(value === null || value === undefined){
+    return "";
+  }
 
   if(typeof value === "object"){
-    if(value.type === "null") return "";
-    if(value.value !== undefined) return cleanValue(value.value);
+
+    if(value.type === "null"){
+      return "";
+    }
+
+    if(value.value !== undefined){
+      return cleanValue(value.value);
+    }
+
     return "";
   }
 
   return String(value);
 }
 
+
 function normalizeRestaurant(r){
+
   return {
-    id: cleanValue(r.id),
-    name: cleanValue(r.name),
-    ort: cleanValue(r.ort),
-    kategorie: cleanValue(r.kategorie),
-    adresse: cleanValue(r.adresse),
-    telefon: cleanValue(r.telefon),
-    website: cleanValue(r.website),
-    email: cleanValue(r.email),
-    oeffnungszeiten: cleanValue(r.oeffnungszeiten),
-    ruhetag: cleanValue(r.ruhetag),
-    notizen: cleanValue(r.notizen)
+
+    id:cleanValue(r.id),
+
+    name:cleanValue(r.name),
+
+    ort:cleanValue(r.ort),
+
+    kategorie:cleanValue(r.kategorie),
+
+    adresse:cleanValue(r.adresse),
+
+    telefon:cleanValue(r.telefon),
+
+    website:cleanValue(r.website),
+
+    email:cleanValue(r.email),
+
+    oeffnungszeiten:
+      cleanValue(r.oeffnungszeiten),
+
+    ruhetag:
+      cleanValue(r.ruhetag),
+
+    notizen:
+      cleanValue(r.notizen),
+
+    bild:
+      cleanValue(r.bild)
+
   };
 }
 
+
+/* --------------------------------------------------
+   DATEN LADEN
+-------------------------------------------------- */
+
 async function loadData(){
-  const status = document.getElementById("syncStatus");
+
+  const status =
+    document.getElementById("syncStatus");
 
   try{
-    status.textContent = "Zentrale Daten werden geladen …";
 
-    const response = await fetch(
-      API_URL + "?t=" + Date.now(),
-      {
-        method:"GET",
-        cache:"no-store",
-        headers:{
-          "Accept":"application/json"
+    status.textContent =
+      "Zentrale Daten werden geladen …";
+
+    const response =
+      await fetch(
+        API_URL + "?t=" + Date.now(),
+        {
+          method:"GET",
+          cache:"no-store",
+          headers:{
+            "Accept":"application/json"
+          }
         }
-      }
-    );
+      );
 
     if(!response.ok){
-      throw new Error("HTTP " + response.status);
+
+      throw new Error(
+        "HTTP " + response.status
+      );
+
     }
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
     if(!Array.isArray(data)){
-      throw new Error("API liefert keine Restaurantliste");
+
+      throw new Error(
+        "API liefert keine Restaurantliste"
+      );
+
     }
 
-    restaurants = data
-      .map(normalizeRestaurant)
-      .filter(r => r.name)
-      .sort((a,b) =>
-        a.name.localeCompare(b.name,"de",{sensitivity:"base"})
-      );
+    restaurants =
+      data
+        .map(normalizeRestaurant)
+        .filter(r => r.name)
+        .sort((a,b) =>
+          a.name.localeCompare(
+            b.name,
+            "de",
+            {sensitivity:"base"}
+          )
+        );
 
     status.textContent =
       "✓ Zentrale Daten geladen · " +
@@ -737,17 +1077,35 @@ async function loadData(){
       "⚠️ Die zentralen Restaurantdaten konnten nicht geladen werden.";
 
     document.getElementById("cards").innerHTML = `
+
       <div class="empty">
-        <b>Die Restaurantliste konnte gerade nicht geladen werden.</b>
+
+        <b>
+          Die Restaurantliste konnte gerade
+          nicht geladen werden.
+        </b>
+
         <br><br>
-        Bitte auf „↻ Daten aktualisieren“ tippen.
+
+        Bitte auf
+        „↻ Daten aktualisieren“
+        tippen.
+
       </div>
+
     `;
   }
 }
 
+
+/* --------------------------------------------------
+   ÖFFNUNGSSTATUS
+-------------------------------------------------- */
+
 function getDayName(){
+
   return [
+
     "Sonntag",
     "Montag",
     "Dienstag",
@@ -755,36 +1113,26 @@ function getDayName(){
     "Donnerstag",
     "Freitag",
     "Samstag"
+
   ][new Date().getDay()];
 }
 
-function isClosedDay(text){
-  const day = getDayName();
-  const lower = (text || "").toLowerCase();
-
-  if(!lower) return false;
-
-  const patterns = [
-    new RegExp("\\b" + day.toLowerCase() + "\\b")
-  ];
-
-  if(day === "Montag" &&
-     /montag bis freitag/.test(lower)) return false;
-
-  return patterns.some(p => p.test(lower));
-}
 
 function parseTimes(text){
+
   if(!text) return [];
 
   const matches = [];
+
   const regex =
     /(\d{1,2}):(\d{2})\s*(?:–|-|bis)\s*(\d{1,2}):(\d{2})/g;
 
   let m;
 
   while((m = regex.exec(text)) !== null){
+
     matches.push({
+
       start:
         parseInt(m[1],10) * 60 +
         parseInt(m[2],10),
@@ -792,16 +1140,21 @@ function parseTimes(text){
       end:
         parseInt(m[3],10) * 60 +
         parseInt(m[4],10)
+
     });
   }
 
   return matches;
 }
 
-function dayIsMentioned(text, day){
-  const lower = (text || "").toLowerCase();
+
+function dayIsMentioned(text,day){
+
+  const lower =
+    (text || "").toLowerCase();
 
   const names = {
+
     Montag:"montag",
     Dienstag:"dienstag",
     Mittwoch:"mittwoch",
@@ -809,113 +1162,247 @@ function dayIsMentioned(text, day){
     Freitag:"freitag",
     Samstag:"samstag",
     Sonntag:"sonntag"
+
   };
 
-  return lower.includes(names[day]);
+  return lower.includes(
+    names[day]
+  );
 }
+
 
 function getOpeningStatus(place){
 
-  const hours = cleanValue(place.oeffnungszeiten);
-  const closed = cleanValue(place.ruhetag);
-  const today = getDayName();
+  const hours =
+    cleanValue(place.oeffnungszeiten);
+
+  const closed =
+    cleanValue(place.ruhetag);
+
+  const today =
+    getDayName();
 
   if(!hours){
+
     return {
       type:"unknown",
       text:"⚪ Öffnungszeit nicht hinterlegt"
     };
+
   }
 
-  const closedLower = closed.toLowerCase();
+  const closedLower =
+    closed.toLowerCase();
 
   if(
-    closedLower.includes(today.toLowerCase()) &&
-    !closedLower.includes("kein ruhetag")
+    closedLower.includes(
+      today.toLowerCase()
+    ) &&
+    !closedLower.includes(
+      "kein ruhetag"
+    )
   ){
+
     return {
       type:"closed",
       text:"🔴 Heute geschlossen"
     };
+
   }
 
   if(
     /aktuelle öffnungszeiten bitte/i.test(hours) ||
     /vorab telefonisch/i.test(hours)
   ){
+
     return {
       type:"unknown",
       text:"⚪ Öffnungszeiten prüfen"
     };
+
   }
 
   let relevantText = hours;
 
-  /*
-    Wenn Tagesangaben vorhanden sind, versuchen wir den
-    heutigen Abschnitt zu verwenden. Bei „Täglich“ gilt
-    die gesamte Zeitangabe.
-  */
-  if(!/täglich/i.test(hours) && dayIsMentioned(hours,today)){
-    const parts = hours.split(/[;]+/);
+  if(
+    !/täglich/i.test(hours) &&
+    dayIsMentioned(hours,today)
+  ){
 
-    const relevant = parts.filter(part =>
-      dayIsMentioned(part,today)
-    );
+    const parts =
+      hours.split(/[;]+/);
+
+    const relevant =
+      parts.filter(part =>
+        dayIsMentioned(
+          part,
+          today
+        )
+      );
 
     if(relevant.length){
-      relevantText = relevant.join(" ");
+
+      relevantText =
+        relevant.join(" ");
+
     }
   }
 
-  const times = parseTimes(relevantText);
+  const times =
+    parseTimes(relevantText);
 
   if(!times.length){
+
     return {
       type:"unknown",
       text:"⚪ Öffnungszeit prüfen"
     };
+
   }
 
-  const now = new Date();
+  const now =
+    new Date();
+
   const minutes =
     now.getHours() * 60 +
     now.getMinutes();
 
-  const open = times.some(t =>
-    minutes >= t.start && minutes <= t.end
-  );
+  const open =
+    times.some(t =>
+      minutes >= t.start &&
+      minutes <= t.end
+    );
 
   return open
+
     ? {
         type:"open",
         text:"🟢 Jetzt geöffnet"
       }
+
     : {
         type:"closed",
         text:"🔴 Jetzt geschlossen"
       };
 }
 
+
+/* --------------------------------------------------
+   BILDER
+-------------------------------------------------- */
+
+function imageHtml(place){
+
+  if(!place.bild){
+
+    return iconFor(place);
+
+  }
+
+  return `
+    <img
+      src="${escapeAttr(place.bild)}"
+      alt=""
+      loading="lazy"
+      onerror="this.style.display='none'"
+    >
+  `;
+}
+
+
+function previewImage(){
+
+  const url =
+    document.getElementById("f_bild")
+      .value.trim();
+
+  const box =
+    document.getElementById("imagepreview");
+
+  const img =
+    document.getElementById("previewimg");
+
+  const remove =
+    document.getElementById("removeimage");
+
+  if(!url){
+
+    box.style.display="none";
+    remove.style.display="none";
+    img.src="";
+    return;
+  }
+
+  img.src=url;
+
+  box.style.display="grid";
+  remove.style.display="block";
+
+  img.onerror=function(){
+
+    box.style.display="none";
+
+  };
+}
+
+
+function removeImage(){
+
+  document.getElementById("f_bild")
+    .value="";
+
+  document.getElementById("imagepreview")
+    .style.display="none";
+
+  document.getElementById("removeimage")
+    .style.display="none";
+
+  document.getElementById("previewimg")
+    .src="";
+}
+
+
+/* --------------------------------------------------
+   FAVORITEN
+-------------------------------------------------- */
+
 function iconFor(place){
-  if(place.kategorie === "Alm") return "🏔️";
-  if(place.kategorie === "Ausflugsziel") return "🌲";
+
+  if(place.kategorie === "Alm"){
+    return "🏔️";
+  }
+
+  if(place.kategorie === "Ausflugsziel"){
+    return "🌲";
+  }
+
   return "🍽️";
 }
 
+
 function isFavorite(id){
-  return favorites.includes(String(id));
+
+  return favorites.includes(
+    String(id)
+  );
 }
 
+
 function toggleFavorite(id){
+
   id = String(id);
 
-  const index = favorites.indexOf(id);
+  const index =
+    favorites.indexOf(id);
 
   if(index >= 0){
+
     favorites.splice(index,1);
+
   }else{
+
     favorites.push(id);
+
   }
 
   localStorage.setItem(
@@ -926,9 +1413,16 @@ function toggleFavorite(id){
   render();
 }
 
+
+/* --------------------------------------------------
+   FILTER
+-------------------------------------------------- */
+
 function filteredRestaurants(){
+
   const search =
-    document.getElementById("search").value
+    document.getElementById("search")
+      .value
       .trim()
       .toLowerCase();
 
@@ -936,108 +1430,186 @@ function filteredRestaurants(){
 
     const matchesSearch =
       !search ||
+
       [
         r.name,
         r.ort,
         r.kategorie,
         r.adresse
-      ].join(" ").toLowerCase().includes(search);
+
+      ]
+      .join(" ")
+      .toLowerCase()
+      .includes(search);
 
     let matchesFilter = true;
 
     if(currentFilter === "Restaurant"){
-      matchesFilter = r.kategorie === "Restaurant";
+
+      matchesFilter =
+        r.kategorie === "Restaurant";
+
     }
 
     if(currentFilter === "Alm"){
-      matchesFilter = r.kategorie === "Alm";
+
+      matchesFilter =
+        r.kategorie === "Alm";
+
     }
 
     if(currentFilter === "Kreuth"){
+
       matchesFilter =
-        r.ort.toLowerCase().includes("kreuth");
+        r.ort
+          .toLowerCase()
+          .includes("kreuth");
+
     }
 
     if(currentFilter === "Tegernsee"){
+
       matchesFilter =
-        r.ort.toLowerCase().includes("tegernsee");
+        r.ort
+          .toLowerCase()
+          .includes("tegernsee");
+
     }
 
-    return matchesSearch && matchesFilter;
+    return (
+      matchesSearch &&
+      matchesFilter
+    );
+
   });
 }
 
+
+/* --------------------------------------------------
+   LISTE
+-------------------------------------------------- */
+
 function render(){
 
-  const list = filteredRestaurants();
-  const cards = document.getElementById("cards");
+  const list =
+    filteredRestaurants();
 
-  document.getElementById("count").textContent =
+  const cards =
+    document.getElementById("cards");
+
+  document.getElementById("count")
+    .textContent =
     list.length;
 
   if(!list.length){
+
     cards.innerHTML =
-      `<div class="empty">Keine passenden Restaurants gefunden.</div>`;
+      `<div class="empty">
+        Keine passenden Restaurants gefunden.
+      </div>`;
+
     return;
   }
 
-  cards.innerHTML = list.map(place => {
+  cards.innerHTML =
+    list.map(place => {
 
-    const status = getOpeningStatus(place);
-    const fav = isFavorite(place.id);
+      const status =
+        getOpeningStatus(place);
 
-    return `
-      <div class="card">
+      const fav =
+        isFavorite(place.id);
 
-        <div class="cardtop">
+      return `
 
-          <div class="icon">${iconFor(place)}</div>
+        <div class="card">
 
-          <div class="cardmain">
-            <div class="cardname">${escapeHtml(place.name)}</div>
-            <div class="place">
-              ${escapeHtml(place.ort)}
-              ${place.kategorie ? " · " + escapeHtml(place.kategorie) : ""}
+          <div class="cardtop">
+
+            <div class="icon">
+              ${imageHtml(place)}
             </div>
 
-            <div class="status ${status.type}">
-              ${status.text}
+            <div class="cardmain">
+
+              <div class="cardname">
+                ${escapeHtml(place.name)}
+              </div>
+
+              <div class="place">
+
+                ${escapeHtml(place.ort)}
+
+                ${
+                  place.kategorie
+                  ? " · " +
+                    escapeHtml(place.kategorie)
+                  : ""
+                }
+
+              </div>
+
+              <div class="status ${status.type}">
+                ${status.text}
+              </div>
+
             </div>
+
+            <button
+              class="fav"
+              onclick="toggleFavorite('${escapeAttr(place.id)}')"
+            >
+              ${fav ? "❤️" : "♡"}
+            </button>
+
           </div>
 
-          <button
-            class="fav"
-            onclick="toggleFavorite('${escapeAttr(place.id)}')">
-            ${fav ? "❤️" : "♡"}
-          </button>
+          <div class="cardbottom">
+
+            <button
+              onclick="openDetail('${escapeAttr(place.id)}')"
+            >
+              Details
+            </button>
+
+            <button
+              onclick="routeTo('${escapeAttr(place.id)}')"
+            >
+              📍 Route
+            </button>
+
+            ${
+              place.telefon
+
+              ? `
+                <button
+                  onclick="callPhone('${escapeAttr(place.telefon)}')"
+                >
+                  ☎️ Anrufen
+                </button>
+              `
+
+              : ""
+            }
+
+          </div>
 
         </div>
 
-        <div class="cardbottom">
-          <button onclick="openDetail('${escapeAttr(place.id)}')">
-            Details
-          </button>
+      `;
 
-          <button onclick="routeTo('${escapeAttr(place.id)}')">
-            📍 Route
-          </button>
-
-          ${
-            place.telefon
-            ? `<button onclick="callPhone('${escapeAttr(place.telefon)}')">
-                ☎️ Anrufen
-              </button>`
-            : ""
-          }
-        </div>
-
-      </div>
-    `;
-  }).join("");
+    }).join("");
 }
 
+
+/* --------------------------------------------------
+   SICHERHEIT HTML
+-------------------------------------------------- */
+
 function escapeHtml(value){
+
   return cleanValue(value)
+
     .replace(/&/g,"&amp;")
     .replace(/</g,"&lt;")
     .replace(/>/g,"&gt;")
@@ -1045,229 +1617,416 @@ function escapeHtml(value){
     .replace(/'/g,"&#039;");
 }
 
+
 function escapeAttr(value){
+
   return escapeHtml(value);
 }
+
+
+/* --------------------------------------------------
+   DETAILANSICHT
+-------------------------------------------------- */
 
 function openDetail(id){
 
   currentPlace =
-    restaurants.find(r => String(r.id) === String(id));
+    restaurants.find(
+      r =>
+        String(r.id) ===
+        String(id)
+    );
 
   if(!currentPlace) return;
 
-  document.getElementById("home").style.display="none";
-  document.getElementById("homeHeader").style.display="none";
-  document.getElementById("detail").style.display="block";
+  document.getElementById("home")
+    .style.display="none";
 
-  document.getElementById("dname").textContent =
+  document.getElementById("homeHeader")
+    .style.display="none";
+
+  document.getElementById("detail")
+    .style.display="block";
+
+  document.getElementById("dname")
+    .textContent =
     currentPlace.name;
 
-  document.getElementById("dplace").textContent =
-    [currentPlace.ort,currentPlace.kategorie]
-      .filter(Boolean).join(" · ");
+  document.getElementById("dplace")
+    .textContent =
+    [
+      currentPlace.ort,
+      currentPlace.kategorie
+    ]
+    .filter(Boolean)
+    .join(" · ");
 
-  document.getElementById("daddress").textContent =
-    currentPlace.adresse || "Noch ergänzen";
+  document.getElementById("daddress")
+    .textContent =
+    currentPlace.adresse ||
+    "Noch ergänzen";
 
-  document.getElementById("dhours").textContent =
-    currentPlace.oeffnungszeiten || "Noch ergänzen";
+  document.getElementById("dhours")
+    .textContent =
+    currentPlace.oeffnungszeiten ||
+    "Noch ergänzen";
 
-  document.getElementById("dclosed").textContent =
-    currentPlace.ruhetag || "Kein Ruhetag hinterlegt";
+  document.getElementById("dclosed")
+    .textContent =
+    currentPlace.ruhetag ||
+    "Kein Ruhetag hinterlegt";
 
-  document.getElementById("dphone").textContent =
-    currentPlace.telefon || "Noch ergänzen";
+  document.getElementById("dphone")
+    .textContent =
+    currentPlace.telefon ||
+    "Noch ergänzen";
 
-  document.getElementById("demail").textContent =
-    currentPlace.email || "Noch ergänzen";
+  document.getElementById("demail")
+    .textContent =
+    currentPlace.email ||
+    "Noch ergänzen";
 
-  const web = document.getElementById("dweb");
+  const web =
+    document.getElementById("dweb");
 
   if(currentPlace.website){
-    web.innerHTML =
-      `<a href="${escapeAttr(currentPlace.website)}"
-          target="_blank"
-          rel="noopener">
+
+    web.innerHTML = `
+
+      <a
+        href="${escapeAttr(currentPlace.website)}"
+        target="_blank"
+        rel="noopener"
+      >
         Webseite öffnen
-       </a>`;
+      </a>
+
+    `;
+
   }else{
-    web.textContent="Noch ergänzen";
+
+    web.textContent =
+      "Noch ergänzen";
+
   }
 
-  document.getElementById("note").value =
+  const hero =
+    document.getElementById("hero");
+
+  if(currentPlace.bild){
+
+    hero.innerHTML = `
+
+      <img
+        src="${escapeAttr(currentPlace.bild)}"
+        alt="${escapeAttr(currentPlace.name)}"
+        onerror="this.parentElement.innerHTML='🍽️'"
+      >
+
+    `;
+
+  }else{
+
+    hero.innerHTML =
+      iconFor(currentPlace);
+
+  }
+
+  document.getElementById("note")
+    .value =
     currentPlace.notizen || "";
 }
 
+
 function showHome(){
-  document.getElementById("detail").style.display="none";
-  document.getElementById("home").style.display="block";
-  document.getElementById("homeHeader").style.display="block";
+
+  document.getElementById("detail")
+    .style.display="none";
+
+  document.getElementById("home")
+    .style.display="block";
+
+  document.getElementById("homeHeader")
+    .style.display="block";
+
   currentPlace=null;
+
   render();
 }
 
+
 function focusSearch(){
+
   showHome();
-  document.getElementById("search").focus();
-  window.scrollTo({top:0,behavior:"smooth"});
+
+  document.getElementById("search")
+    .focus();
+
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
 }
+
 
 function showFavorites(){
 
   showHome();
 
-  const original = currentFilter;
+  const list =
+    restaurants.filter(r =>
+      isFavorite(r.id)
+    );
 
-  const list = restaurants.filter(r =>
-    isFavorite(r.id)
-  );
+  const cards =
+    document.getElementById("cards");
 
-  const cards = document.getElementById("cards");
-
-  document.getElementById("count").textContent =
+  document.getElementById("count")
+    .textContent =
     list.length;
 
   if(!list.length){
-    cards.innerHTML =
-      `<div class="empty">
+
+    cards.innerHTML = `
+      <div class="empty">
         Du hast noch keine Favoriten gespeichert.
-      </div>`;
+      </div>
+    `;
+
     return;
   }
 
-  cards.innerHTML = list.map(place => {
+  cards.innerHTML =
+    list.map(place => {
 
-    const status = getOpeningStatus(place);
+      const status =
+        getOpeningStatus(place);
 
-    return `
-      <div class="card">
-        <div class="cardtop">
-          <div class="icon">${iconFor(place)}</div>
-          <div class="cardmain">
-            <div class="cardname">${escapeHtml(place.name)}</div>
-            <div class="place">${escapeHtml(place.ort)}</div>
-            <div class="status ${status.type}">
-              ${status.text}
+      return `
+
+        <div class="card">
+
+          <div class="cardtop">
+
+            <div class="icon">
+              ${imageHtml(place)}
             </div>
+
+            <div class="cardmain">
+
+              <div class="cardname">
+                ${escapeHtml(place.name)}
+              </div>
+
+              <div class="place">
+                ${escapeHtml(place.ort)}
+              </div>
+
+              <div class="status ${status.type}">
+                ${status.text}
+              </div>
+
+            </div>
+
+            <button
+              class="fav"
+              onclick="toggleFavorite('${escapeAttr(place.id)}')"
+            >
+              ❤️
+            </button>
+
           </div>
-          <button class="fav"
-            onclick="toggleFavorite('${escapeAttr(place.id)}')">
-            ❤️
-          </button>
+
+          <div class="cardbottom">
+
+            <button
+              onclick="openDetail('${escapeAttr(place.id)}')"
+            >
+              Details
+            </button>
+
+            <button
+              onclick="routeTo('${escapeAttr(place.id)}')"
+            >
+              📍 Route
+            </button>
+
+          </div>
+
         </div>
 
-        <div class="cardbottom">
-          <button onclick="openDetail('${escapeAttr(place.id)}')">
-            Details
-          </button>
-          <button onclick="routeTo('${escapeAttr(place.id)}')">
-            📍 Route
-          </button>
-        </div>
-      </div>
-    `;
-  }).join("");
+      `;
 
-  currentFilter = original;
+    }).join("");
 }
+
+
+/* --------------------------------------------------
+   ROUTE / TELEFON
+-------------------------------------------------- */
 
 function routeTo(id){
 
   const place =
-    restaurants.find(r => String(r.id) === String(id));
+    restaurants.find(
+      r =>
+        String(r.id) ===
+        String(id)
+    );
 
   if(!place) return;
 
   const destination =
     encodeURIComponent(
       place.adresse ||
-      [place.name,place.ort].filter(Boolean).join(", ")
+      [
+        place.name,
+        place.ort
+      ]
+      .filter(Boolean)
+      .join(", ")
     );
 
   window.open(
+
     "https://www.google.com/maps/search/?api=1&query=" +
     destination,
+
     "_blank"
+
   );
 }
 
+
 function openRoute(){
+
   if(currentPlace){
     routeTo(currentPlace.id);
   }
+
 }
+
 
 function callPhone(phone){
+
   if(phone){
+
     window.location.href =
-      "tel:" + phone.replace(/[^\d+]/g,"");
+      "tel:" +
+      phone.replace(/[^\d+]/g,"");
+
   }
+
 }
 
+
 function callPlace(){
+
   if(currentPlace){
-    callPhone(currentPlace.telefon);
+
+    callPhone(
+      currentPlace.telefon
+    );
+
   }
+
 }
+
+
+/* --------------------------------------------------
+   HINZUFÜGEN
+-------------------------------------------------- */
 
 function openAdd(){
 
   editId=null;
 
-  document.getElementById("modalTitle").textContent =
+  document.getElementById("modalTitle")
+    .textContent =
     "Restaurant hinzufügen";
 
   clearForm();
 
-  document.getElementById("modal").style.display="block";
+  document.getElementById("modal")
+    .style.display="block";
 }
+
+
+/* --------------------------------------------------
+   BEARBEITEN
+-------------------------------------------------- */
 
 function editPlace(){
 
   if(!currentPlace) return;
 
-  editId=currentPlace.id;
+  editId =
+    currentPlace.id;
 
-  document.getElementById("modalTitle").textContent =
+  document.getElementById("modalTitle")
+    .textContent =
     "Restaurant bearbeiten";
 
-  document.getElementById("f_name").value =
+  document.getElementById("f_name")
+    .value =
     currentPlace.name;
 
-  document.getElementById("f_ort").value =
+  document.getElementById("f_ort")
+    .value =
     currentPlace.ort;
 
-  document.getElementById("f_kategorie").value =
-    currentPlace.kategorie || "Restaurant";
+  document.getElementById("f_kategorie")
+    .value =
+    currentPlace.kategorie ||
+    "Restaurant";
 
-  document.getElementById("f_adresse").value =
+  document.getElementById("f_adresse")
+    .value =
     currentPlace.adresse;
 
-  document.getElementById("f_telefon").value =
+  document.getElementById("f_telefon")
+    .value =
     currentPlace.telefon;
 
-  document.getElementById("f_website").value =
+  document.getElementById("f_website")
+    .value =
     currentPlace.website;
 
-  document.getElementById("f_email").value =
+  document.getElementById("f_email")
+    .value =
     currentPlace.email;
 
-  document.getElementById("f_oeffnungszeiten").value =
+  document.getElementById("f_oeffnungszeiten")
+    .value =
     currentPlace.oeffnungszeiten;
 
-  document.getElementById("f_ruhetag").value =
+  document.getElementById("f_ruhetag")
+    .value =
     currentPlace.ruhetag;
 
-  document.getElementById("f_notizen").value =
+  document.getElementById("f_notizen")
+    .value =
     currentPlace.notizen;
 
-  document.getElementById("modal").style.display="block";
+  document.getElementById("f_bild")
+    .value =
+    currentPlace.bild;
+
+  previewImage();
+
+  document.getElementById("modal")
+    .style.display="block";
 }
+
+
+/* --------------------------------------------------
+   FORMULAR
+-------------------------------------------------- */
 
 function clearForm(){
 
   [
+
     "f_name",
     "f_ort",
     "f_adresse",
@@ -1276,67 +2035,134 @@ function clearForm(){
     "f_email",
     "f_oeffnungszeiten",
     "f_ruhetag",
-    "f_notizen"
+    "f_notizen",
+    "f_bild"
+
   ].forEach(id => {
-    document.getElementById(id).value="";
+
+    document.getElementById(id)
+      .value="";
+
   });
 
-  document.getElementById("f_kategorie").value =
+  document.getElementById("f_kategorie")
+    .value =
     "Restaurant";
+
+  document.getElementById("imagepreview")
+    .style.display="none";
+
+  document.getElementById("removeimage")
+    .style.display="none";
+
+  document.getElementById("previewimg")
+    .src="";
 }
 
+
 function closeModal(){
-  document.getElementById("modal").style.display="none";
+
+  document.getElementById("modal")
+    .style.display="none";
+
 }
+
 
 function getFormData(){
 
   return {
+
     name:
-      document.getElementById("f_name").value.trim(),
+      document.getElementById("f_name")
+        .value
+        .trim(),
 
     ort:
-      document.getElementById("f_ort").value.trim(),
+      document.getElementById("f_ort")
+        .value
+        .trim(),
 
     kategorie:
-      document.getElementById("f_kategorie").value,
+      document.getElementById("f_kategorie")
+        .value,
 
     adresse:
-      document.getElementById("f_adresse").value.trim(),
+      document.getElementById("f_adresse")
+        .value
+        .trim(),
 
     telefon:
-      document.getElementById("f_telefon").value.trim(),
+      document.getElementById("f_telefon")
+        .value
+        .trim(),
 
     website:
-      document.getElementById("f_website").value.trim(),
+      document.getElementById("f_website")
+        .value
+        .trim(),
 
     email:
-      document.getElementById("f_email").value.trim(),
+      document.getElementById("f_email")
+        .value
+        .trim(),
 
     oeffnungszeiten:
-      document.getElementById("f_oeffnungszeiten").value.trim(),
+      document.getElementById("f_oeffnungszeiten")
+        .value
+        .trim(),
 
     ruhetag:
-      document.getElementById("f_ruhetag").value.trim(),
+      document.getElementById("f_ruhetag")
+        .value
+        .trim(),
 
     notizen:
-      document.getElementById("f_notizen").value.trim()
+      document.getElementById("f_notizen")
+        .value
+        .trim(),
+
+    bild:
+      document.getElementById("f_bild")
+        .value
+        .trim()
+
   };
 }
 
+
+/* --------------------------------------------------
+   SPEICHERN
+-------------------------------------------------- */
+
 async function savePlace(){
 
-  const restaurant=getFormData();
+  const restaurant =
+    getFormData();
 
   if(!restaurant.name){
-    alert("Bitte zuerst einen Namen eingeben.");
+
+    alert(
+      "Bitte zuerst einen Namen eingeben."
+    );
+
     return;
   }
 
   const password =
-    prompt("Bitte Admin-Passwort eingeben:");
+    await askAdminPassword(
+      "Bitte Admin-Passwort zum Speichern eingeben."
+    );
 
   if(password === null) return;
+
+  if(password === ""){
+
+    alert(
+      "Bitte ein Passwort eingeben."
+    );
+
+    return;
+  }
 
   try{
 
@@ -1344,31 +2170,55 @@ async function savePlace(){
 
     if(editId){
 
-      body={
+      body = {
+
         action:"update",
+
         id:editId,
+
         restaurant
+
       };
 
     }else{
 
-      body={
+      body = {
+
         action:"create",
+
         restaurant
+
       };
+
     }
 
-    const response = await fetch(API_URL,{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "Authorization":"Bearer " + password
-      },
-      body:JSON.stringify(body)
-    });
+    const response =
+      await fetch(
+        API_URL,
+        {
+
+          method:"POST",
+
+          headers:{
+            "Content-Type":
+              "application/json",
+
+            "Authorization":
+              "Bearer " + password
+          },
+
+          body:
+            JSON.stringify(body)
+
+        }
+      );
 
     if(!response.ok){
-      throw new Error("HTTP " + response.status);
+
+      throw new Error(
+        "HTTP " + response.status
+      );
+
     }
 
     closeModal();
@@ -1376,12 +2226,22 @@ async function savePlace(){
     await loadData();
 
     if(editId){
+
       const updated =
-        restaurants.find(r => String(r.id) === String(editId));
+        restaurants.find(
+          r =>
+            String(r.id) ===
+            String(editId)
+        );
 
       if(updated){
-        openDetail(updated.id);
+
+        openDetail(
+          updated.id
+        );
+
       }
+
     }
 
   }catch(error){
@@ -1392,42 +2252,83 @@ async function savePlace(){
       "Speichern fehlgeschlagen.\n\n" +
       "Bitte Admin-Passwort und Verbindung prüfen."
     );
+
   }
 }
+
+
+/* --------------------------------------------------
+   LÖSCHEN
+-------------------------------------------------- */
 
 async function deletePlace(){
 
   if(!currentPlace) return;
 
   if(!confirm(
+
     "Möchtest du „" +
     currentPlace.name +
     "“ wirklich löschen?"
+
   )){
+
     return;
+
   }
 
   const password =
-    prompt("Bitte Admin-Passwort eingeben:");
+    await askAdminPassword(
+      "Bitte Admin-Passwort zum Löschen eingeben."
+    );
 
   if(password === null) return;
 
+  if(password === ""){
+
+    alert(
+      "Bitte ein Passwort eingeben."
+    );
+
+    return;
+
+  }
+
   try{
 
-    const response = await fetch(API_URL,{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "Authorization":"Bearer " + password
-      },
-      body:JSON.stringify({
-        action:"delete",
-        id:currentPlace.id
-      })
-    });
+    const response =
+      await fetch(
+        API_URL,
+        {
+
+          method:"POST",
+
+          headers:{
+            "Content-Type":
+              "application/json",
+
+            "Authorization":
+              "Bearer " + password
+          },
+
+          body:
+            JSON.stringify({
+
+              action:"delete",
+
+              id:currentPlace.id
+
+            })
+
+        }
+      );
 
     if(!response.ok){
-      throw new Error("HTTP " + response.status);
+
+      throw new Error(
+        "HTTP " + response.status
+      );
+
     }
 
     showHome();
@@ -1442,96 +2343,195 @@ async function deletePlace(){
       "Löschen fehlgeschlagen.\n\n" +
       "Bitte Admin-Passwort prüfen."
     );
+
   }
 }
 
-let noteTimer=null;
 
-document.getElementById("note").addEventListener(
-  "input",
-  function(){
+/* --------------------------------------------------
+   NOTIZEN SPEICHERN
+-------------------------------------------------- */
 
-    if(!currentPlace) return;
+let noteTimer = null;
 
-    clearTimeout(noteTimer);
+document.getElementById("note")
+  .addEventListener(
+    "input",
+    function(){
 
-    noteTimer=setTimeout(async()=>{
+      if(!currentPlace) return;
 
-      const password =
-        prompt(
-          "Admin-Passwort für das Speichern der Notiz:"
-        );
+      clearTimeout(noteTimer);
 
-      if(password === null) return;
+      noteTimer =
+        setTimeout(
+          async () => {
 
-      try{
+            const password =
+              await askAdminPassword(
+                "Admin-Passwort zum Speichern der Notiz eingeben."
+              );
 
-        const response = await fetch(API_URL,{
-          method:"POST",
-          headers:{
-            "Content-Type":"application/json",
-            "Authorization":"Bearer " + password
-          },
-          body:JSON.stringify({
-            action:"update",
-            id:currentPlace.id,
-            restaurant:{
-              ...currentPlace,
-              notizen:this.value
+            if(password === null) return;
+
+            if(password === ""){
+
+              alert(
+                "Bitte ein Passwort eingeben."
+              );
+
+              return;
+
             }
-          })
-        });
 
-        if(!response.ok){
-          throw new Error("HTTP " + response.status);
-        }
+            try{
 
-        currentPlace.notizen=this.value;
+              const response =
+                await fetch(
+                  API_URL,
+                  {
 
-      }catch(error){
-        console.error(error);
-        alert("Notiz konnte nicht gespeichert werden.");
-      }
+                    method:"POST",
 
-    },900);
-  }
-);
+                    headers:{
+                      "Content-Type":
+                        "application/json",
+
+                      "Authorization":
+                        "Bearer " + password
+                    },
+
+                    body:
+                      JSON.stringify({
+
+                        action:"update",
+
+                        id:currentPlace.id,
+
+                        restaurant:{
+                          ...currentPlace,
+                          notizen:this.value
+                        }
+
+                      })
+
+                  }
+                );
+
+              if(!response.ok){
+
+                throw new Error(
+                  "HTTP " +
+                  response.status
+                );
+
+              }
+
+              currentPlace.notizen =
+                this.value;
+
+            }catch(error){
+
+              console.error(error);
+
+              alert(
+                "Notiz konnte nicht gespeichert werden."
+              );
+
+            }
+
+          },
+          900
+        );
+    }
+  );
+
+
+/* --------------------------------------------------
+   AKTUALISIEREN
+-------------------------------------------------- */
 
 function refreshData(){
+
   loadData();
+
 }
+
 
 function showSyncInfo(){
+
   alert(
+
     "Die App lädt die Restaurantdaten beim Öffnen " +
     "und beim Aktualisieren direkt aus der zentralen Online-Datenbank."
+
   );
+
 }
 
-document.getElementById("search").addEventListener(
-  "input",
-  render
+
+/* --------------------------------------------------
+   SUCHE
+-------------------------------------------------- */
+
+document.getElementById("search")
+  .addEventListener(
+    "input",
+    render
+  );
+
+
+/* --------------------------------------------------
+   FILTER
+-------------------------------------------------- */
+
+document.querySelectorAll(".chip")
+  .forEach(button => {
+
+    button.addEventListener(
+      "click",
+      () => {
+
+        document
+          .querySelectorAll(".chip")
+          .forEach(
+            b =>
+              b.classList.remove(
+                "active"
+              )
+          );
+
+        button.classList.add(
+          "active"
+        );
+
+        currentFilter =
+          button.dataset.filter;
+
+        render();
+
+      }
+    );
+
+  });
+
+
+/* --------------------------------------------------
+   AUTOMATISCHE AKTUALISIERUNG DER ANZEIGE
+-------------------------------------------------- */
+
+setInterval(
+  render,
+  60000
 );
 
-document.querySelectorAll(".chip").forEach(button => {
 
-  button.addEventListener("click",()=>{
-
-    document.querySelectorAll(".chip")
-      .forEach(b => b.classList.remove("active"));
-
-    button.classList.add("active");
-
-    currentFilter =
-      button.dataset.filter;
-
-    render();
-  });
-});
-
-setInterval(render,60000);
+/* --------------------------------------------------
+   START
+-------------------------------------------------- */
 
 loadData();
+
 </script>
 
 </body>
