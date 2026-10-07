@@ -1,41 +1,36 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#2d6a56">
 <title>Meine Tegernsee-Lieblinge</title>
+<link rel="icon" href="icon.svg">
 
 <style>
 :root{
   --bg:#f4f2ec;
-  --card:#ffffff;
+  --card:#fff;
   --ink:#17352d;
   --muted:#6f7d77;
   --accent:#2d6a56;
-  --accent2:#3f8068;
+  --accent2:#1f5747;
   --line:#e4e2da;
   --gold:#c69a3b;
-  --red:#b84b45;
-  --green:#2d7a55;
-  --shadow:0 8px 24px rgba(24,55,45,.09);
+  --danger:#b94b45;
+  --shadow:0 8px 24px rgba(23,53,45,.08);
 }
 
 *{box-sizing:border-box}
 
-html,body{
+body{
   margin:0;
-  padding:0;
   background:var(--bg);
   color:var(--ink);
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }
 
-body{
-  padding-bottom:86px;
-}
-
-button,input,select,textarea{
+button,input,textarea,select{
   font:inherit;
 }
 
@@ -43,131 +38,114 @@ button{
   cursor:pointer;
 }
 
-.app{
-  min-height:100vh;
-}
-
 header{
-  background:
-    linear-gradient(145deg,#214e41 0%,#2d6a56 55%,#4d806b 100%);
+  background:linear-gradient(145deg,#2d6a56,#174b3d);
   color:white;
-  padding:
-    calc(25px + env(safe-area-inset-top))
-    18px
-    25px;
+  padding:28px 18px 22px;
   border-radius:0 0 28px 28px;
-  box-shadow:0 8px 25px rgba(28,72,58,.18);
+  box-shadow:0 8px 24px rgba(0,0,0,.12);
 }
 
 .eyebrow{
-  font-size:12px;
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  opacity:.75;
-  margin-bottom:7px;
+  font-size:13px;
+  opacity:.82;
+  margin-bottom:5px;
 }
 
 .title{
-  font-size:28px;
-  line-height:1.12;
+  font-size:27px;
   font-weight:800;
-  letter-spacing:-.02em;
+  line-height:1.1;
 }
 
 .sub{
-  margin-top:7px;
+  margin-top:6px;
   font-size:14px;
-  opacity:.84;
+  opacity:.88;
 }
 
 .search{
-  margin-top:19px;
+  margin-top:18px;
   background:white;
-  color:var(--ink);
-  border-radius:15px;
-  padding:3px 13px;
+  color:#60716b;
+  border-radius:16px;
+  padding:12px 14px;
   display:flex;
   align-items:center;
-  box-shadow:0 5px 18px rgba(0,0,0,.12);
-}
-
-.search span{
-  font-size:18px;
-  margin-right:7px;
+  gap:8px;
 }
 
 .search input{
-  width:100%;
   border:0;
   outline:0;
+  width:100%;
   background:transparent;
-  padding:11px 4px;
   color:var(--ink);
 }
 
 main{
   max-width:760px;
-  margin:auto;
-  padding:18px 16px;
+  margin:0 auto;
+  padding:18px 14px 100px;
 }
 
 .sectionhead{
   display:flex;
-  align-items:center;
   justify-content:space-between;
-  margin:3px 2px 12px;
+  align-items:center;
+  margin:2px 2px 12px;
 }
 
 .sectionhead h2{
+  font-size:18px;
   margin:0;
-  font-size:20px;
-  letter-spacing:-.01em;
 }
 
 .count{
   color:var(--muted);
-  font-size:13px;
+  font-size:14px;
+  font-weight:700;
 }
 
 .addbtn{
   width:100%;
   border:0;
-  border-radius:15px;
-  padding:14px;
   background:var(--accent);
   color:white;
+  padding:14px;
+  border-radius:15px;
   font-weight:750;
-  box-shadow:0 6px 15px rgba(45,106,86,.20);
-  margin-bottom:11px;
+  box-shadow:var(--shadow);
 }
 
 .sync{
   display:flex;
   gap:8px;
-  margin-bottom:6px;
+  margin-top:10px;
 }
 
 .sync button{
   flex:1;
   border:1px solid var(--line);
   background:white;
-  color:var(--accent);
-  border-radius:12px;
-  padding:9px 7px;
+  color:var(--ink);
+  border-radius:13px;
+  padding:10px 8px;
   font-size:13px;
 }
 
 .small{
+  text-align:center;
   color:var(--muted);
-  font-size:11px;
-  margin:6px 3px 12px;
+  font-size:12px;
+  margin:8px 0 12px;
 }
 
 .filters{
   display:flex;
-  gap:8px;
+  gap:7px;
   overflow-x:auto;
-  padding:1px 0 12px;
+  padding:2px 1px 10px;
   scrollbar-width:none;
 }
 
@@ -193,38 +171,30 @@ main{
 
 .grid{
   display:grid;
-  gap:13px;
+  gap:12px;
 }
 
 .card{
   background:var(--card);
-  border-radius:19px;
+  border-radius:20px;
   padding:16px;
   box-shadow:var(--shadow);
-  border:1px solid rgba(228,226,218,.7);
-  position:relative;
-  overflow:hidden;
-}
-
-.card:active{
-  transform:scale(.995);
+  border:1px solid rgba(0,0,0,.025);
 }
 
 .cardtop{
   display:flex;
-  align-items:flex-start;
   gap:12px;
 }
 
 .icon{
-  width:50px;
-  height:50px;
-  flex:0 0 50px;
+  width:52px;
+  height:52px;
+  flex:none;
   border-radius:15px;
-  background:#edf3ef;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  background:linear-gradient(145deg,#e5eee9,#cbded6);
+  display:grid;
+  place-items:center;
   font-size:25px;
 }
 
@@ -233,107 +203,56 @@ main{
   flex:1;
 }
 
-.name{
-  font-size:18px;
-  line-height:1.2;
+.cardname{
+  font-size:17px;
   font-weight:800;
-  padding-right:35px;
+  line-height:1.2;
 }
 
-.meta{
+.place{
   color:var(--muted);
   font-size:13px;
   margin-top:4px;
 }
 
-.favorite{
-  position:absolute;
-  top:13px;
-  right:13px;
+.fav{
   border:0;
   background:transparent;
   font-size:23px;
-  padding:2px;
-  color:#c7c4bc;
-}
-
-.favorite.active{
-  color:#c69a3b;
+  padding:0;
+  width:34px;
+  height:34px;
 }
 
 .status{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  border-radius:999px;
-  padding:5px 9px;
-  margin-top:9px;
+  display:inline-block;
+  margin-top:8px;
   font-size:12px;
   font-weight:700;
 }
 
-.status.open{
-  background:#e8f4ec;
-  color:var(--green);
-}
+.status.open{color:#278253}
+.status.closed{color:#b94b45}
+.status.unknown{color:#7c837f}
 
-.status.closed{
-  background:#f7eaea;
-  color:var(--red);
-}
-
-.status.unknown{
-  background:#efefeb;
-  color:#73766f;
-}
-
-.dot{
-  width:7px;
-  height:7px;
-  border-radius:50%;
-  background:currentColor;
-}
-
-.cardhours{
-  margin-top:9px;
-  color:var(--muted);
-  font-size:12px;
-}
-
-.cardactions{
+.cardbottom{
   display:flex;
+  justify-content:space-between;
   gap:8px;
   margin-top:13px;
+  padding-top:12px;
+  border-top:1px solid var(--line);
 }
 
-.cardactions button,
-.cardactions a{
+.cardbottom button{
   flex:1;
-  min-width:0;
-  text-align:center;
-  text-decoration:none;
-  border:1px solid var(--line);
-  background:white;
-  color:var(--accent);
+  border:0;
+  background:#f4f6f3;
+  color:var(--ink);
+  padding:9px 6px;
   border-radius:11px;
-  padding:9px 5px;
   font-size:12px;
 }
-
-.cardactions .mainaction{
-  background:#edf4f0;
-  border-color:#dcebe3;
-}
-
-.empty{
-  background:white;
-  border-radius:18px;
-  padding:28px 18px;
-  text-align:center;
-  color:var(--muted);
-}
-
-/* Detail */
 
 .detail{
   display:none;
@@ -343,89 +262,74 @@ main{
   border:0;
   background:transparent;
   color:var(--accent);
-  padding:3px 0 15px;
   font-weight:700;
+  padding:2px 0 14px;
 }
 
 .hero{
   height:150px;
-  border-radius:23px;
-  background:
-    linear-gradient(135deg,#dbe9df,#edf3ee);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:68px;
-  box-shadow:var(--shadow);
-  margin-bottom:17px;
+  border-radius:22px;
+  background:linear-gradient(145deg,#dceae4,#aac8bb);
+  display:grid;
+  place-items:center;
+  font-size:55px;
+  margin-bottom:15px;
 }
 
 .detail h1{
   margin:0;
   font-size:27px;
-  line-height:1.15;
 }
 
-.place{
-  color:var(--muted);
-  margin-top:5px;
-}
-
-.detailstatus{
-  margin-top:10px;
+.detail .place{
+  font-size:15px;
+  margin:5px 0 14px;
 }
 
 .actions{
   display:flex;
   gap:9px;
-  margin-top:17px;
 }
 
 .action{
   flex:1;
-  text-align:center;
   background:white;
-  border:1px solid var(--line);
-  color:var(--accent);
-  border-radius:13px;
-  padding:12px 7px;
+  border-radius:14px;
+  padding:12px;
+  text-align:center;
   font-weight:700;
-  box-shadow:0 3px 9px rgba(0,0,0,.04);
+  box-shadow:var(--shadow);
 }
 
 .detailtools{
   display:flex;
   gap:8px;
-  margin-top:11px;
+  margin-top:10px;
 }
 
 .detailtools button{
   flex:1;
   border:1px solid var(--line);
   background:white;
-  color:var(--accent);
-  border-radius:11px;
-  padding:9px;
+  border-radius:12px;
+  padding:10px;
 }
 
 .detailtools .danger{
-  color:var(--red);
+  color:var(--danger);
 }
 
 .info{
   background:white;
   border-radius:18px;
-  margin-top:15px;
-  overflow:hidden;
+  margin-top:12px;
+  padding:4px 15px;
   box-shadow:var(--shadow);
 }
 
 .info>div{
-  padding:13px 15px;
+  padding:13px 0;
   border-bottom:1px solid var(--line);
-  display:flex;
-  flex-direction:column;
-  gap:3px;
 }
 
 .info>div:last-child{
@@ -433,156 +337,154 @@ main{
 }
 
 .label{
-  font-size:12px;
+  display:block;
   color:var(--muted);
-}
-
-.info a{
-  color:var(--accent);
-  text-decoration:none;
-  font-weight:650;
+  font-size:12px;
+  margin-bottom:3px;
 }
 
 .note{
+  margin-top:12px;
   background:white;
-  border-radius:18px;
-  margin-top:15px;
   padding:15px;
+  border-radius:18px;
   box-shadow:var(--shadow);
 }
 
 .note b{
   display:block;
-  margin-bottom:9px;
+  margin-bottom:8px;
 }
 
 .note textarea{
   width:100%;
-  min-height:100px;
-  resize:vertical;
+  min-height:90px;
   border:1px solid var(--line);
   border-radius:12px;
-  padding:11px;
+  padding:10px;
+  resize:vertical;
   outline:none;
 }
 
-/* Modal */
+.bottomnav{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:10px;
+  width:min(92%,500px);
+  background:rgba(255,255,255,.96);
+  backdrop-filter:blur(12px);
+  border:1px solid var(--line);
+  border-radius:20px;
+  display:flex;
+  justify-content:space-around;
+  padding:7px;
+  box-shadow:0 10px 30px rgba(0,0,0,.12);
+  z-index:20;
+}
+
+.bottomnav button{
+  flex:1;
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  padding:7px;
+  font-size:12px;
+}
+
+.bottomnav button.active{
+  color:var(--accent);
+  font-weight:800;
+}
 
 .modal{
   display:none;
   position:fixed;
   inset:0;
-  background:rgba(20,37,31,.48);
+  background:rgba(0,0,0,.45);
   z-index:50;
   padding:15px;
-  align-items:flex-end;
-  justify-content:center;
+  overflow:auto;
 }
 
 .modalbox{
-  width:100%;
   max-width:600px;
-  max-height:92vh;
-  overflow:auto;
-  background:#fff;
-  border-radius:23px;
-  padding:20px;
-  box-shadow:0 20px 60px rgba(0,0,0,.25);
+  margin:25px auto;
+  background:white;
+  border-radius:22px;
+  padding:18px;
 }
 
 .modalbox h2{
-  margin:0 0 17px;
-  font-size:21px;
+  margin-top:0;
 }
 
-.field{
-  margin-bottom:11px;
+.formgrid{
+  display:grid;
+  gap:10px;
 }
 
-.field label{
-  display:block;
-  color:var(--muted);
+.formgrid label{
   font-size:12px;
-  margin:0 0 5px 2px;
+  color:var(--muted);
+  font-weight:700;
 }
 
-.field input,
-.field select,
-.field textarea{
+.formgrid input,
+.formgrid textarea,
+.formgrid select{
   width:100%;
   border:1px solid var(--line);
-  border-radius:11px;
+  border-radius:12px;
   padding:11px;
   outline:none;
   background:white;
 }
 
-.modalactions{
+.formgrid textarea{
+  min-height:75px;
+}
+
+.modalbuttons{
   display:flex;
   gap:8px;
-  margin-top:16px;
+  margin-top:15px;
 }
 
-.modalactions button{
+.modalbuttons button{
   flex:1;
-  border:1px solid var(--line);
-  background:white;
-  border-radius:12px;
-  padding:11px;
+  border:0;
+  border-radius:13px;
+  padding:12px;
+  font-weight:700;
 }
 
-.modalactions .save{
+.save{
   background:var(--accent);
   color:white;
-  border-color:var(--accent);
 }
 
-/* Bottom navigation */
-
-.bottom{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
-  z-index:30;
-  height:68px;
-  background:rgba(255,255,255,.96);
-  backdrop-filter:blur(12px);
-  border-top:1px solid var(--line);
-  display:flex;
-  justify-content:center;
-  padding-bottom:env(safe-area-inset-bottom);
+.cancel{
+  background:#eef0ed;
+  color:var(--ink);
 }
 
-.nav{
-  width:33.333%;
-  max-width:150px;
+.empty{
   text-align:center;
   color:var(--muted);
-  font-size:11px;
-  padding-top:8px;
+  padding:35px 15px;
+  background:white;
+  border-radius:18px;
 }
 
-.nav b{
-  display:block;
-  font-size:22px;
-  line-height:24px;
-  margin-bottom:2px;
-}
-
-.nav.active{
+a{
   color:var(--accent);
+  word-break:break-word;
 }
-
-/* Desktop */
 
 @media(min-width:700px){
   .grid{
     grid-template-columns:1fr 1fr;
-  }
-
-  .modal{
-    align-items:center;
   }
 }
 </style>
@@ -590,15 +492,13 @@ main{
 
 <body>
 
-<div class="app">
-
 <header id="homeHeader">
   <div class="eyebrow">Deine persönliche Sammlung</div>
   <div class="title">Meine Tegernsee-Lieblinge</div>
   <div class="sub">Restaurants, Almen & besondere Plätze</div>
 
   <div class="search">
-    <span>🔎</span>
+    🔎
     <input id="search" placeholder="Restaurant suchen …">
   </div>
 </header>
@@ -607,21 +507,17 @@ main{
 
   <div class="sectionhead">
     <h2>❤️ Meine Favoriten</h2>
-    <span class="count" id="count"></span>
+    <span class="count" id="count">0</span>
   </div>
 
-  <button class="addbtn" onclick="openAdd()">
-    ＋ Restaurant hinzufügen
-  </button>
+  <button class="addbtn" onclick="openAdd()">＋ Restaurant hinzufügen</button>
 
   <div class="sync">
-    <button onclick="loadRestaurants()">↻ Daten aktualisieren</button>
+    <button onclick="refreshData()">↻ Daten aktualisieren</button>
     <button onclick="showSyncInfo()">☁ Auto-Update</button>
   </div>
 
-  <div class="small" id="syncStatus">
-    Zentrale Restaurantdaten werden geladen …
-  </div>
+  <div class="small" id="syncStatus">Daten werden geladen …</div>
 
   <div class="filters">
     <button class="chip active" data-filter="Alle">Alle</button>
@@ -632,22 +528,15 @@ main{
   </div>
 
   <div class="grid" id="cards"></div>
-
 </main>
 
-
 <main id="detail" class="detail">
-
-  <button class="back" onclick="showHome()">
-    ‹ Zurück zu meinen Favoriten
-  </button>
+  <button class="back" onclick="showHome()">‹ Zurück zu meinen Favoriten</button>
 
   <div class="hero" id="hero">🍽️</div>
 
   <h1 id="dname"></h1>
   <div class="place" id="dplace"></div>
-
-  <div id="detailStatus" class="detailstatus"></div>
 
   <div class="actions">
     <div class="action" onclick="openRoute()">📍 Route</div>
@@ -660,7 +549,6 @@ main{
   </div>
 
   <div class="info">
-
     <div>
       <span class="label">📍 Adresse</span>
       <span id="daddress">Noch ergänzen</span>
@@ -682,8 +570,8 @@ main{
     </div>
 
     <div>
-      <span class="label">✉️ E-Mail</span>
-      <span id="demail">Noch ergänzen</span>
+      <span class="label">⭐ Meine Bewertung</span>
+      <span id="drating">☆☆☆☆☆</span>
     </div>
 
     <div>
@@ -692,198 +580,340 @@ main{
     </div>
 
     <div>
-      <span class="label">⭐ Meine Bewertung</span>
-      <span id="drating">☆☆☆☆☆</span>
+      <span class="label">✉️ E-Mail</span>
+      <span id="demail">Noch ergänzen</span>
     </div>
-
   </div>
 
   <div class="note">
     <b>📝 Meine Notizen</b>
-    <textarea id="note"
-      placeholder="Was möchtest du dir merken?"></textarea>
+    <textarea id="note" placeholder="Was möchtest du dir merken?"></textarea>
   </div>
-
 </main>
 
-
-<!-- Hinzufügen / Bearbeiten -->
+<div class="bottomnav">
+  <button class="active" onclick="showHome()">🏠<br>Start</button>
+  <button onclick="focusSearch()">🔎<br>Suchen</button>
+  <button onclick="showFavorites()">❤️<br>Favoriten</button>
+</div>
 
 <div class="modal" id="modal">
-
   <div class="modalbox">
 
-    <h2 id="modalTitle">＋ Restaurant hinzufügen</h2>
+    <h2 id="modalTitle">Restaurant hinzufügen</h2>
 
-    <div class="field">
+    <div class="formgrid">
+
       <label>Name</label>
-      <input id="newName" placeholder="z. B. Seehotel Restaurant">
-    </div>
+      <input id="f_name">
 
-    <div class="field">
       <label>Ort</label>
-      <input id="newPlace" placeholder="z. B. Tegernsee">
-    </div>
+      <input id="f_ort">
 
-    <div class="field">
       <label>Kategorie</label>
-      <select id="newCat">
-        <option>Restaurant</option>
-        <option>Alm</option>
-        <option>Café</option>
-        <option>Biergarten</option>
-        <option>Ausflugsziel</option>
+      <select id="f_kategorie">
+        <option value="Restaurant">Restaurant</option>
+        <option value="Alm">Alm</option>
+        <option value="Ausflugsziel">Ausflugsziel</option>
       </select>
-    </div>
 
-    <div class="field">
       <label>Adresse</label>
-      <input id="newAddress">
-    </div>
+      <input id="f_adresse">
 
-    <div class="field">
       <label>Telefon</label>
-      <input id="newPhone" placeholder="08022 ...">
-    </div>
+      <input id="f_telefon">
 
-    <div class="field">
+      <label>Website</label>
+      <input id="f_website">
+
       <label>E-Mail</label>
-      <input id="newEmail">
-    </div>
+      <input id="f_email">
 
-    <div class="field">
-      <label>Webseite</label>
-      <input id="newWeb" placeholder="https://...">
-    </div>
-
-    <div class="field">
       <label>Öffnungszeiten</label>
-      <textarea id="newHours"
-        placeholder="z. B. Mo–So 11:00–22:00"></textarea>
-    </div>
+      <textarea id="f_oeffnungszeiten"></textarea>
 
-    <div class="field">
       <label>Ruhetag</label>
-      <input id="newClosed" placeholder="z. B. Montag">
-    </div>
+      <input id="f_ruhetag">
 
-    <div class="field">
       <label>Notizen</label>
-      <textarea id="newNotes"></textarea>
+      <textarea id="f_notizen"></textarea>
+
     </div>
 
-    <div class="modalactions">
-      <button onclick="closeModal()">Abbrechen</button>
+    <div class="modalbuttons">
+      <button class="cancel" onclick="closeModal()">Abbrechen</button>
       <button class="save" onclick="savePlace()">Speichern</button>
     </div>
 
   </div>
 </div>
 
-
-<div class="bottom">
-
-  <div class="nav active" id="navHome" onclick="showHome()">
-    <b>⌂</b>
-    Start
-  </div>
-
-  <div class="nav" onclick="focusSearch()">
-    <b>⌕</b>
-    Suchen
-  </div>
-
-  <div class="nav" onclick="showFavorites()">
-    <b>♥</b>
-    Favoriten
-  </div>
-
-</div>
-
-</div>
-
-
 <script>
-
-/* =========================================================
-   ZENTRALE API
-   ========================================================= */
-
 const API_URL =
   "https://tegernsee-restaurants-api.msc4021.workers.dev";
 
-
-/* =========================================================
-   APP-ZUSTAND
-   ========================================================= */
-
 let restaurants = [];
-let filter = "Alle";
-let currentId = null;
+let currentFilter = "Alle";
+let currentPlace = null;
 let editId = null;
 
-let favorites =
+const favorites =
   JSON.parse(localStorage.getItem("tegernseeFavorites") || "[]");
 
+function cleanValue(value){
+  if(value === null || value === undefined) return "";
 
-/* =========================================================
-   HILFSFUNKTIONEN
-   ========================================================= */
+  if(typeof value === "object"){
+    if(value.type === "null") return "";
+    if(value.value !== undefined) return cleanValue(value.value);
+    return "";
+  }
 
-function esc(value){
-  return String(value ?? "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/'/g,"&#039;");
+  return String(value);
 }
-
 
 function normalizeRestaurant(r){
-
   return {
-    id:r.id,
-    name:r.name || "",
-    ort:r.ort || "",
-    kategorie:r.kategorie || "Restaurant",
-    adresse:r.adresse || "",
-    telefon:r.telefon || "",
-    website:r.website || "",
-    email:r.email || "",
-    oeffnungszeiten:r.oeffnungszeiten || "",
-    ruhetag:r.ruhetag || "",
-    notizen:r.notizen || ""
+    id: cleanValue(r.id),
+    name: cleanValue(r.name),
+    ort: cleanValue(r.ort),
+    kategorie: cleanValue(r.kategorie),
+    adresse: cleanValue(r.adresse),
+    telefon: cleanValue(r.telefon),
+    website: cleanValue(r.website),
+    email: cleanValue(r.email),
+    oeffnungszeiten: cleanValue(r.oeffnungszeiten),
+    ruhetag: cleanValue(r.ruhetag),
+    notizen: cleanValue(r.notizen)
+  };
+}
+
+async function loadData(){
+  const status = document.getElementById("syncStatus");
+
+  try{
+    status.textContent = "Zentrale Daten werden geladen …";
+
+    const response = await fetch(
+      API_URL + "?t=" + Date.now(),
+      {
+        method:"GET",
+        cache:"no-store",
+        headers:{
+          "Accept":"application/json"
+        }
+      }
+    );
+
+    if(!response.ok){
+      throw new Error("HTTP " + response.status);
+    }
+
+    const data = await response.json();
+
+    if(!Array.isArray(data)){
+      throw new Error("API liefert keine Restaurantliste");
+    }
+
+    restaurants = data
+      .map(normalizeRestaurant)
+      .filter(r => r.name)
+      .sort((a,b) =>
+        a.name.localeCompare(b.name,"de",{sensitivity:"base"})
+      );
+
+    status.textContent =
+      "✓ Zentrale Daten geladen · " +
+      restaurants.length +
+      " Restaurants";
+
+    render();
+
+  }catch(error){
+
+    console.error(error);
+
+    status.textContent =
+      "⚠️ Die zentralen Restaurantdaten konnten nicht geladen werden.";
+
+    document.getElementById("cards").innerHTML = `
+      <div class="empty">
+        <b>Die Restaurantliste konnte gerade nicht geladen werden.</b>
+        <br><br>
+        Bitte auf „↻ Daten aktualisieren“ tippen.
+      </div>
+    `;
+  }
+}
+
+function getDayName(){
+  return [
+    "Sonntag",
+    "Montag",
+    "Dienstag",
+    "Mittwoch",
+    "Donnerstag",
+    "Freitag",
+    "Samstag"
+  ][new Date().getDay()];
+}
+
+function isClosedDay(text){
+  const day = getDayName();
+  const lower = (text || "").toLowerCase();
+
+  if(!lower) return false;
+
+  const patterns = [
+    new RegExp("\\b" + day.toLowerCase() + "\\b")
+  ];
+
+  if(day === "Montag" &&
+     /montag bis freitag/.test(lower)) return false;
+
+  return patterns.some(p => p.test(lower));
+}
+
+function parseTimes(text){
+  if(!text) return [];
+
+  const matches = [];
+  const regex =
+    /(\d{1,2}):(\d{2})\s*(?:–|-|bis)\s*(\d{1,2}):(\d{2})/g;
+
+  let m;
+
+  while((m = regex.exec(text)) !== null){
+    matches.push({
+      start:
+        parseInt(m[1],10) * 60 +
+        parseInt(m[2],10),
+
+      end:
+        parseInt(m[3],10) * 60 +
+        parseInt(m[4],10)
+    });
+  }
+
+  return matches;
+}
+
+function dayIsMentioned(text, day){
+  const lower = (text || "").toLowerCase();
+
+  const names = {
+    Montag:"montag",
+    Dienstag:"dienstag",
+    Mittwoch:"mittwoch",
+    Donnerstag:"donnerstag",
+    Freitag:"freitag",
+    Samstag:"samstag",
+    Sonntag:"sonntag"
   };
 
+  return lower.includes(names[day]);
 }
 
+function getOpeningStatus(place){
 
-function iconFor(r){
+  const hours = cleanValue(place.oeffnungszeiten);
+  const closed = cleanValue(place.ruhetag);
+  const today = getDayName();
 
-  const cat=(r.kategorie || "").toLowerCase();
+  if(!hours){
+    return {
+      type:"unknown",
+      text:"⚪ Öffnungszeit nicht hinterlegt"
+    };
+  }
 
-  if(cat.includes("alm")) return "🏔️";
-  if(cat.includes("café")) return "☕";
-  if(cat.includes("bier")) return "🍺";
-  if(cat.includes("fisch")) return "🐟";
-  if(cat.includes("ausflug")) return "🌲";
+  const closedLower = closed.toLowerCase();
 
+  if(
+    closedLower.includes(today.toLowerCase()) &&
+    !closedLower.includes("kein ruhetag")
+  ){
+    return {
+      type:"closed",
+      text:"🔴 Heute geschlossen"
+    };
+  }
+
+  if(
+    /aktuelle öffnungszeiten bitte/i.test(hours) ||
+    /vorab telefonisch/i.test(hours)
+  ){
+    return {
+      type:"unknown",
+      text:"⚪ Öffnungszeiten prüfen"
+    };
+  }
+
+  let relevantText = hours;
+
+  /*
+    Wenn Tagesangaben vorhanden sind, versuchen wir den
+    heutigen Abschnitt zu verwenden. Bei „Täglich“ gilt
+    die gesamte Zeitangabe.
+  */
+  if(!/täglich/i.test(hours) && dayIsMentioned(hours,today)){
+    const parts = hours.split(/[;]+/);
+
+    const relevant = parts.filter(part =>
+      dayIsMentioned(part,today)
+    );
+
+    if(relevant.length){
+      relevantText = relevant.join(" ");
+    }
+  }
+
+  const times = parseTimes(relevantText);
+
+  if(!times.length){
+    return {
+      type:"unknown",
+      text:"⚪ Öffnungszeit prüfen"
+    };
+  }
+
+  const now = new Date();
+  const minutes =
+    now.getHours() * 60 +
+    now.getMinutes();
+
+  const open = times.some(t =>
+    minutes >= t.start && minutes <= t.end
+  );
+
+  return open
+    ? {
+        type:"open",
+        text:"🟢 Jetzt geöffnet"
+      }
+    : {
+        type:"closed",
+        text:"🔴 Jetzt geschlossen"
+      };
+}
+
+function iconFor(place){
+  if(place.kategorie === "Alm") return "🏔️";
+  if(place.kategorie === "Ausflugsziel") return "🌲";
   return "🍽️";
 }
-
 
 function isFavorite(id){
   return favorites.includes(String(id));
 }
 
-
 function toggleFavorite(id){
+  id = String(id);
 
-  id=String(id);
+  const index = favorites.indexOf(id);
 
-  if(favorites.includes(id)){
-    favorites=favorites.filter(x=>x!==id);
+  if(index >= 0){
+    favorites.splice(index,1);
   }else{
     favorites.push(id);
   }
@@ -896,1047 +926,524 @@ function toggleFavorite(id){
   render();
 }
 
-
-/* =========================================================
-   WOCHENTAGE
-   ========================================================= */
-
-const dayNames=[
-  "Sonntag",
-  "Montag",
-  "Dienstag",
-  "Mittwoch",
-  "Donnerstag",
-  "Freitag",
-  "Samstag"
-];
-
-const shortDays={
-  "so":0,
-  "son":0,
-  "sonntag":0,
-
-  "mo":1,
-  "mon":1,
-  "montag":1,
-
-  "di":2,
-  "die":2,
-  "dienstag":2,
-
-  "mi":3,
-  "mit":3,
-  "mittwoch":3,
-
-  "do":4,
-  "don":4,
-  "donnerstag":4,
-
-  "fr":5,
-  "fre":5,
-  "freitag":5,
-
-  "sa":6,
-  "sam":6,
-  "samstag":6
-};
-
-
-/* =========================================================
-   RUHETAG ERMITTELN
-   ========================================================= */
-
-function isClosedDay(text,day){
-
-  if(!text) return false;
-
-  let s=text
-    .toLowerCase()
-    .replace(/ä/g,"a")
-    .replace(/ö/g,"o")
-    .replace(/ü/g,"u");
-
-  if(
-    s.includes("kein ruhetag") ||
-    s.includes("kein regulärer ruhetag")
-  ){
-    return false;
-  }
-
-  const dayName=dayNames[day].toLowerCase();
-
-  if(
-    s.includes(dayName) ||
-    s.includes(dayName.slice(0,2))
-  ){
-    return true;
-  }
-
-  /*
-    Bereiche wie:
-    Montag und Dienstag
-    Mittwoch und Donnerstag
-  */
-
-  const ranges=[
-    ["montag",1],
-    ["dienstag",2],
-    ["mittwoch",3],
-    ["donnerstag",4],
-    ["freitag",5],
-    ["samstag",6],
-    ["sonntag",0]
-  ];
-
-  for(const [name,num] of ranges){
-    if(s.includes(name) && day===num){
-      return true;
-    }
-  }
-
-  return false;
-}
-
-
-/* =========================================================
-   ZEITEN AUS TEXT HOLEN
-   ========================================================= */
-
-function extractTimeRanges(text){
-
-  if(!text) return [];
-
-  const ranges=[];
-
-  /*
-    Erkennt z.B.
-
-    11:00–22:00
-    11:00-22:00
-    11:00 bis 22:00
-  */
-
-  const regex=/(\d{1,2})\s*[:.]\s*(\d{2})\s*(?:–|-|bis)\s*(\d{1,2})\s*[:.]\s*(\d{2})/gi;
-
-  let match;
-
-  while((match=regex.exec(text))!==null){
-
-    const h1=Number(match[1]);
-    const m1=Number(match[2]);
-    const h2=Number(match[3]);
-    const m2=Number(match[4]);
-
-    if(h1<=23 && h2<=24 && m1<=59 && m2<=59){
-
-      ranges.push({
-        start:h1*60+m1,
-        end:h2*60+m2
-      });
-
-    }
-
-  }
-
-  return ranges;
-}
-
-
-/* =========================================================
-   ÖFFNUNGSSTATUS
-   ========================================================= */
-
-function getOpeningStatus(r){
-
-  const now=new Date();
-  const day=now.getDay();
-  const minutes=now.getHours()*60+now.getMinutes();
-
-  const closedText=(r.ruhetag || "").trim();
-  const hoursText=(r.oeffnungszeiten || "").trim();
-
-  if(!hoursText){
-
-    return {
-      state:"unknown",
-      text:"Öffnungszeit nicht hinterlegt"
-    };
-
-  }
-
-  if(isClosedDay(closedText,day)){
-
-    return {
-      state:"closed",
-      text:"Heute geschlossen"
-    };
-
-  }
-
-  /*
-    Wenn im Ruhetag Text ausdrücklich ein anderer Tag
-    genannt wird, prüfen wir die Öffnungszeiten.
-  */
-
-  const ranges=extractTimeRanges(hoursText);
-
-  if(!ranges.length){
-
-    return {
-      state:"unknown",
-      text:"Öffnungszeit prüfen"
-    };
-
-  }
-
-  for(const range of ranges){
-
-    /*
-      Normaler Zeitraum
-    */
-
-    if(range.end>range.start){
-
-      if(minutes>=range.start && minutes<range.end){
-
-        return {
-          state:"open",
-          text:"Jetzt geöffnet"
-        };
-
-      }
-
-    }
-
-    /*
-      Öffnungszeit über Mitternacht,
-      z.B. 18:00–02:00
-    */
-
-    else if(
-      minutes>=range.start ||
-      minutes<range.end
-    ){
-
-      return {
-        state:"open",
-        text:"Jetzt geöffnet"
-      };
-
-    }
-
-  }
-
-  return {
-    state:"closed",
-    text:"Jetzt geschlossen"
-  };
-
-}
-
-
-/* =========================================================
-   ÖFFNUNGS-ANZEIGE
-   ========================================================= */
-
-function statusHtml(r){
-
-  const s=getOpeningStatus(r);
-
-  if(s.state==="open"){
-
-    return `
-      <span class="status open">
-        <span class="dot"></span>
-        🟢 ${esc(s.text)}
-      </span>
-    `;
-
-  }
-
-  if(s.state==="closed"){
-
-    return `
-      <span class="status closed">
-        <span class="dot"></span>
-        🔴 ${esc(s.text)}
-      </span>
-    `;
-
-  }
-
-  return `
-    <span class="status unknown">
-      <span class="dot"></span>
-      ⚪ ${esc(s.text)}
-    </span>
-  `;
-
-}
-
-
-/* =========================================================
-   RESTAURANTS LADEN
-   ========================================================= */
-
-async function loadRestaurants(){
-
-  const status=document.getElementById("syncStatus");
-
-  status.textContent="☁ Zentrale Daten werden geladen …";
-
-  try{
-
-    const response=await fetch(
-      API_URL+"?t="+Date.now(),
-      {
-        method:"GET",
-        cache:"no-store"
-      }
-    );
-
-    if(!response.ok){
-      throw new Error("HTTP "+response.status);
-    }
-
-    const data=await response.json();
-
-    restaurants=
-      Array.isArray(data)
-      ? data.map(normalizeRestaurant)
-      : [];
-
-    restaurants.sort((a,b)=>
-      a.name.localeCompare(b.name,"de")
-    );
-
-    status.textContent=
-      `${restaurants.length} Einträge · zuletzt aktualisiert ${new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})}`;
-
-    render();
-
-    /*
-      Falls gerade eine Detailseite offen ist,
-      aktualisieren wir auch dort den Status.
-    */
-
-    if(currentId!==null){
-      const r=restaurants.find(x=>String(x.id)===String(currentId));
-
-      if(r){
-        showDetail(r);
-      }
-    }
-
-  }catch(error){
-
-    console.error(error);
-
-    status.textContent=
-      "⚠️ Die zentralen Restaurantdaten konnten nicht geladen werden.";
-
-  }
-
-}
-
-
-/* =========================================================
-   FILTER
-   ========================================================= */
-
-function matchesFilter(r){
-
-  if(filter==="Alle") return true;
-
-  if(
-    filter==="Kreuth" ||
-    filter==="Tegernsee"
-  ){
-
-    return (r.ort || "")
-      .toLowerCase()
-      .includes(filter.toLowerCase());
-
-  }
-
-  return (r.kategorie || "").toLowerCase()===
-    filter.toLowerCase();
-
-}
-
-
-/* =========================================================
-   RENDER
-   ========================================================= */
-
-function render(){
-
-  const searchValue=
-    document.getElementById("search")
-      .value
+function filteredRestaurants(){
+  const search =
+    document.getElementById("search").value
       .trim()
       .toLowerCase();
 
-  let data=restaurants.filter(r=>{
+  return restaurants.filter(r => {
 
-    if(!matchesFilter(r)) return false;
+    const matchesSearch =
+      !search ||
+      [
+        r.name,
+        r.ort,
+        r.kategorie,
+        r.adresse
+      ].join(" ").toLowerCase().includes(search);
 
-    if(!searchValue) return true;
+    let matchesFilter = true;
 
-    const text=[
-      r.name,
-      r.ort,
-      r.kategorie,
-      r.adresse
-    ].join(" ").toLowerCase();
+    if(currentFilter === "Restaurant"){
+      matchesFilter = r.kategorie === "Restaurant";
+    }
 
-    return text.includes(searchValue);
+    if(currentFilter === "Alm"){
+      matchesFilter = r.kategorie === "Alm";
+    }
 
+    if(currentFilter === "Kreuth"){
+      matchesFilter =
+        r.ort.toLowerCase().includes("kreuth");
+    }
+
+    if(currentFilter === "Tegernsee"){
+      matchesFilter =
+        r.ort.toLowerCase().includes("tegernsee");
+    }
+
+    return matchesSearch && matchesFilter;
   });
+}
 
-  data.sort((a,b)=>
-    a.name.localeCompare(b.name,"de")
-  );
+function render(){
 
-  document.getElementById("count").textContent=
-    `${data.length}`;
+  const list = filteredRestaurants();
+  const cards = document.getElementById("cards");
 
-  const cards=document.getElementById("cards");
+  document.getElementById("count").textContent =
+    list.length;
 
-  if(!data.length){
-
-    cards.innerHTML=`
-      <div class="empty">
-        <div style="font-size:35px">🔎</div>
-        <b>Keine passenden Restaurants gefunden.</b>
-        <div style="margin-top:5px">
-          Versuche einen anderen Suchbegriff oder Filter.
-        </div>
-      </div>
-    `;
-
+  if(!list.length){
+    cards.innerHTML =
+      `<div class="empty">Keine passenden Restaurants gefunden.</div>`;
     return;
   }
 
-  cards.innerHTML=data.map(r=>{
+  cards.innerHTML = list.map(place => {
 
-    const fav=isFavorite(r.id);
+    const status = getOpeningStatus(place);
+    const fav = isFavorite(place.id);
 
     return `
-      <article class="card">
-
-        <button
-          class="favorite ${fav?"active":""}"
-          onclick="event.stopPropagation();toggleFavorite('${esc(r.id)}')">
-          ${fav?"♥":"♡"}
-        </button>
+      <div class="card">
 
         <div class="cardtop">
 
-          <div class="icon">
-            ${iconFor(r)}
-          </div>
+          <div class="icon">${iconFor(place)}</div>
 
           <div class="cardmain">
-
-            <div class="name">
-              ${esc(r.name)}
+            <div class="cardname">${escapeHtml(place.name)}</div>
+            <div class="place">
+              ${escapeHtml(place.ort)}
+              ${place.kategorie ? " · " + escapeHtml(place.kategorie) : ""}
             </div>
 
-            <div class="meta">
-              ${esc(r.ort)}
-              ${r.kategorie ? " · "+esc(r.kategorie) : ""}
+            <div class="status ${status.type}">
+              ${status.text}
             </div>
-
-            ${statusHtml(r)}
-
-            ${
-              r.oeffnungszeiten
-              ? `<div class="cardhours">🕐 ${esc(r.oeffnungszeiten)}</div>`
-              : ""
-            }
-
           </div>
+
+          <button
+            class="fav"
+            onclick="toggleFavorite('${escapeAttr(place.id)}')">
+            ${fav ? "❤️" : "♡"}
+          </button>
 
         </div>
 
-        <div class="cardactions">
-
-          <button
-            class="mainaction"
-            onclick="openDetail('${esc(r.id)}')">
+        <div class="cardbottom">
+          <button onclick="openDetail('${escapeAttr(place.id)}')">
             Details
           </button>
 
+          <button onclick="routeTo('${escapeAttr(place.id)}')">
+            📍 Route
+          </button>
+
           ${
-            r.telefon
-            ? `<a href="tel:${esc(r.telefon)}">☎️ Anrufen</a>`
+            place.telefon
+            ? `<button onclick="callPhone('${escapeAttr(place.telefon)}')">
+                ☎️ Anrufen
+              </button>`
             : ""
           }
-
-          <a
-            href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((r.name+" "+r.adresse+" "+r.ort).trim())}"
-            target="_blank">
-            📍 Route
-          </a>
-
         </div>
 
-      </article>
+      </div>
     `;
-
   }).join("");
-
 }
 
+function escapeHtml(value){
+  return cleanValue(value)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
 
-/* =========================================================
-   DETAIL
-   ========================================================= */
+function escapeAttr(value){
+  return escapeHtml(value);
+}
 
 function openDetail(id){
 
-  const r=restaurants.find(
-    x=>String(x.id)===String(id)
-  );
+  currentPlace =
+    restaurants.find(r => String(r.id) === String(id));
 
-  if(!r) return;
-
-  currentId=r.id;
-
-  showDetail(r);
-
-}
-
-
-function showDetail(r){
+  if(!currentPlace) return;
 
   document.getElementById("home").style.display="none";
   document.getElementById("homeHeader").style.display="none";
   document.getElementById("detail").style.display="block";
 
-  document.getElementById("dname").textContent=r.name;
-  document.getElementById("dplace").textContent=
-    [r.ort,r.kategorie].filter(Boolean).join(" · ");
+  document.getElementById("dname").textContent =
+    currentPlace.name;
 
-  document.getElementById("hero").textContent=
-    iconFor(r);
+  document.getElementById("dplace").textContent =
+    [currentPlace.ort,currentPlace.kategorie]
+      .filter(Boolean).join(" · ");
 
-  document.getElementById("detailStatus").innerHTML=
-    statusHtml(r);
+  document.getElementById("daddress").textContent =
+    currentPlace.adresse || "Noch ergänzen";
 
-  document.getElementById("daddress").textContent=
-    r.adresse || "Noch ergänzen";
+  document.getElementById("dhours").textContent =
+    currentPlace.oeffnungszeiten || "Noch ergänzen";
 
-  document.getElementById("dhours").textContent=
-    r.oeffnungszeiten || "Noch ergänzen";
+  document.getElementById("dclosed").textContent =
+    currentPlace.ruhetag || "Kein Ruhetag hinterlegt";
 
-  document.getElementById("dclosed").textContent=
-    r.ruhetag || "Kein Ruhetag hinterlegt";
+  document.getElementById("dphone").textContent =
+    currentPlace.telefon || "Noch ergänzen";
 
-  document.getElementById("dphone").innerHTML=
-    r.telefon
-    ? `<a href="tel:${esc(r.telefon)}">${esc(r.telefon)}</a>`
-    : "Noch ergänzen";
+  document.getElementById("demail").textContent =
+    currentPlace.email || "Noch ergänzen";
 
-  document.getElementById("demail").innerHTML=
-    r.email
-    ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`
-    : "Noch ergänzen";
+  const web = document.getElementById("dweb");
 
-  document.getElementById("dweb").innerHTML=
-    r.website
-    ? `<a href="${esc(r.website)}" target="_blank">Webseite öffnen</a>`
-    : "Noch ergänzen";
+  if(currentPlace.website){
+    web.innerHTML =
+      `<a href="${escapeAttr(currentPlace.website)}"
+          target="_blank"
+          rel="noopener">
+        Webseite öffnen
+       </a>`;
+  }else{
+    web.textContent="Noch ergänzen";
+  }
 
-  document.getElementById("note").value=
-    r.notizen || "";
-
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
-
+  document.getElementById("note").value =
+    currentPlace.notizen || "";
 }
 
-
-/* =========================================================
-   ZURÜCK
-   ========================================================= */
-
 function showHome(){
-
-  currentId=null;
-
   document.getElementById("detail").style.display="none";
   document.getElementById("home").style.display="block";
   document.getElementById("homeHeader").style.display="block";
-
+  currentPlace=null;
   render();
-
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
-
 }
-
-
-/* =========================================================
-   SUCHE
-   ========================================================= */
 
 function focusSearch(){
-
   showHome();
-
-  const input=document.getElementById("search");
-
-  input.focus();
-
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
-
+  document.getElementById("search").focus();
+  window.scrollTo({top:0,behavior:"smooth"});
 }
-
-
-/* =========================================================
-   FAVORITEN
-   ========================================================= */
 
 function showFavorites(){
 
   showHome();
 
-  const favs=restaurants.filter(r=>
+  const original = currentFilter;
+
+  const list = restaurants.filter(r =>
     isFavorite(r.id)
   );
 
-  const cards=document.getElementById("cards");
+  const cards = document.getElementById("cards");
 
-  document.querySelectorAll(".chip")
-    .forEach(x=>x.classList.remove("active"));
+  document.getElementById("count").textContent =
+    list.length;
 
-  if(!favs.length){
+  if(!list.length){
+    cards.innerHTML =
+      `<div class="empty">
+        Du hast noch keine Favoriten gespeichert.
+      </div>`;
+    return;
+  }
 
-    cards.innerHTML=`
-      <div class="empty">
-        <div style="font-size:38px">♡</div>
-        <b>Noch keine Favoriten</b>
-        <div style="margin-top:5px">
-          Tippe bei einem Restaurant auf das Herz.
+  cards.innerHTML = list.map(place => {
+
+    const status = getOpeningStatus(place);
+
+    return `
+      <div class="card">
+        <div class="cardtop">
+          <div class="icon">${iconFor(place)}</div>
+          <div class="cardmain">
+            <div class="cardname">${escapeHtml(place.name)}</div>
+            <div class="place">${escapeHtml(place.ort)}</div>
+            <div class="status ${status.type}">
+              ${status.text}
+            </div>
+          </div>
+          <button class="fav"
+            onclick="toggleFavorite('${escapeAttr(place.id)}')">
+            ❤️
+          </button>
+        </div>
+
+        <div class="cardbottom">
+          <button onclick="openDetail('${escapeAttr(place.id)}')">
+            Details
+          </button>
+          <button onclick="routeTo('${escapeAttr(place.id)}')">
+            📍 Route
+          </button>
         </div>
       </div>
     `;
-
-    return;
-
-  }
-
-  cards.innerHTML=favs.map(r=>{
-
-    return `
-      <article class="card">
-
-        <button
-          class="favorite active"
-          onclick="toggleFavorite('${esc(r.id)}')">
-          ♥
-        </button>
-
-        <div class="cardtop">
-
-          <div class="icon">${iconFor(r)}</div>
-
-          <div class="cardmain">
-
-            <div class="name">${esc(r.name)}</div>
-
-            <div class="meta">
-              ${esc(r.ort)}
-              ${r.kategorie ? " · "+esc(r.kategorie) : ""}
-            </div>
-
-            ${statusHtml(r)}
-
-          </div>
-
-        </div>
-
-        <div class="cardactions">
-
-          <button
-            class="mainaction"
-            onclick="openDetail('${esc(r.id)}')">
-            Details
-          </button>
-
-          ${
-            r.telefon
-            ? `<a href="tel:${esc(r.telefon)}">☎️ Anrufen</a>`
-            : ""
-          }
-
-          <a
-            href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((r.name+" "+r.adresse+" "+r.ort).trim())}"
-            target="_blank">
-            📍 Route
-          </a>
-
-        </div>
-
-      </article>
-    `;
-
   }).join("");
 
+  currentFilter = original;
 }
 
+function routeTo(id){
 
-/* =========================================================
-   ROUTE / TELEFON
-   ========================================================= */
+  const place =
+    restaurants.find(r => String(r.id) === String(id));
+
+  if(!place) return;
+
+  const destination =
+    encodeURIComponent(
+      place.adresse ||
+      [place.name,place.ort].filter(Boolean).join(", ")
+    );
+
+  window.open(
+    "https://www.google.com/maps/search/?api=1&query=" +
+    destination,
+    "_blank"
+  );
+}
 
 function openRoute(){
-
-  const r=restaurants.find(
-    x=>String(x.id)===String(currentId)
-  );
-
-  if(!r) return;
-
-  const query=[
-    r.name,
-    r.adresse,
-    r.ort
-  ].filter(Boolean).join(" ");
-
-  location.href=
-    "https://www.google.com/maps/search/?api=1&query="+
-    encodeURIComponent(query);
-
+  if(currentPlace){
+    routeTo(currentPlace.id);
+  }
 }
 
+function callPhone(phone){
+  if(phone){
+    window.location.href =
+      "tel:" + phone.replace(/[^\d+]/g,"");
+  }
+}
 
 function callPlace(){
-
-  const r=restaurants.find(
-    x=>String(x.id)===String(currentId)
-  );
-
-  if(!r) return;
-
-  if(r.telefon){
-
-    location.href=
-      "tel:"+r.telefon.replace(/[^0-9+]/g,"");
-
-  }else{
-
-    alert(
-      "Für dieses Restaurant ist noch keine Telefonnummer hinterlegt."
-    );
-
+  if(currentPlace){
+    callPhone(currentPlace.telefon);
   }
-
 }
-
-
-/* =========================================================
-   ADMIN-PASSWORT
-   ========================================================= */
-
-function getAdminPassword(){
-
-  const password=
-    prompt("Bitte Admin-Passwort eingeben:");
-
-  if(password===null || password===""){
-    return null;
-  }
-
-  return password;
-
-}
-
-
-/* =========================================================
-   API POST
-   ========================================================= */
-
-async function apiPost(payload){
-
-  const password=getAdminPassword();
-
-  if(password===null){
-    return null;
-  }
-
-  const response=await fetch(API_URL,{
-
-    method:"POST",
-
-    headers:{
-      "Content-Type":"application/json",
-      "Authorization":"Bearer "+password
-    },
-
-    body:JSON.stringify(payload)
-
-  });
-
-  const text=await response.text();
-
-  let data=null;
-
-  try{
-    data=JSON.parse(text);
-  }catch{
-    data={raw:text};
-  }
-
-  if(!response.ok){
-
-    throw new Error(
-      data?.error ||
-      data?.message ||
-      "Serverfehler "+response.status
-    );
-
-  }
-
-  return data;
-
-}
-
-
-/* =========================================================
-   HINZUFÜGEN
-   ========================================================= */
 
 function openAdd(){
 
   editId=null;
 
-  document.getElementById("modalTitle").textContent=
-    "＋ Restaurant hinzufügen";
+  document.getElementById("modalTitle").textContent =
+    "Restaurant hinzufügen";
 
   clearForm();
 
-  document.getElementById("modal").style.display="flex";
-
+  document.getElementById("modal").style.display="block";
 }
 
+function editPlace(){
+
+  if(!currentPlace) return;
+
+  editId=currentPlace.id;
+
+  document.getElementById("modalTitle").textContent =
+    "Restaurant bearbeiten";
+
+  document.getElementById("f_name").value =
+    currentPlace.name;
+
+  document.getElementById("f_ort").value =
+    currentPlace.ort;
+
+  document.getElementById("f_kategorie").value =
+    currentPlace.kategorie || "Restaurant";
+
+  document.getElementById("f_adresse").value =
+    currentPlace.adresse;
+
+  document.getElementById("f_telefon").value =
+    currentPlace.telefon;
+
+  document.getElementById("f_website").value =
+    currentPlace.website;
+
+  document.getElementById("f_email").value =
+    currentPlace.email;
+
+  document.getElementById("f_oeffnungszeiten").value =
+    currentPlace.oeffnungszeiten;
+
+  document.getElementById("f_ruhetag").value =
+    currentPlace.ruhetag;
+
+  document.getElementById("f_notizen").value =
+    currentPlace.notizen;
+
+  document.getElementById("modal").style.display="block";
+}
 
 function clearForm(){
 
   [
-    "newName",
-    "newPlace",
-    "newAddress",
-    "newPhone",
-    "newEmail",
-    "newWeb",
-    "newHours",
-    "newClosed",
-    "newNotes"
-  ].forEach(id=>{
+    "f_name",
+    "f_ort",
+    "f_adresse",
+    "f_telefon",
+    "f_website",
+    "f_email",
+    "f_oeffnungszeiten",
+    "f_ruhetag",
+    "f_notizen"
+  ].forEach(id => {
     document.getElementById(id).value="";
   });
 
-  document.getElementById("newCat").value=
+  document.getElementById("f_kategorie").value =
     "Restaurant";
-
 }
-
 
 function closeModal(){
-
   document.getElementById("modal").style.display="none";
-
 }
 
+function getFormData(){
 
-/* =========================================================
-   BEARBEITEN
-   ========================================================= */
+  return {
+    name:
+      document.getElementById("f_name").value.trim(),
 
-function editPlace(){
+    ort:
+      document.getElementById("f_ort").value.trim(),
 
-  const r=restaurants.find(
-    x=>String(x.id)===String(currentId)
-  );
+    kategorie:
+      document.getElementById("f_kategorie").value,
 
-  if(!r) return;
+    adresse:
+      document.getElementById("f_adresse").value.trim(),
 
-  editId=r.id;
+    telefon:
+      document.getElementById("f_telefon").value.trim(),
 
-  document.getElementById("modalTitle").textContent=
-    "✏️ Restaurant bearbeiten";
+    website:
+      document.getElementById("f_website").value.trim(),
 
-  document.getElementById("newName").value=r.name;
-  document.getElementById("newPlace").value=r.ort;
-  document.getElementById("newCat").value=r.kategorie || "Restaurant";
-  document.getElementById("newAddress").value=r.adresse;
-  document.getElementById("newPhone").value=r.telefon;
-  document.getElementById("newEmail").value=r.email;
-  document.getElementById("newWeb").value=r.website;
-  document.getElementById("newHours").value=r.oeffnungszeiten;
-  document.getElementById("newClosed").value=r.ruhetag;
-  document.getElementById("newNotes").value=r.notizen;
+    email:
+      document.getElementById("f_email").value.trim(),
 
-  document.getElementById("modal").style.display="flex";
+    oeffnungszeiten:
+      document.getElementById("f_oeffnungszeiten").value.trim(),
 
+    ruhetag:
+      document.getElementById("f_ruhetag").value.trim(),
+
+    notizen:
+      document.getElementById("f_notizen").value.trim()
+  };
 }
-
-
-/* =========================================================
-   SPEICHERN
-   ========================================================= */
 
 async function savePlace(){
 
-  const restaurant={
-
-    name:document.getElementById("newName").value.trim(),
-
-    ort:document.getElementById("newPlace").value.trim(),
-
-    kategorie:document.getElementById("newCat").value,
-
-    adresse:document.getElementById("newAddress").value.trim(),
-
-    telefon:document.getElementById("newPhone").value.trim(),
-
-    email:document.getElementById("newEmail").value.trim(),
-
-    website:document.getElementById("newWeb").value.trim(),
-
-    oeffnungszeiten:
-      document.getElementById("newHours").value.trim(),
-
-    ruhetag:
-      document.getElementById("newClosed").value.trim(),
-
-    notizen:
-      document.getElementById("newNotes").value.trim()
-
-  };
-
+  const restaurant=getFormData();
 
   if(!restaurant.name){
-
-    alert("Bitte zuerst einen Restaurantnamen eingeben.");
-
+    alert("Bitte zuerst einen Namen eingeben.");
     return;
-
   }
 
+  const password =
+    prompt("Bitte Admin-Passwort eingeben:");
+
+  if(password === null) return;
 
   try{
 
-    if(editId!==null){
+    let body;
 
-      await apiPost({
+    if(editId){
+
+      body={
         action:"update",
         id:editId,
-        restaurant:restaurant
-      });
+        restaurant
+      };
 
     }else{
 
-      await apiPost({
+      body={
         action:"create",
-        restaurant:restaurant
-      });
+        restaurant
+      };
+    }
 
+    const response = await fetch(API_URL,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer " + password
+      },
+      body:JSON.stringify(body)
+    });
+
+    if(!response.ok){
+      throw new Error("HTTP " + response.status);
     }
 
     closeModal();
 
-    await loadRestaurants();
+    await loadData();
 
-    if(editId!==null){
-
-      currentId=editId;
-
-      const updated=restaurants.find(
-        x=>String(x.id)===String(editId)
-      );
+    if(editId){
+      const updated =
+        restaurants.find(r => String(r.id) === String(editId));
 
       if(updated){
-        showDetail(updated);
+        openDetail(updated.id);
       }
-
     }
-
-    editId=null;
 
   }catch(error){
 
     console.error(error);
 
     alert(
-      "Speichern nicht möglich:\n\n"+
-      error.message
+      "Speichern fehlgeschlagen.\n\n" +
+      "Bitte Admin-Passwort und Verbindung prüfen."
     );
-
   }
-
 }
-
-
-/* =========================================================
-   LÖSCHEN
-   ========================================================= */
 
 async function deletePlace(){
 
-  const r=restaurants.find(
-    x=>String(x.id)===String(currentId)
-  );
-
-  if(!r) return;
+  if(!currentPlace) return;
 
   if(!confirm(
-    "„"+r.name+"“ wirklich löschen?"
+    "Möchtest du „" +
+    currentPlace.name +
+    "“ wirklich löschen?"
   )){
     return;
   }
 
+  const password =
+    prompt("Bitte Admin-Passwort eingeben:");
+
+  if(password === null) return;
 
   try{
 
-    await apiPost({
-      action:"delete",
-      id:r.id
+    const response = await fetch(API_URL,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer " + password
+      },
+      body:JSON.stringify({
+        action:"delete",
+        id:currentPlace.id
+      })
     });
 
-    currentId=null;
-
-    await loadRestaurants();
+    if(!response.ok){
+      throw new Error("HTTP " + response.status);
+    }
 
     showHome();
+
+    await loadData();
 
   }catch(error){
 
     console.error(error);
 
     alert(
-      "Löschen nicht möglich:\n\n"+
-      error.message
+      "Löschen fehlgeschlagen.\n\n" +
+      "Bitte Admin-Passwort prüfen."
     );
-
   }
-
 }
-
-
-/* =========================================================
-   NOTIZEN SPEICHERN
-   ========================================================= */
 
 let noteTimer=null;
 
@@ -1944,135 +1451,87 @@ document.getElementById("note").addEventListener(
   "input",
   function(){
 
+    if(!currentPlace) return;
+
     clearTimeout(noteTimer);
 
     noteTimer=setTimeout(async()=>{
 
-      if(currentId===null) return;
+      const password =
+        prompt(
+          "Admin-Passwort für das Speichern der Notiz:"
+        );
 
-      const r=restaurants.find(
-        x=>String(x.id)===String(currentId)
-      );
-
-      if(!r) return;
-
-      const newNote=
-        document.getElementById("note").value;
-
-      if(newNote===r.notizen) return;
+      if(password === null) return;
 
       try{
 
-        await apiPost({
-          action:"update",
-          id:r.id,
-          restaurant:{
-            ...r,
-            notizen:newNote
-          }
+        const response = await fetch(API_URL,{
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json",
+            "Authorization":"Bearer " + password
+          },
+          body:JSON.stringify({
+            action:"update",
+            id:currentPlace.id,
+            restaurant:{
+              ...currentPlace,
+              notizen:this.value
+            }
+          })
         });
 
-        r.notizen=newNote;
+        if(!response.ok){
+          throw new Error("HTTP " + response.status);
+        }
+
+        currentPlace.notizen=this.value;
 
       }catch(error){
-
         console.error(error);
-
+        alert("Notiz konnte nicht gespeichert werden.");
       }
 
     },900);
-
   }
 );
 
-
-/* =========================================================
-   AUTO-STATUS AKTUALISIEREN
-   ========================================================= */
-
-setInterval(()=>{
-
-  if(restaurants.length){
-
-    render();
-
-    if(currentId!==null){
-
-      const r=restaurants.find(
-        x=>String(x.id)===String(currentId)
-      );
-
-      if(r){
-
-        document.getElementById("detailStatus").innerHTML=
-          statusHtml(r);
-
-      }
-
-    }
-
-  }
-
-},60000);
-
-
-/* =========================================================
-   SYNC INFO
-   ========================================================= */
-
-function showSyncInfo(){
-
-  alert(
-    "Die Restaurantliste wird zentral über Turso gespeichert. " +
-    "Beim Öffnen der App und über „Daten aktualisieren“ " +
-    "werden die aktuellen Daten vom Server geladen. " +
-    "Der Öffnungsstatus wird auf deinem Gerät automatisch " +
-    "nach Wochentag und Uhrzeit berechnet."
-  );
-
+function refreshData(){
+  loadData();
 }
 
+function showSyncInfo(){
+  alert(
+    "Die App lädt die Restaurantdaten beim Öffnen " +
+    "und beim Aktualisieren direkt aus der zentralen Online-Datenbank."
+  );
+}
 
-/* =========================================================
-   SUCHE
-   ========================================================= */
+document.getElementById("search").addEventListener(
+  "input",
+  render
+);
 
-document.getElementById("search")
-  .addEventListener("input",render);
+document.querySelectorAll(".chip").forEach(button => {
 
+  button.addEventListener("click",()=>{
 
-/* =========================================================
-   FILTER BUTTONS
-   ========================================================= */
+    document.querySelectorAll(".chip")
+      .forEach(b => b.classList.remove("active"));
 
-document.querySelectorAll(".chip")
-  .forEach(button=>{
+    button.classList.add("active");
 
-    button.addEventListener("click",()=>{
+    currentFilter =
+      button.dataset.filter;
 
-      filter=button.dataset.filter;
-
-      document.querySelectorAll(".chip")
-        .forEach(x=>
-          x.classList.toggle(
-            "active",
-            x===button
-          )
-        );
-
-      render();
-
-    });
-
+    render();
   });
+});
 
+setInterval(render,60000);
 
-/* =========================================================
-   START
-   ========================================================= */
-
-loadRestaurants();
-
+loadData();
 </script>
 
 </body>
