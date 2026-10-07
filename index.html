@@ -56,6 +56,7 @@ button{font:inherit}
 .nav{text-align:center;font-size:11px;color:#6f7d77}
 .nav b{display:block;font-size:20px;color:#17352d}
 .empty{text-align:center;color:#6f7d77;padding:30px}
+.error{text-align:center;color:#9b2c2c;background:#fff0f0;border:1px solid #f0cccc;border-radius:15px;padding:18px}
 a{color:#17352d}
 </style>
 </head>
@@ -65,208 +66,415 @@ a{color:#17352d}
 <div class="app">
 
 <header id="header">
+
 <div class="title">Meine Tegernsee-Lieblinge</div>
-<div class="sub">Restaurants, Almen & besondere Plätze</div>
+
+<div class="sub">
+Restaurants, Almen & besondere Plätze
+</div>
 
 <div class="search">
 🔎 <input id="search" placeholder="Restaurant suchen …">
 </div>
+
 </header>
+
 
 <main id="home">
 
 <div class="section">
+
 <h2>❤️ Meine Favoriten</h2>
+
 <span class="count" id="count"></span>
+
 </div>
 
-<button class="add" onclick="openAdd()">＋ Restaurant hinzufügen</button>
+
+<button class="add" onclick="openAdd()">
+＋ Restaurant hinzufügen
+</button>
+
 
 <div class="filters">
-<button class="chip active" data-filter="Alle">Alle</button>
-<button class="chip" data-filter="Restaurant">Restaurants</button>
-<button class="chip" data-filter="Alm">Almen</button>
-<button class="chip" data-filter="Kreuth">Kreuth</button>
-<button class="chip" data-filter="Tegernsee">Tegernsee</button>
+
+<button class="chip active" data-filter="Alle">
+Alle
+</button>
+
+<button class="chip" data-filter="Restaurant">
+Restaurants
+</button>
+
+<button class="chip" data-filter="Alm">
+Almen
+</button>
+
+<button class="chip" data-filter="Kreuth">
+Kreuth
+</button>
+
+<button class="chip" data-filter="Tegernsee">
+Tegernsee
+</button>
+
 </div>
+
 
 <div class="grid" id="cards"></div>
 
 </main>
 
+
 <main id="detail" class="detail">
 
-<button class="back" onclick="showHome()">‹ Zurück</button>
+<button class="back" onclick="showHome()">
+‹ Zurück
+</button>
 
-<div class="hero" id="hero">🍽️</div>
+
+<div class="hero" id="hero">
+🍽️
+</div>
+
 
 <h1 id="dname"></h1>
+
 <div class="place" id="dplace"></div>
 
+
 <div class="actions">
-<div class="action" onclick="openRoute()">📍 Route</div>
-<div class="action" onclick="callPlace()">☎️ Anrufen</div>
+
+<div class="action" onclick="openRoute()">
+📍 Route
 </div>
+
+<div class="action" onclick="callPlace()">
+☎️ Anrufen
+</div>
+
+</div>
+
 
 <div class="tools">
-<button class="tool" onclick="editPlace()">✏️ Bearbeiten</button>
-<button class="tool" onclick="deletePlace()">🗑️ Löschen</button>
+
+<button class="tool" onclick="editPlace()">
+✏️ Bearbeiten
+</button>
+
+<button class="tool" onclick="deletePlace()">
+🗑️ Löschen
+</button>
+
 </div>
+
 
 <div class="info">
-<div><span class="label">📍 Adresse</span><span id="daddress">–</span></div>
-<div><span class="label">🕐 Öffnungszeiten</span><span id="dhours">–</span></div>
-<div><span class="label">🚫 Ruhetag</span><span id="dclosed">–</span></div>
-<div><span class="label">☎️ Telefon</span><span id="dphone">–</span></div>
-<div><span class="label">🌐 Webseite</span><span id="dweb">–</span></div>
-<div><span class="label">✉️ E-Mail</span><span id="demail">–</span></div>
+
+<div>
+<span class="label">📍 Adresse</span>
+<span id="daddress">–</span>
 </div>
 
+<div>
+<span class="label">🕐 Öffnungszeiten</span>
+<span id="dhours">–</span>
+</div>
+
+<div>
+<span class="label">🚫 Ruhetag</span>
+<span id="dclosed">–</span>
+</div>
+
+<div>
+<span class="label">☎️ Telefon</span>
+<span id="dphone">–</span>
+</div>
+
+<div>
+<span class="label">🌐 Webseite</span>
+<span id="dweb">–</span>
+</div>
+
+<div>
+<span class="label">✉️ E-Mail</span>
+<span id="demail">–</span>
+</div>
+
+</div>
+
+
 <div class="note">
+
 <b>📝 Meine Notizen</b>
-<textarea id="note" placeholder="Was möchtest du dir merken?"></textarea>
+
+<textarea
+id="note"
+placeholder="Was möchtest du dir merken?"
+></textarea>
+
 </div>
 
 </main>
+
 
 <div class="modal" id="modal">
 
 <div class="modalbox">
 
-<h2 id="modalTitle">＋ Restaurant hinzufügen</h2>
+<h2 id="modalTitle">
+＋ Restaurant hinzufügen
+</h2>
+
 
 <div class="field">
 <label>Name</label>
 <input id="fName">
 </div>
 
+
 <div class="field">
 <label>Ort</label>
 <input id="fPlace">
 </div>
 
+
 <div class="field">
+
 <label>Kategorie</label>
+
 <select id="fCat">
+
 <option>Restaurant</option>
 <option>Alm</option>
 <option>Café</option>
 <option>Biergarten</option>
 <option>Ausflugsziel</option>
+
 </select>
+
 </div>
+
 
 <div class="field">
 <label>Adresse</label>
 <input id="fAddress">
 </div>
 
+
 <div class="field">
 <label>Telefon</label>
 <input id="fPhone">
 </div>
+
 
 <div class="field">
 <label>Website</label>
 <input id="fWeb">
 </div>
 
+
 <div class="field">
 <label>E-Mail</label>
 <input id="fEmail">
 </div>
+
 
 <div class="field">
 <label>Öffnungszeiten</label>
 <input id="fHours">
 </div>
 
+
 <div class="field">
 <label>Ruhetag</label>
 <input id="fClosed">
 </div>
 
+
 <div class="modalbuttons">
-<button onclick="closeModal()">Abbrechen</button>
-<button class="save" onclick="savePlace()">Speichern</button>
+
+<button onclick="closeModal()">
+Abbrechen
+</button>
+
+<button class="save" onclick="savePlace()">
+Speichern
+</button>
+
 </div>
 
 </div>
+
 </div>
+
 
 <div class="bottom">
-<div class="nav" onclick="showHome()"><b>⌂</b>Start</div>
-<div class="nav" onclick="document.getElementById('search').focus()"><b>⌕</b>Suchen</div>
+
+<div class="nav" onclick="showHome()">
+<b>⌂</b>
+Start
+</div>
+
+<div class="nav" onclick="document.getElementById('search').focus()">
+<b>⌕</b>
+Suchen
 </div>
 
 </div>
+
+</div>
+
 
 <script>
 
 /* =========================================================
-   GOOGLE-TABELLE
+   CLOUDFLARE WORKER
    ========================================================= */
 
 const DATA_URL =
-"https://script.google.com/macros/s/AKfycbzTWDyY2p9qBM1bzAyFm1W46lO6TWQpMZUpL6uUPtYp6k2koxCXknfwQ2k2g_LcmMmq/exec";
+"https://tegernsee-restaurants-api.msc4021.workers.dev";
 
 
 /* =========================================================
    APP-VARIABLEN
    ========================================================= */
 
-let restaurants=[];
-let current=-1;
-let filter="Alle";
-let editMode=false;
-let editOriginal=null;
+let restaurants = [];
 
-let favorites=new Set();
+let current = -1;
 
-try{
+let filter = "Alle";
 
-favorites=new Set(
+let editMode = false;
+
+let editOriginal = null;
+
+let adminPassword = sessionStorage.getItem(
+"tegernseeAdminPassword"
+) || "";
+
+
+let favorites = new Set();
+
+try {
+
+favorites = new Set(
 JSON.parse(
-localStorage.getItem("tegernseeFavorites")||"[]"
+localStorage.getItem(
+"tegernseeFavorites"
+) || "[]"
 )
 );
 
-}catch(e){
+} catch(e) {
 
-favorites=new Set();
+favorites = new Set();
 
 }
 
-let notes={};
 
-try{
+let notes = {};
 
-notes=JSON.parse(
-localStorage.getItem("tegernseeNotes")||"{}"
+try {
+
+notes = JSON.parse(
+localStorage.getItem(
+"tegernseeNotes"
+) || "{}"
 );
 
-}catch(e){
+} catch(e) {
 
-notes={};
+notes = {};
 
 }
 
 
 /* =========================================================
-   RESTAURANTS AUS GOOGLE-TABELLE LADEN
+   ADMIN-PASSWORT
    ========================================================= */
 
-async function loadRestaurants(){
+function getAdminPassword(){
 
-try{
+if(adminPassword){
 
-const response=
+return adminPassword;
+
+}
+
+const password = prompt(
+"Bitte dein Admin-Passwort eingeben:"
+);
+
+if(!password){
+
+return null;
+
+}
+
+adminPassword = password;
+
+sessionStorage.setItem(
+"tegernseeAdminPassword",
+adminPassword
+);
+
+return adminPassword;
+
+}
+
+
+/* =========================================================
+   API-ANFRAGE
+   ========================================================= */
+
+async function apiRequest(
+body
+){
+
+const password =
+getAdminPassword();
+
+if(!password){
+
+throw new Error(
+"Kein Admin-Passwort eingegeben."
+);
+
+}
+
+const response =
 await fetch(
-DATA_URL+"?v="+Date.now(),
+DATA_URL,
 {
-cache:"no-store"
+method:"POST",
+
+headers:{
+"Content-Type":"application/json",
+"Authorization":
+"Bearer "+password
+},
+
+body:JSON.stringify(body)
 }
 );
+
+
+if(response.status===401){
+
+adminPassword="";
+
+sessionStorage.removeItem(
+"tegernseeAdminPassword"
+);
+
+throw new Error(
+"Das Admin-Passwort ist falsch."
+);
+
+}
+
 
 if(!response.ok){
 
@@ -276,8 +484,54 @@ throw new Error(
 
 }
 
-const data=
+
+const result =
 await response.json();
+
+
+if(result.error){
+
+throw new Error(
+result.error
+);
+
+}
+
+
+return result;
+
+}
+
+
+/* =========================================================
+   RESTAURANTS LADEN
+   ========================================================= */
+
+async function loadRestaurants(){
+
+try{
+
+const response =
+await fetch(
+DATA_URL+"?v="+Date.now(),
+{
+cache:"no-store"
+}
+);
+
+
+if(!response.ok){
+
+throw new Error(
+"HTTP "+response.status
+);
+
+}
+
+
+const data =
+await response.json();
+
 
 if(!Array.isArray(data)){
 
@@ -287,27 +541,37 @@ throw new Error(
 
 }
 
-restaurants=
+
+restaurants =
 data
 .map(normalizeRestaurant)
 .filter(r=>r.name);
 
-restaurants.sort((a,b)=>
+
+restaurants.sort(
+(a,b)=>
 (a.name||"").localeCompare(
 (b.name||""),
 "de"
 )
 );
 
+
 render();
+
 
 }catch(error){
 
 console.error(error);
 
-document.getElementById("cards").innerHTML=
-'<div class="empty">'+
-'⚠️ Die Restaurantdaten konnten nicht aus der Google-Tabelle geladen werden.'+
+
+document.getElementById(
+"cards"
+).innerHTML =
+
+'<div class="error">'+
+'⚠️ Die Restaurantdaten konnten nicht geladen werden.<br><br>'+
+'Bitte prüfe deine Internetverbindung.'+
 '</div>';
 
 }
@@ -316,111 +580,47 @@ document.getElementById("cards").innerHTML=
 
 
 /* =========================================================
-   GOOGLE-TABELLE → APP-FORMAT
+   WORKER-DATEN → APP-FORMAT
    ========================================================= */
 
 function normalizeRestaurant(r){
 
-return{
+return {
+
+id:
+r.id || "",
 
 name:
-r.name||
-r.Name||
-"",
+r.name || "",
 
 location:
-r.location||
-r.Ort||
-"",
+r.ort || "",
 
 category:
-r.category||
-r.Kategorie||
-"Restaurant",
+r.kategorie || "Restaurant",
 
 address:
-r.address||
-r.Adresse||
-"",
+r.adresse || "",
 
 phone:
-r.phone||
-r.Telefon||
-"",
+r.telefon || "",
 
 website:
-r.website||
-r.Website||
-"",
+r.website || "",
 
 email:
-r.email||
-r["E-Mail"]||
-"",
+r.email || "",
 
 openingHours:
-r.openingHours||
-r.Öffnungszeiten||
-"",
+r.oeffnungszeiten || "",
 
 restDay:
-r.restDay||
-r.Ruhetag||
-"",
+r.ruhetag || "",
 
 notes:
-r.notes||
-r.Notizen||
-""
+r.notizen || ""
 
 };
-
-}
-
-
-/* =========================================================
-   NEU:
-   AKTUELLEN RESTAURANTSTAND IN GOOGLE-TABELLE SPEICHERN
-   ========================================================= */
-
-async function saveToGoogleSheet(){
-
-const response=
-await fetch(
-DATA_URL,
-{
-method:"POST",
-headers:{
-"Content-Type":
-"text/plain;charset=utf-8"
-},
-body:JSON.stringify({
-restaurants:restaurants
-})
-}
-);
-
-if(!response.ok){
-
-throw new Error(
-"HTTP "+response.status
-);
-
-}
-
-const result=
-await response.json();
-
-if(!result.ok){
-
-throw new Error(
-result.error||
-"Speichern in Google-Tabelle fehlgeschlagen."
-);
-
-}
-
-return result;
 
 }
 
@@ -431,45 +631,64 @@ return result;
 
 function render(){
 
-const q=
-(document.getElementById("search").value||"")
+const q =
+(
+document.getElementById(
+"search"
+).value || ""
+)
 .toLowerCase()
 .trim();
 
-const list=
+
+const list =
 restaurants.filter(r=>{
 
-const filterOK=
+const filterOK =
 filter==="Alle" ||
 r.category===filter ||
 r.location===filter;
 
-const searchOK=
+
+const searchOK =
+
 (r.name||"")
 .toLowerCase()
-.includes(q) ||
+.includes(q)
+
+||
 
 (r.location||"")
 .toLowerCase()
-.includes(q) ||
+.includes(q)
+
+||
 
 (r.category||"")
 .toLowerCase()
 .includes(q);
 
+
 return filterOK && searchOK;
 
 });
 
-document.getElementById("count").textContent=
+
+document.getElementById(
+"count"
+).textContent =
 list.length+" Einträge";
 
-document.getElementById("cards").innerHTML=
+
+document.getElementById(
+"cards"
+).innerHTML =
 
 list.map(r=>{
 
-const index=
+const index =
 restaurants.indexOf(r);
+
 
 return `
 
@@ -502,17 +721,23 @@ ${favorites.has(r.name)?"❤️":"♡"}
 ${esc(r.category||"")}
 </span>
 
-${favorites.has(r.name)?
-'<span class="tag">Favorit</span>':
+${favorites.has(r.name)
+?
+'<span class="tag">Favorit</span>'
+:
 ""}
 
 </div>
 
 <div class="row">
 
-${r.openingHours?
-"🕐 "+esc(r.openingHours):
-"🕐 Öffnungszeiten ansehen"}
+${
+r.openingHours
+?
+"🕐 "+esc(r.openingHours)
+:
+"🕐 Öffnungszeiten ansehen"
+}
 
 </div>
 
@@ -535,43 +760,79 @@ ${r.openingHours?
 
 function openDetail(index){
 
-current=index;
+current = index;
 
-const r=
+const r =
 restaurants[index];
 
 if(!r)return;
 
-document.getElementById("home").style.display="none";
-document.getElementById("header").style.display="none";
-document.getElementById("detail").style.display="block";
 
-document.getElementById("dname").textContent=
-r.name||"";
+document.getElementById(
+"home"
+).style.display="none";
 
-document.getElementById("dplace").textContent=
+
+document.getElementById(
+"header"
+).style.display="none";
+
+
+document.getElementById(
+"detail"
+).style.display="block";
+
+
+document.getElementById(
+"dname"
+).textContent =
+r.name || "";
+
+
+document.getElementById(
+"dplace"
+).textContent =
 "📍 "+(r.location||"");
 
-document.getElementById("daddress").textContent=
-r.address||"–";
 
-document.getElementById("dhours").textContent=
-r.openingHours||"–";
+document.getElementById(
+"daddress"
+).textContent =
+r.address || "–";
 
-document.getElementById("dclosed").textContent=
-r.restDay||"–";
 
-document.getElementById("dphone").textContent=
-r.phone||"";
+document.getElementById(
+"dhours"
+).textContent =
+r.openingHours || "–";
 
-document.getElementById("demail").textContent=
-r.email||"";
+
+document.getElementById(
+"dclosed"
+).textContent =
+r.restDay || "–";
+
+
+document.getElementById(
+"dphone"
+).textContent =
+r.phone || "–";
+
+
+document.getElementById(
+"demail"
+).textContent =
+r.email || "–";
+
 
 if(r.website){
 
-document.getElementById("dweb").innerHTML=
+document.getElementById(
+"dweb"
+).innerHTML =
 
-`<a href="${safeUrl(r.website)}"
+`<a
+href="${safeUrl(r.website)}"
 target="_blank"
 rel="noopener">
 Webseite öffnen
@@ -579,17 +840,26 @@ Webseite öffnen
 
 }else{
 
-document.getElementById("dweb").textContent=
-"–";
+document.getElementById(
+"dweb"
+).textContent="–";
 
 }
 
-document.getElementById("note").value=
-notes[r.name]||"";
 
-document.getElementById("note").oninput=function(){
+document.getElementById(
+"note"
+).value =
+notes[r.name] || "";
 
-notes[r.name]=this.value;
+
+document.getElementById(
+"note"
+).oninput = function(){
+
+notes[r.name] =
+this.value;
+
 
 localStorage.setItem(
 "tegernseeNotes",
@@ -607,9 +877,20 @@ JSON.stringify(notes)
 
 function showHome(){
 
-document.getElementById("detail").style.display="none";
-document.getElementById("home").style.display="block";
-document.getElementById("header").style.display="block";
+document.getElementById(
+"detail"
+).style.display="none";
+
+
+document.getElementById(
+"home"
+).style.display="block";
+
+
+document.getElementById(
+"header"
+).style.display="block";
+
 
 render();
 
@@ -622,15 +903,17 @@ render();
 
 function openRoute(){
 
-const r=
+const r =
 restaurants[current];
 
 if(!r)return;
 
-location.href=
+
+location.href =
 "https://www.google.com/maps/search/?api=1&query="+
 encodeURIComponent(
 (r.name||"")+" "+
+(r.address||"")+" "+
 (r.location||"")+" Tegernsee"
 );
 
@@ -643,10 +926,11 @@ encodeURIComponent(
 
 function callPlace(){
 
-const r=
+const r =
 restaurants[current];
 
 if(!r)return;
+
 
 if(!r.phone){
 
@@ -658,7 +942,8 @@ return;
 
 }
 
-location.href=
+
+location.href =
 "tel:"+
 r.phone.replace(
 /[^0-9+]/g,
@@ -669,27 +954,34 @@ r.phone.replace(
 
 
 /* =========================================================
-   RESTAURANT HINZUFÜGEN
+   HINZUFÜGEN
    ========================================================= */
 
 function openAdd(){
 
-editMode=false;
-editOriginal=null;
+editMode = false;
 
-document.getElementById("modalTitle").textContent=
+editOriginal = null;
+
+
+document.getElementById(
+"modalTitle"
+).textContent =
 "＋ Restaurant hinzufügen";
+
 
 clearForm();
 
-document.getElementById("modal").style.display=
-"flex";
+
+document.getElementById(
+"modal"
+).style.display="flex";
 
 }
 
 
 /* =========================================================
-   RESTAURANT BEARBEITEN
+   BEARBEITEN
    ========================================================= */
 
 function editPlace(){
@@ -699,47 +991,82 @@ current<0 ||
 !restaurants[current]
 )return;
 
-editOriginal={
+
+editOriginal = {
 ...restaurants[current]
 };
 
-editMode=true;
 
-const r=
+editMode = true;
+
+
+const r =
 restaurants[current];
 
-document.getElementById("modalTitle").textContent=
+
+document.getElementById(
+"modalTitle"
+).textContent =
 "✏️ Restaurant bearbeiten";
 
-document.getElementById("fName").value=
-r.name||"";
 
-document.getElementById("fPlace").value=
-r.location||"";
+document.getElementById(
+"fName"
+).value =
+r.name || "";
 
-document.getElementById("fCat").value=
-r.category||"Restaurant";
 
-document.getElementById("fAddress").value=
-r.address||"";
+document.getElementById(
+"fPlace"
+).value =
+r.location || "";
 
-document.getElementById("fPhone").value=
-r.phone||"";
 
-document.getElementById("fWeb").value=
-r.website||"";
+document.getElementById(
+"fCat"
+).value =
+r.category || "Restaurant";
 
-document.getElementById("fEmail").value=
-r.email||"";
 
-document.getElementById("fHours").value=
-r.openingHours||"";
+document.getElementById(
+"fAddress"
+).value =
+r.address || "";
 
-document.getElementById("fClosed").value=
-r.restDay||"";
 
-document.getElementById("modal").style.display=
-"flex";
+document.getElementById(
+"fPhone"
+).value =
+r.phone || "";
+
+
+document.getElementById(
+"fWeb"
+).value =
+r.website || "";
+
+
+document.getElementById(
+"fEmail"
+).value =
+r.email || "";
+
+
+document.getElementById(
+"fHours"
+).value =
+r.openingHours || "";
+
+
+document.getElementById(
+"fClosed"
+).value =
+r.restDay || "";
+
+
+document.getElementById(
+"modal"
+).style.display="flex";
 
 }
 
@@ -750,10 +1077,11 @@ document.getElementById("modal").style.display=
 
 async function savePlace(){
 
-const name=
-document.getElementById("fName")
-.value
-.trim();
+const name =
+document.getElementById(
+"fName"
+).value.trim();
+
 
 if(!name){
 
@@ -766,190 +1094,182 @@ return;
 }
 
 
-/*
-   Sicherheitskopie.
-   Falls das Speichern in Google fehlschlägt,
-   können wir den alten Stand wiederherstellen.
-*/
-
-const backup=
-JSON.parse(
-JSON.stringify(restaurants)
-);
+const wasEdit =
+editMode;
 
 
-const r={
+const oldRestaurant =
+editOriginal
+?
+{...editOriginal}
+:
+null;
+
+
+const r = {
 
 name:name,
 
 location:
-document.getElementById("fPlace")
-.value
-.trim(),
+document.getElementById(
+"fPlace"
+).value.trim(),
 
 category:
-document.getElementById("fCat")
-.value,
+document.getElementById(
+"fCat"
+).value,
 
 address:
-document.getElementById("fAddress")
-.value
-.trim(),
+document.getElementById(
+"fAddress"
+).value.trim(),
 
 phone:
-document.getElementById("fPhone")
-.value
-.trim(),
+document.getElementById(
+"fPhone"
+).value.trim(),
 
 website:
-document.getElementById("fWeb")
-.value
-.trim(),
+document.getElementById(
+"fWeb"
+).value.trim(),
 
 email:
-document.getElementById("fEmail")
-.value
-.trim(),
+document.getElementById(
+"fEmail"
+).value.trim(),
 
 openingHours:
-document.getElementById("fHours")
-.value
-.trim(),
+document.getElementById(
+"fHours"
+).value.trim(),
 
 restDay:
-document.getElementById("fClosed")
-.value
-.trim(),
+document.getElementById(
+"fClosed"
+).value.trim(),
 
-notes:""
+notes:
+oldRestaurant
+?
+oldRestaurant.notes || ""
+:
+""
 
 };
 
 
 /* =========================================================
-   DATENSATZ ÄNDERN ODER NEU ANLEGEN
+   BEARBEITEN
    ========================================================= */
 
-if(editMode && editOriginal){
-
-const oldIndex=
-restaurants.findIndex(item=>
-item.name===editOriginal.name &&
-item.address===editOriginal.address &&
-item.location===editOriginal.location
-);
-
-if(oldIndex!==-1){
-
-restaurants[oldIndex]=r;
-
-}else if(
-current>=0 &&
-current<restaurants.length
+if(
+wasEdit &&
+oldRestaurant &&
+oldRestaurant.id
 ){
-
-restaurants[current]=r;
-
-}else{
-
-restaurants.push(r);
-
-}
-
-}else{
-
-restaurants.push(r);
-
-}
-
-
-/* alphabetisch sortieren */
-
-restaurants.sort((a,b)=>
-(a.name||"").localeCompare(
-(b.name||""),
-"de"
-)
-);
-
-
-/* =========================================================
-   JETZT WIRKLICH IN GOOGLE-TABELLE SPEICHERN
-   ========================================================= */
 
 try{
 
-await saveToGoogleSheet();
+await apiRequest({
 
+action:"update",
 
-/* Lokalen Stand ebenfalls sichern */
+id:oldRestaurant.id,
 
-localStorage.setItem(
-"tegernseeLocalChanges",
-JSON.stringify(restaurants)
-);
+restaurant:r
+
+});
+
 
 }catch(error){
 
 console.error(error);
 
-
-/* Alten Stand wiederherstellen */
-
-restaurants=backup;
-
 alert(
-"⚠️ Das Restaurant konnte nicht in der Google-Tabelle gespeichert werden.\n\n"+
-"Bitte prüfe deine Internetverbindung und versuche es noch einmal."
+"⚠️ Das Restaurant konnte nicht gespeichert werden.\n\n"+
+error.message
 );
 
 return;
 
 }
 
-
-const detailName=r.name;
-
-closeModal();
-
-render();
+}
 
 
-/* Nach Bearbeitung direkt wieder zum Restaurant */
+/* =========================================================
+   NEU ANLEGEN
+   ========================================================= */
 
-if(editMode){
+else{
 
-const newIndex=
-restaurants.findIndex(
-x=>
-x.name===detailName &&
-x.address===r.address &&
-x.location===r.location
+try{
+
+await apiRequest({
+
+action:"create",
+
+restaurant:r
+
+});
+
+
+}catch(error){
+
+console.error(error);
+
+alert(
+"⚠️ Das Restaurant konnte nicht hinzugefügt werden.\n\n"+
+error.message
 );
 
-if(newIndex!==-1){
-
-openDetail(newIndex);
-
-}else{
-
-showHome();
+return;
 
 }
-
-}
-
-
-/* Bearbeitungsmodus zurücksetzen */
-
-editMode=false;
-editOriginal=null;
 
 }
 
 
 /* =========================================================
-   RESTAURANT LÖSCHEN
+   ZENTRALE DATENBANK NEU LADEN
+   ========================================================= */
+
+closeModal();
+
+
+editMode=false;
+
+editOriginal=null;
+
+
+await loadRestaurants();
+
+
+/* Bei Bearbeitung wieder das Restaurant öffnen */
+
+if(wasEdit){
+
+const newIndex =
+restaurants.findIndex(
+x=>x.name===name
+);
+
+
+if(newIndex!==-1){
+
+openDetail(newIndex);
+
+}
+
+}
+
+}
+
+
+/* =========================================================
+   LÖSCHEN
    ========================================================= */
 
 async function deletePlace(){
@@ -959,8 +1279,10 @@ current<0 ||
 !restaurants[current]
 )return;
 
-const r=
+
+const r =
 restaurants[current];
+
 
 if(!confirm(
 "„"+r.name+"“ wirklich löschen?"
@@ -971,50 +1293,36 @@ return;
 }
 
 
-/* Sicherheitskopie */
-
-const backup=
-JSON.parse(
-JSON.stringify(restaurants)
-);
-
-
-/* Restaurant entfernen */
-
-restaurants.splice(
-current,
-1
-);
-
-
-/* =========================================================
-   LÖSCHUNG IN GOOGLE-TABELLE SPEICHERN
-   ========================================================= */
-
 try{
 
-await saveToGoogleSheet();
+await apiRequest({
 
-localStorage.setItem(
-"tegernseeLocalChanges",
-JSON.stringify(restaurants)
-);
+action:"delete",
+
+id:r.id
+
+});
+
 
 }catch(error){
 
 console.error(error);
 
-restaurants=backup;
-
 alert(
-"⚠️ Das Restaurant konnte nicht aus der Google-Tabelle gelöscht werden."
+"⚠️ Das Restaurant konnte nicht gelöscht werden.\n\n"+
+error.message
 );
 
 return;
 
 }
 
+
 current=-1;
+
+
+await loadRestaurants();
+
 
 showHome();
 
@@ -1036,14 +1344,17 @@ function clearForm(){
 "fEmail",
 "fHours",
 "fClosed"
+
 ].forEach(id=>{
 
 document.getElementById(id).value="";
 
 });
 
-document.getElementById("fCat").value=
-"Restaurant";
+
+document.getElementById(
+"fCat"
+).value="Restaurant";
 
 }
 
@@ -1054,10 +1365,13 @@ document.getElementById("fCat").value=
 
 function closeModal(){
 
-document.getElementById("modal").style.display=
-"none";
+document.getElementById(
+"modal"
+).style.display="none";
+
 
 editMode=false;
+
 editOriginal=null;
 
 }
@@ -1067,20 +1381,27 @@ editOriginal=null;
    FILTER
    ========================================================= */
 
-document.querySelectorAll(".chip")
+document.querySelectorAll(
+".chip"
+)
 .forEach(button=>{
 
 button.onclick=()=>{
 
-document.querySelectorAll(".chip")
+document.querySelectorAll(
+".chip"
+)
 .forEach(x=>
 x.classList.remove("active")
 );
 
+
 button.classList.add("active");
 
-filter=
+
+filter =
 button.dataset.filter;
+
 
 render();
 
@@ -1093,7 +1414,9 @@ render();
    SUCHE
    ========================================================= */
 
-document.getElementById("search").oninput=
+document.getElementById(
+"search"
+).oninput =
 render;
 
 
@@ -1141,8 +1464,9 @@ function safeUrl(url){
 
 try{
 
-const u=
+const u =
 new URL(url);
+
 
 if(
 u.protocol==="http:" ||
@@ -1154,6 +1478,7 @@ return u.href;
 }
 
 }catch(e){}
+
 
 return "#";
 
