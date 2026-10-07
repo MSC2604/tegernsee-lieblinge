@@ -3,391 +3,518 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b6b57">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
 <title>Meine Tegernsee-Lieblinge</title>
 
 <style>
+:root{
+  --bg:#f4f6f5;
+  --card:#ffffff;
+  --text:#17201d;
+  --muted:#66736e;
+  --green:#0b6b57;
+  --line:#ccd5d1;
+  --gold:#d59b00;
+  --red:#a72e39;
+}
+
 *{box-sizing:border-box}
-body{margin:0;background:#f4f2ec;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#17352d}
-.app{max-width:480px;margin:auto;min-height:100vh}
-header{padding:25px 18px 18px;background:linear-gradient(150deg,#183f34,#2d6a56);color:white;border-radius:0 0 26px 26px}
-.title{font-size:28px;font-weight:800}
-.sub{opacity:.85;margin-top:4px}
-.search{margin-top:17px;background:white;border-radius:14px;padding:12px}
-.search input{border:0;outline:0;width:100%;font-size:16px}
-main{padding:17px 15px 90px}
-.section{display:flex;justify-content:space-between;align-items:center}
-.section h2{font-size:18px}
-.count{font-size:12px;color:#6f7d77}
-button{font:inherit}
-.add{width:100%;border:0;background:#17352d;color:white;border-radius:14px;padding:13px;margin:5px 0 12px;font-weight:700}
-.filters{display:flex;gap:8px;overflow:auto;padding-bottom:13px}
-.chip{border:1px solid #e4e2da;background:white;padding:8px 12px;border-radius:20px;white-space:nowrap}
-.chip.active{background:#17352d;color:white}
-.grid{display:grid;gap:11px}
-.card{background:white;border:1px solid #e4e2da;border-radius:17px;padding:15px;cursor:pointer}
-.top{display:flex;justify-content:space-between}
-.name{font-weight:750;font-size:17px}
-.place{font-size:13px;color:#6f7d77;margin-top:4px}
-.heart{font-size:22px}
-.tags{display:flex;gap:6px;margin-top:11px}
-.tag{font-size:11px;background:#eef3ef;padding:5px 8px;border-radius:10px}
-.row{margin-top:12px;font-size:12px;color:#6f7d77}
-.detail{display:none}
-.back{background:none;border:0;color:white;margin-bottom:25px}
-.hero{height:130px;border-radius:18px;background:#dce6df;display:flex;align-items:center;justify-content:center;font-size:52px}
-.detail h1{font-size:27px;margin-bottom:3px}
-.actions,.tools{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0}
-.action,.tool{background:white;border:1px solid #e4e2da;border-radius:13px;padding:12px;text-align:center;font-weight:650}
-.info{background:white;border:1px solid #e4e2da;border-radius:17px;padding:14px}
-.info div{padding:10px 0;border-bottom:1px solid #e4e2da;display:flex;justify-content:space-between;gap:12px}
-.info div:last-child{border:0}
-.label{color:#6f7d77}
-.note{margin-top:12px;background:white;border:1px solid #e4e2da;border-radius:17px;padding:14px}
-.note textarea{width:100%;min-height:80px;border:0;outline:0;font:inherit}
-.modal{display:none;position:fixed;inset:0;background:#0008;z-index:20;align-items:flex-end}
-.modalbox{width:min(480px,100%);background:white;border-radius:23px 23px 0 0;padding:20px;max-height:90vh;overflow:auto}
-.field{margin:10px 0}
-.field label{display:block;font-size:12px;color:#6f7d77;margin-bottom:5px}
-.field input,.field select{width:100%;padding:11px;border:1px solid #ddd;border-radius:11px;font:inherit}
-.modalbuttons{display:flex;gap:8px;margin-top:15px}
-.modalbuttons button{flex:1;padding:12px;border-radius:12px;border:1px solid #ddd}
-.save{background:#17352d;color:white}
-.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);max-width:480px;width:100%;background:white;border-top:1px solid #ddd;display:flex;justify-content:space-around;padding:10px}
-.nav{text-align:center;font-size:11px;color:#6f7d77}
-.nav b{display:block;font-size:20px;color:#17352d}
-.empty{text-align:center;color:#6f7d77;padding:30px}
-.error{text-align:center;color:#9b2c2c;background:#fff0f0;border:1px solid #f0cccc;border-radius:15px;padding:18px}
-a{color:#17352d}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+
+header{
+  background:linear-gradient(150deg,#174b3e,#0b6b57);
+  color:white;
+  padding:24px 16px 20px;
+}
+
+header h1{
+  margin:0 0 7px;
+  font-size:27px;
+}
+
+header div{
+  opacity:.9;
+}
+
+main{
+  max-width:760px;
+  margin:auto;
+  padding:16px 16px 80px;
+}
+
+input,select,button{
+  font:inherit;
+}
+
+#search{
+  width:100%;
+  padding:13px 14px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:white;
+  margin-bottom:12px;
+  outline:none;
+}
+
+#search:focus{
+  border-color:var(--green);
+}
+
+.filters{
+  display:flex;
+  gap:8px;
+  overflow:auto;
+  padding-bottom:10px;
+}
+
+.filters button{
+  white-space:nowrap;
+  border:1px solid var(--line);
+  background:white;
+  border-radius:20px;
+  padding:8px 13px;
+  cursor:pointer;
+}
+
+.filters button.active{
+  background:var(--green);
+  color:white;
+  border-color:var(--green);
+}
+
+#status{
+  font-size:13px;
+  color:var(--muted);
+  margin:8px 0 12px;
+}
+
+#list{
+  display:grid;
+  gap:12px;
+}
+
+.card{
+  background:var(--card);
+  border-radius:17px;
+  padding:16px;
+  box-shadow:0 2px 9px #00000012;
+  border:1px solid #e4e9e6;
+}
+
+.cardhead{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+}
+
+.name{
+  font-size:19px;
+  font-weight:750;
+}
+
+.meta{
+  color:var(--muted);
+  margin-top:4px;
+  font-size:14px;
+}
+
+.favorite{
+  margin-left:auto;
+  border:0;
+  background:transparent;
+  font-size:27px;
+  line-height:1;
+  padding:0 2px;
+  color:#c3c9c6;
+  cursor:pointer;
+}
+
+.favorite.on{
+  color:var(--gold);
+}
+
+.statusline{
+  margin-top:10px;
+  font-size:14px;
+}
+
+.open{
+  color:#16784b;
+  font-weight:700;
+}
+
+.closed{
+  color:var(--red);
+  font-weight:700;
+}
+
+.unknown{
+  color:var(--muted);
+}
+
+.details{
+  margin-top:12px;
+  display:grid;
+  gap:5px;
+  font-size:14px;
+}
+
+.detailrow b{
+  font-weight:650;
+}
+
+.updated{
+  margin-top:10px;
+  font-size:12px;
+  color:var(--muted);
+}
+
+.actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:13px;
+}
+
+.actions a,
+.actions button{
+  display:inline-block;
+  text-decoration:none;
+  color:var(--green);
+  background:white;
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:8px 11px;
+  cursor:pointer;
+}
+
+.actions button.admin{
+  background:var(--green);
+  color:white;
+  border-color:var(--green);
+}
+
+.actions button.delete{
+  color:var(--red);
+}
+
+#adminPanel{
+  display:none;
+  background:white;
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:16px;
+  margin-bottom:15px;
+}
+
+#adminPanel h2{
+  margin:0 0 12px;
+  font-size:20px;
+}
+
+.formgrid{
+  display:grid;
+  gap:9px;
+}
+
+.formgrid input,
+.formgrid textarea{
+  width:100%;
+  padding:11px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  font:inherit;
+  box-sizing:border-box;
+}
+
+.formgrid textarea{
+  min-height:80px;
+  resize:vertical;
+}
+
+.formbuttons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+
+.formbuttons button{
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:9px 13px;
+  background:white;
+  cursor:pointer;
+}
+
+.formbuttons .save{
+  background:var(--green);
+  color:white;
+  border-color:var(--green);
+}
+
+#adminMessage{
+  margin-top:9px;
+  font-size:13px;
+  color:var(--muted);
+}
+
+.empty{
+  text-align:center;
+  color:var(--muted);
+  padding:25px 10px;
+}
 </style>
 </head>
 
 <body>
 
-<div class="app">
-
-<header id="header">
-
-<div class="title">Meine Tegernsee-Lieblinge</div>
-
-<div class="sub">
-Restaurants, Almen & besondere Plätze
-</div>
-
-<div class="search">
-🔎 <input id="search" placeholder="Restaurant suchen …">
-</div>
-
+<header>
+  <h1>Meine Tegernsee-Lieblinge</h1>
+  <div>Meine zentrale Restaurantliste</div>
 </header>
 
+<main>
 
-<main id="home">
+<input id="search" placeholder="Restaurant suchen …">
 
-<div class="section">
+<div class="filters" id="filters"></div>
 
-<h2>❤️ Meine Favoriten</h2>
+<div id="status">Daten werden geladen …</div>
 
-<span class="count" id="count"></span>
+<div id="adminPanel">
 
-</div>
+  <h2 id="formTitle">Restaurant hinzufügen</h2>
 
+  <div class="formgrid">
 
-<button class="add" onclick="openAdd()">
-＋ Restaurant hinzufügen
-</button>
+    <input id="fName" placeholder="Name *">
+    <input id="fOrt" placeholder="Ort">
+    <input id="fKategorie" placeholder="Kategorie">
+    <input id="fAdresse" placeholder="Adresse">
+    <input id="fTelefon" placeholder="Telefon">
+    <input id="fWebsite" placeholder="Website">
+    <input id="fEmail" placeholder="E-Mail">
+    <input id="fOeffnungszeiten" placeholder="Öffnungszeiten">
+    <input id="fRuhetag" placeholder="Ruhetag">
 
+    <textarea id="fNotizen" placeholder="Notizen"></textarea>
 
-<div class="filters">
+  </div>
 
-<button class="chip active" data-filter="Alle">
-Alle
-</button>
+  <div class="formbuttons">
+    <button class="save" onclick="savePlace()">Speichern</button>
+    <button onclick="cancelEdit()">Abbrechen</button>
+  </div>
 
-<button class="chip" data-filter="Restaurant">
-Restaurants
-</button>
-
-<button class="chip" data-filter="Alm">
-Almen
-</button>
-
-<button class="chip" data-filter="Kreuth">
-Kreuth
-</button>
-
-<button class="chip" data-filter="Tegernsee">
-Tegernsee
-</button>
+  <div id="adminMessage"></div>
 
 </div>
 
-
-<div class="grid" id="cards"></div>
+<div id="list"></div>
 
 </main>
-
-
-<main id="detail" class="detail">
-
-<button class="back" onclick="showHome()">
-‹ Zurück
-</button>
-
-
-<div class="hero" id="hero">
-🍽️
-</div>
-
-
-<h1 id="dname"></h1>
-
-<div class="place" id="dplace"></div>
-
-
-<div class="actions">
-
-<div class="action" onclick="openRoute()">
-📍 Route
-</div>
-
-<div class="action" onclick="callPlace()">
-☎️ Anrufen
-</div>
-
-</div>
-
-
-<div class="tools">
-
-<button class="tool" onclick="editPlace()">
-✏️ Bearbeiten
-</button>
-
-<button class="tool" onclick="deletePlace()">
-🗑️ Löschen
-</button>
-
-</div>
-
-
-<div class="info">
-
-<div>
-<span class="label">📍 Adresse</span>
-<span id="daddress">–</span>
-</div>
-
-<div>
-<span class="label">🕐 Öffnungszeiten</span>
-<span id="dhours">–</span>
-</div>
-
-<div>
-<span class="label">🚫 Ruhetag</span>
-<span id="dclosed">–</span>
-</div>
-
-<div>
-<span class="label">☎️ Telefon</span>
-<span id="dphone">–</span>
-</div>
-
-<div>
-<span class="label">🌐 Webseite</span>
-<span id="dweb">–</span>
-</div>
-
-<div>
-<span class="label">✉️ E-Mail</span>
-<span id="demail">–</span>
-</div>
-
-</div>
-
-
-<div class="note">
-
-<b>📝 Meine Notizen</b>
-
-<textarea
-id="note"
-placeholder="Was möchtest du dir merken?"
-></textarea>
-
-</div>
-
-</main>
-
-
-<div class="modal" id="modal">
-
-<div class="modalbox">
-
-<h2 id="modalTitle">
-＋ Restaurant hinzufügen
-</h2>
-
-
-<div class="field">
-<label>Name</label>
-<input id="fName">
-</div>
-
-
-<div class="field">
-<label>Ort</label>
-<input id="fPlace">
-</div>
-
-
-<div class="field">
-
-<label>Kategorie</label>
-
-<select id="fCat">
-
-<option>Restaurant</option>
-<option>Alm</option>
-<option>Café</option>
-<option>Biergarten</option>
-<option>Ausflugsziel</option>
-
-</select>
-
-</div>
-
-
-<div class="field">
-<label>Adresse</label>
-<input id="fAddress">
-</div>
-
-
-<div class="field">
-<label>Telefon</label>
-<input id="fPhone">
-</div>
-
-
-<div class="field">
-<label>Website</label>
-<input id="fWeb">
-</div>
-
-
-<div class="field">
-<label>E-Mail</label>
-<input id="fEmail">
-</div>
-
-
-<div class="field">
-<label>Öffnungszeiten</label>
-<input id="fHours">
-</div>
-
-
-<div class="field">
-<label>Ruhetag</label>
-<input id="fClosed">
-</div>
-
-
-<div class="modalbuttons">
-
-<button onclick="closeModal()">
-Abbrechen
-</button>
-
-<button class="save" onclick="savePlace()">
-Speichern
-</button>
-
-</div>
-
-</div>
-
-</div>
-
-
-<div class="bottom">
-
-<div class="nav" onclick="showHome()">
-<b>⌂</b>
-Start
-</div>
-
-<div class="nav" onclick="document.getElementById('search').focus()">
-<b>⌕</b>
-Suchen
-</div>
-
-</div>
-
-</div>
-
 
 <script>
 
 /* =========================================================
-   CLOUDFLARE WORKER
+   ZENTRALE DATENBANK
    ========================================================= */
 
 const DATA_URL =
-"https://tegernsee-restaurants-api.msc4021.workers.dev";
+  "https://tegernsee-restaurants-api.msc4021.workers.dev";
 
 
 /* =========================================================
-   APP-VARIABLEN
+   GRUNDEINSTELLUNGEN
    ========================================================= */
 
 let restaurants = [];
-
-let current = -1;
-
 let filter = "Alle";
+let editingRestaurant = null;
 
-let editMode = false;
-
-let editOriginal = null;
-
-let adminPassword = sessionStorage.getItem(
-"tegernseeAdminPassword"
-) || "";
-
-
-let favorites = new Set();
-
-try {
-
-favorites = new Set(
-JSON.parse(
-localStorage.getItem(
-"tegernseeFavorites"
-) || "[]"
-)
+const favorites = new Set(
+  JSON.parse(
+    localStorage.getItem("tegernseeFavorites") || "[]"
+  )
 );
 
-} catch(e) {
+const filters = [
+  "Alle",
+  "Restaurant",
+  "Alm",
+  "Ausflugsziel",
+  "Kreuth",
+  "Tegernsee"
+];
 
-favorites = new Set();
+const list = document.getElementById("list");
+const search = document.getElementById("search");
 
+
+/* =========================================================
+   FILTER
+   ========================================================= */
+
+document.getElementById("filters").innerHTML =
+  filters.map(x =>
+    `<button data-filter="${esc(x)}">${esc(x)}</button>`
+  ).join("");
+
+document.querySelectorAll("[data-filter]").forEach(button => {
+
+  button.addEventListener("click", () => {
+
+    filter = button.dataset.filter;
+
+    document
+      .querySelectorAll("[data-filter]")
+      .forEach(x =>
+        x.classList.toggle(
+          "active",
+          x === button
+        )
+      );
+
+    render();
+  });
+
+});
+
+document
+  .querySelector('[data-filter="Alle"]')
+  .classList.add("active");
+
+search.addEventListener("input", render);
+
+
+/* =========================================================
+   DATEN NORMALISIEREN
+   ========================================================= */
+
+function normalizeRestaurant(r){
+
+  return {
+    id: r.id ?? null,
+
+    name:
+      r.name ??
+      "",
+
+    location:
+      r.ort ??
+      r.location ??
+      "",
+
+    category:
+      r.kategorie ??
+      r.category ??
+      "",
+
+    address:
+      r.adresse ??
+      r.address ??
+      "",
+
+    phone:
+      r.telefon ??
+      r.phone ??
+      "",
+
+    website:
+      r.website ??
+      "",
+
+    email:
+      r.email ??
+      "",
+
+    openingHours:
+      r.oeffnungszeiten ??
+      r.openingHours ??
+      "",
+
+    closedDay:
+      r.ruhetag ??
+      r.restDay ??
+      "",
+
+    notes:
+      r.notizen ??
+      r.notes ??
+      ""
+  };
 }
 
 
-let notes = {};
+/* =========================================================
+   DATENBANK LADEN
+   ========================================================= */
 
-try {
+async function loadRestaurants(){
 
-notes = JSON.parse(
-localStorage.getItem(
-"tegernseeNotes"
-) || "{}"
-);
+  try{
 
-} catch(e) {
+    document.getElementById("status").textContent =
+      "Daten werden geladen …";
 
-notes = {};
+    const response =
+      await fetch(
+        DATA_URL + "?v=" + Date.now(),
+        {
+          method:"GET",
+          cache:"no-store"
+        }
+      );
 
+    if(!response.ok){
+
+      throw new Error(
+        "HTTP " + response.status
+      );
+
+    }
+
+    const data = await response.json();
+
+    restaurants =
+      Array.isArray(data)
+        ? data.map(normalizeRestaurant)
+        : [];
+
+    restaurants.sort(
+      (a,b) =>
+        String(a.name).localeCompare(
+          String(b.name),
+          "de"
+        )
+    );
+
+    document.getElementById("status").textContent =
+      `${restaurants.length} Restaurants · zentrale Datenbank`;
+
+    render();
+
+  }catch(error){
+
+    console.error(error);
+
+    document.getElementById("status").textContent =
+      "Die Restaurantdaten konnten nicht geladen werden.";
+
+    list.innerHTML =
+      `<div class="empty">
+        Die zentrale Restaurantliste konnte gerade nicht geladen werden.
+      </div>`;
+  }
 }
 
 
@@ -397,1096 +524,883 @@ notes = {};
 
 function getAdminPassword(){
 
-if(adminPassword){
+  let password =
+    sessionStorage.getItem(
+      "tegernseeAdminPassword"
+    );
 
-return adminPassword;
+  if(!password){
 
-}
+    password =
+      prompt(
+        "Bitte dein Admin-Passwort eingeben:"
+      );
 
-const password = prompt(
-"Bitte dein Admin-Passwort eingeben:"
-);
+    if(!password){
+      throw new Error(
+        "Kein Admin-Passwort eingegeben."
+      );
+    }
 
-if(!password){
+    sessionStorage.setItem(
+      "tegernseeAdminPassword",
+      password
+    );
+  }
 
-return null;
-
-}
-
-adminPassword = password;
-
-sessionStorage.setItem(
-"tegernseeAdminPassword",
-adminPassword
-);
-
-return adminPassword;
-
+  return password;
 }
 
 
 /* =========================================================
-   API-ANFRAGE
+   API-AUFRUF
    ========================================================= */
 
-async function apiRequest(
-body
-){
+async function apiRequest(payload){
 
-const password =
-getAdminPassword();
+  const password =
+    getAdminPassword();
 
-if(!password){
+  const response =
+    await fetch(
+      DATA_URL,
+      {
+        method:"POST",
 
-throw new Error(
-"Kein Admin-Passwort eingegeben."
-);
+        headers:{
+          "Content-Type":
+            "application/json",
 
-}
+          "Authorization":
+            "Bearer " + password
+        },
 
-const response =
-await fetch(
-DATA_URL,
-{
-method:"POST",
+        body:
+          JSON.stringify(payload)
+      }
+    );
 
-headers:{
-"Content-Type":"application/json",
-"Authorization":
-"Bearer "+password
-},
+  if(response.status === 401){
 
-body:JSON.stringify(body)
-}
-);
+    sessionStorage.removeItem(
+      "tegernseeAdminPassword"
+    );
 
+    throw new Error(
+      "Das Admin-Passwort ist falsch."
+    );
+  }
 
-if(response.status===401){
+  if(!response.ok){
 
-adminPassword="";
+    const text =
+      await response.text();
 
-sessionStorage.removeItem(
-"tegernseeAdminPassword"
-);
+    throw new Error(
+      text ||
+      "Serverfehler " +
+      response.status
+    );
+  }
 
-throw new Error(
-"Das Admin-Passwort ist falsch."
-);
-
-}
-
-
-if(!response.ok){
-
-throw new Error(
-"HTTP "+response.status
-);
-
-}
-
-
-const result =
-await response.json();
-
-
-if(result.error){
-
-throw new Error(
-result.error
-);
-
-}
-
-
-return result;
-
+  return response.json();
 }
 
 
 /* =========================================================
-   RESTAURANTS LADEN
-   ========================================================= */
-
-async function loadRestaurants(){
-
-try{
-
-const response =
-await fetch(
-DATA_URL+"?v="+Date.now(),
-{
-cache:"no-store"
-}
-);
-
-
-if(!response.ok){
-
-throw new Error(
-"HTTP "+response.status
-);
-
-}
-
-
-const data =
-await response.json();
-
-
-if(!Array.isArray(data)){
-
-throw new Error(
-"Ungültige Datenliste"
-);
-
-}
-
-
-restaurants =
-data
-.map(normalizeRestaurant)
-.filter(r=>r.name);
-
-
-restaurants.sort(
-(a,b)=>
-(a.name||"").localeCompare(
-(b.name||""),
-"de"
-)
-);
-
-
-render();
-
-
-}catch(error){
-
-console.error(error);
-
-
-document.getElementById(
-"cards"
-).innerHTML =
-
-'<div class="error">'+
-'⚠️ Die Restaurantdaten konnten nicht geladen werden.<br><br>'+
-'Bitte prüfe deine Internetverbindung.'+
-'</div>';
-
-}
-
-}
-
-
-/* =========================================================
-   WORKER-DATEN → APP-FORMAT
-   ========================================================= */
-
-function normalizeRestaurant(r){
-
-return {
-
-id:
-r.id || "",
-
-name:
-r.name || "",
-
-location:
-r.ort || "",
-
-category:
-r.kategorie || "Restaurant",
-
-address:
-r.adresse || "",
-
-phone:
-r.telefon || "",
-
-website:
-r.website || "",
-
-email:
-r.email || "",
-
-openingHours:
-r.oeffnungszeiten || "",
-
-restDay:
-r.ruhetag || "",
-
-notes:
-r.notizen || ""
-
-};
-
-}
-
-
-/* =========================================================
-   HAUPTLISTE
+   DARSTELLUNG
    ========================================================= */
 
 function render(){
 
-const q =
-(
-document.getElementById(
-"search"
-).value || ""
-)
-.toLowerCase()
-.trim();
+  const q =
+    search.value
+      .toLowerCase()
+      .trim();
+
+  let data =
+    restaurants.filter(r => {
+
+      const filterOK =
+        filter === "Alle" ||
+        r.category === filter ||
+        r.location === filter;
+
+      const searchOK =
+        !q ||
+        (
+          r.name + " " +
+          r.location + " " +
+          r.category + " " +
+          r.address
+        )
+        .toLowerCase()
+        .includes(q);
+
+      return filterOK && searchOK;
+    });
 
 
-const list =
-restaurants.filter(r=>{
+  data.sort((a,b) => {
 
-const filterOK =
-filter==="Alle" ||
-r.category===filter ||
-r.location===filter;
+    const af =
+      favorites.has(keyFor(a));
 
+    const bf =
+      favorites.has(keyFor(b));
 
-const searchOK =
+    if(af !== bf)
+      return bf - af;
 
-(r.name||"")
-.toLowerCase()
-.includes(q)
-
-||
-
-(r.location||"")
-.toLowerCase()
-.includes(q)
-
-||
-
-(r.category||"")
-.toLowerCase()
-.includes(q);
+    return String(a.name)
+      .localeCompare(
+        String(b.name),
+        "de"
+      );
+  });
 
 
-return filterOK && searchOK;
+  if(!data.length){
 
-});
+    list.innerHTML =
+      `<div class="empty">
+        Keine Treffer.
+      </div>`;
 
-
-document.getElementById(
-"count"
-).textContent =
-list.length+" Einträge";
-
-
-document.getElementById(
-"cards"
-).innerHTML =
-
-list.map(r=>{
-
-const index =
-restaurants.indexOf(r);
+    return;
+  }
 
 
-return `
-
-<div class="card"
-onclick="openDetail(${index})">
-
-<div class="top">
-
-<div>
-
-<div class="name">
-${esc(r.name)}
-</div>
-
-<div class="place">
-📍 ${esc(r.location||"")}
-</div>
-
-</div>
-
-<div class="heart">
-${favorites.has(r.name)?"❤️":"♡"}
-</div>
-
-</div>
-
-<div class="tags">
-
-<span class="tag">
-${esc(r.category||"")}
-</span>
-
-${favorites.has(r.name)
-?
-'<span class="tag">Favorit</span>'
-:
-""}
-
-</div>
-
-<div class="row">
-
-${
-r.openingHours
-?
-"🕐 "+esc(r.openingHours)
-:
-"🕐 Öffnungszeiten ansehen"
-}
-
-</div>
-
-</div>
-
-`;
-
-}).join("")
-
-||
-
-'<div class="empty">Keine Treffer gefunden.</div>';
-
+  list.innerHTML =
+    data.map(renderCard).join("");
 }
 
 
 /* =========================================================
-   DETAILANSICHT
+   RESTAURANT-KARTE
    ========================================================= */
 
-function openDetail(index){
+function renderCard(r){
 
-current = index;
+  const key =
+    keyFor(r);
 
-const r =
-restaurants[index];
+  const favorite =
+    favorites.has(key);
 
-if(!r)return;
+  const status =
+    openingStatus(r);
 
+  const mapQuery =
+    r.name + " " +
+    r.address + " " +
+    r.location;
 
-document.getElementById(
-"home"
-).style.display="none";
-
-
-document.getElementById(
-"header"
-).style.display="none";
-
-
-document.getElementById(
-"detail"
-).style.display="block";
+  const mapURL =
+    "https://www.google.com/maps/search/?api=1&query=" +
+    encodeURIComponent(mapQuery);
 
 
-document.getElementById(
-"dname"
-).textContent =
-r.name || "";
+  return `
+    <div class="card">
+
+      <div class="cardhead">
+
+        <div style="flex:1">
+
+          <div class="name">
+            ${esc(r.name)}
+          </div>
+
+          <div class="meta">
+            ${esc(r.category || "")}
+            ${r.category && r.location ? " · " : ""}
+            ${esc(r.location || "")}
+          </div>
+
+        </div>
+
+        <button
+          class="favorite ${favorite ? "on" : ""}"
+          onclick='toggleFavorite(${JSON.stringify(key)})'
+          aria-label="Favorit">
+
+          ${favorite ? "★" : "☆"}
+
+        </button>
+
+      </div>
 
 
-document.getElementById(
-"dplace"
-).textContent =
-"📍 "+(r.location||"");
+      <div class="statusline">
+        <span class="${status.cls}">
+          ● ${esc(status.text)}
+        </span>
+      </div>
 
 
-document.getElementById(
-"daddress"
-).textContent =
-r.address || "–";
+      <div class="details">
+
+        ${
+          r.address
+            ? `<div class="detailrow">
+                📍 <b>Adresse:</b>
+                ${esc(r.address)}
+              </div>`
+            : ""
+        }
+
+        ${
+          r.phone
+            ? `<div class="detailrow">
+                ☎️ <b>Telefon:</b>
+                <a href="tel:${escAttr(r.phone)}">
+                  ${esc(r.phone)}
+                </a>
+              </div>`
+            : ""
+        }
+
+        ${
+          r.email
+            ? `<div class="detailrow">
+                ✉️ <b>E-Mail:</b>
+                <a href="mailto:${escAttr(r.email)}">
+                  ${esc(r.email)}
+                </a>
+              </div>`
+            : ""
+        }
+
+        ${
+          r.openingHours
+            ? `<div class="detailrow">
+                🕐 <b>Öffnungszeiten:</b>
+                ${esc(r.openingHours)}
+              </div>`
+            : ""
+        }
+
+        ${
+          r.closedDay
+            ? `<div class="detailrow">
+                🚫 <b>Ruhetag:</b>
+                ${esc(r.closedDay)}
+              </div>`
+            : ""
+        }
+
+      </div>
 
 
-document.getElementById(
-"dhours"
-).textContent =
-r.openingHours || "–";
+      ${
+        r.notes
+          ? `<div class="updated">
+              ${esc(r.notes)}
+            </div>`
+          : ""
+      }
 
 
-document.getElementById(
-"dclosed"
-).textContent =
-r.restDay || "–";
+      <div class="actions">
+
+        <a
+          href="${mapURL}"
+          target="_blank"
+          rel="noopener">
+          📍 Route
+        </a>
 
 
-document.getElementById(
-"dphone"
-).textContent =
-r.phone || "–";
+        ${
+          r.website
+            ? `<a
+                href="${safeURL(r.website)}"
+                target="_blank"
+                rel="noopener">
+                🌐 Website
+              </a>`
+            : ""
+        }
 
 
-document.getElementById(
-"demail"
-).textContent =
-r.email || "–";
+        ${
+          r.phone
+            ? `<a
+                href="tel:${escAttr(r.phone)}">
+                ☎️ Anrufen
+              </a>`
+            : ""
+        }
 
 
-if(r.website){
-
-document.getElementById(
-"dweb"
-).innerHTML =
-
-`<a
-href="${safeUrl(r.website)}"
-target="_blank"
-rel="noopener">
-Webseite öffnen
-</a>`;
-
-}else{
-
-document.getElementById(
-"dweb"
-).textContent="–";
-
-}
+        <button
+          class="admin"
+          onclick="editRestaurant(${r.id})">
+          ✏️ Ändern
+        </button>
 
 
-document.getElementById(
-"note"
-).value =
-notes[r.name] || "";
+        <button
+          class="delete"
+          onclick="deleteRestaurant(${r.id})">
+          🗑️ Löschen
+        </button>
 
+      </div>
 
-document.getElementById(
-"note"
-).oninput = function(){
-
-notes[r.name] =
-this.value;
-
-
-localStorage.setItem(
-"tegernseeNotes",
-JSON.stringify(notes)
-);
-
-};
-
+    </div>
+  `;
 }
 
 
 /* =========================================================
-   ZURÜCK
+   FAVORITEN
    ========================================================= */
 
-function showHome(){
+function keyFor(r){
 
-document.getElementById(
-"detail"
-).style.display="none";
-
-
-document.getElementById(
-"home"
-).style.display="block";
-
-
-document.getElementById(
-"header"
-).style.display="block";
+  return String(
+    r.id ??
+    r.name ??
+    ""
+  )
+  .trim()
+  .toLowerCase();
+}
 
 
-render();
+function toggleFavorite(key){
 
+  if(favorites.has(key)){
+
+    favorites.delete(key);
+
+  }else{
+
+    favorites.add(key);
+
+  }
+
+  localStorage.setItem(
+    "tegernseeFavorites",
+    JSON.stringify(
+      [...favorites]
+    )
+  );
+
+  render();
 }
 
 
 /* =========================================================
-   ROUTE
+   RESTAURANT HINZUFÜGEN
    ========================================================= */
 
-function openRoute(){
+async function addRestaurant(){
 
-const r =
-restaurants[current];
+  editingRestaurant = null;
 
-if(!r)return;
+  clearForm();
 
+  document.getElementById(
+    "formTitle"
+  ).textContent =
+    "Restaurant hinzufügen";
 
-location.href =
-"https://www.google.com/maps/search/?api=1&query="+
-encodeURIComponent(
-(r.name||"")+" "+
-(r.address||"")+" "+
-(r.location||"")+" Tegernsee"
-);
+  document.getElementById(
+    "adminPanel"
+  ).style.display =
+    "block";
 
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
 }
 
 
 /* =========================================================
-   ANRUFEN
+   RESTAURANT ÄNDERN
    ========================================================= */
 
-function callPlace(){
+function editRestaurant(id){
 
-const r =
-restaurants[current];
+  const restaurant =
+    restaurants.find(
+      r => Number(r.id) === Number(id)
+    );
 
-if(!r)return;
+  if(!restaurant){
 
+    alert(
+      "Restaurant nicht gefunden."
+    );
 
-if(!r.phone){
+    return;
+  }
 
-alert(
-"Keine Telefonnummer hinterlegt."
-);
+  editingRestaurant =
+    restaurant;
 
-return;
-
-}
-
-
-location.href =
-"tel:"+
-r.phone.replace(
-/[^0-9+]/g,
-""
-);
-
-}
+  document.getElementById(
+    "formTitle"
+  ).textContent =
+    "Restaurant ändern";
 
 
-/* =========================================================
-   HINZUFÜGEN
-   ========================================================= */
+  document.getElementById("fName").value =
+    restaurant.name || "";
 
-function openAdd(){
+  document.getElementById("fOrt").value =
+    restaurant.location || "";
 
-editMode = false;
+  document.getElementById("fKategorie").value =
+    restaurant.category || "";
 
-editOriginal = null;
+  document.getElementById("fAdresse").value =
+    restaurant.address || "";
 
+  document.getElementById("fTelefon").value =
+    restaurant.phone || "";
 
-document.getElementById(
-"modalTitle"
-).textContent =
-"＋ Restaurant hinzufügen";
+  document.getElementById("fWebsite").value =
+    restaurant.website || "";
 
+  document.getElementById("fEmail").value =
+    restaurant.email || "";
 
-clearForm();
+  document.getElementById("fOeffnungszeiten").value =
+    restaurant.openingHours || "";
 
+  document.getElementById("fRuhetag").value =
+    restaurant.closedDay || "";
 
-document.getElementById(
-"modal"
-).style.display="flex";
+  document.getElementById("fNotizen").value =
+    restaurant.notes || "";
 
-}
+  document.getElementById(
+    "adminPanel"
+  ).style.display =
+    "block";
 
+  document.getElementById(
+    "adminMessage"
+  ).textContent =
+    "";
 
-/* =========================================================
-   BEARBEITEN
-   ========================================================= */
-
-function editPlace(){
-
-if(
-current<0 ||
-!restaurants[current]
-)return;
-
-
-editOriginal = {
-...restaurants[current]
-};
-
-
-editMode = true;
-
-
-const r =
-restaurants[current];
-
-
-document.getElementById(
-"modalTitle"
-).textContent =
-"✏️ Restaurant bearbeiten";
-
-
-document.getElementById(
-"fName"
-).value =
-r.name || "";
-
-
-document.getElementById(
-"fPlace"
-).value =
-r.location || "";
-
-
-document.getElementById(
-"fCat"
-).value =
-r.category || "Restaurant";
-
-
-document.getElementById(
-"fAddress"
-).value =
-r.address || "";
-
-
-document.getElementById(
-"fPhone"
-).value =
-r.phone || "";
-
-
-document.getElementById(
-"fWeb"
-).value =
-r.website || "";
-
-
-document.getElementById(
-"fEmail"
-).value =
-r.email || "";
-
-
-document.getElementById(
-"fHours"
-).value =
-r.openingHours || "";
-
-
-document.getElementById(
-"fClosed"
-).value =
-r.restDay || "";
-
-
-document.getElementById(
-"modal"
-).style.display="flex";
-
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
 }
 
 
 /* =========================================================
-   RESTAURANT SPEICHERN
+   FORMULAR SPEICHERN
    ========================================================= */
 
 async function savePlace(){
 
-const name =
-document.getElementById(
-"fName"
-).value.trim();
+  const name =
+    document.getElementById(
+      "fName"
+    ).value.trim();
+
+  if(!name){
+
+    alert(
+      "Bitte mindestens den Namen eingeben."
+    );
+
+    return;
+  }
 
 
-if(!name){
+  const restaurant = {
 
-alert(
-"Bitte einen Namen eingeben."
-);
+    name:name,
 
-return;
+    ort:
+      document.getElementById(
+        "fOrt"
+      ).value.trim(),
 
+    kategorie:
+      document.getElementById(
+        "fKategorie"
+      ).value.trim(),
+
+    adresse:
+      document.getElementById(
+        "fAdresse"
+      ).value.trim(),
+
+    telefon:
+      document.getElementById(
+        "fTelefon"
+      ).value.trim(),
+
+    website:
+      document.getElementById(
+        "fWebsite"
+      ).value.trim(),
+
+    email:
+      document.getElementById(
+        "fEmail"
+      ).value.trim(),
+
+    oeffnungszeiten:
+      document.getElementById(
+        "fOeffnungszeiten"
+      ).value.trim(),
+
+    ruhetag:
+      document.getElementById(
+        "fRuhetag"
+      ).value.trim(),
+
+    notizen:
+      document.getElementById(
+        "fNotizen"
+      ).value.trim()
+  };
+
+
+  const message =
+    document.getElementById(
+      "adminMessage"
+    );
+
+
+  try{
+
+    message.textContent =
+      "Wird gespeichert …";
+
+
+    if(editingRestaurant){
+
+      await apiRequest({
+
+        action:"update",
+
+        id:
+          editingRestaurant.id,
+
+        restaurant:
+          restaurant
+      });
+
+    }else{
+
+      await apiRequest({
+
+        action:"create",
+
+        restaurant:
+          restaurant
+      });
+
+    }
+
+
+    message.textContent =
+      "Gespeichert ✓";
+
+
+    await loadRestaurants();
+
+    clearForm();
+
+    editingRestaurant =
+      null;
+
+    document.getElementById(
+      "adminPanel"
+    ).style.display =
+      "none";
+
+
+  }catch(error){
+
+    console.error(error);
+
+    message.textContent =
+      error.message ||
+      "Speichern fehlgeschlagen.";
+  }
 }
 
 
-const wasEdit =
-editMode;
-
-
-const oldRestaurant =
-editOriginal
-?
-{...editOriginal}
-:
-null;
-
-
-const r = {
-
-name:name,
-
-location:
-document.getElementById(
-"fPlace"
-).value.trim(),
-
-category:
-document.getElementById(
-"fCat"
-).value,
-
-address:
-document.getElementById(
-"fAddress"
-).value.trim(),
-
-phone:
-document.getElementById(
-"fPhone"
-).value.trim(),
-
-website:
-document.getElementById(
-"fWeb"
-).value.trim(),
-
-email:
-document.getElementById(
-"fEmail"
-).value.trim(),
-
-openingHours:
-document.getElementById(
-"fHours"
-).value.trim(),
-
-restDay:
-document.getElementById(
-"fClosed"
-).value.trim(),
-
-notes:
-oldRestaurant
-?
-oldRestaurant.notes || ""
-:
-""
-
-};
-
-
 /* =========================================================
-   BEARBEITEN
+   RESTAURANT LÖSCHEN
    ========================================================= */
 
-if(
-wasEdit &&
-oldRestaurant &&
-oldRestaurant.id
-){
+async function deleteRestaurant(id){
 
-try{
+  const restaurant =
+    restaurants.find(
+      r => Number(r.id) === Number(id)
+    );
 
-await apiRequest({
-
-action:"update",
-
-id:oldRestaurant.id,
-
-restaurant:r
-
-});
+  if(!restaurant)
+    return;
 
 
-}catch(error){
+  const ok =
+    confirm(
+      `Soll "${restaurant.name}" wirklich gelöscht werden?`
+    );
 
-console.error(error);
-
-alert(
-"⚠️ Das Restaurant konnte nicht gespeichert werden.\n\n"+
-error.message
-);
-
-return;
-
-}
-
-}
+  if(!ok)
+    return;
 
 
-/* =========================================================
-   NEU ANLEGEN
-   ========================================================= */
+  try{
 
-else{
+    await apiRequest({
 
-try{
+      action:"delete",
 
-await apiRequest({
-
-action:"create",
-
-restaurant:r
-
-});
+      id:
+        restaurant.id
+    });
 
 
-}catch(error){
+    await loadRestaurants();
 
-console.error(error);
 
-alert(
-"⚠️ Das Restaurant konnte nicht hinzugefügt werden.\n\n"+
-error.message
-);
+  }catch(error){
 
-return;
+    console.error(error);
 
-}
-
+    alert(
+      error.message ||
+      "Löschen fehlgeschlagen."
+    );
+  }
 }
 
 
 /* =========================================================
-   ZENTRALE DATENBANK NEU LADEN
-   ========================================================= */
-
-closeModal();
-
-
-editMode=false;
-
-editOriginal=null;
-
-
-await loadRestaurants();
-
-
-/* Bei Bearbeitung wieder das Restaurant öffnen */
-
-if(wasEdit){
-
-const newIndex =
-restaurants.findIndex(
-x=>x.name===name
-);
-
-
-if(newIndex!==-1){
-
-openDetail(newIndex);
-
-}
-
-}
-
-}
-
-
-/* =========================================================
-   LÖSCHEN
-   ========================================================= */
-
-async function deletePlace(){
-
-if(
-current<0 ||
-!restaurants[current]
-)return;
-
-
-const r =
-restaurants[current];
-
-
-if(!confirm(
-"„"+r.name+"“ wirklich löschen?"
-)){
-
-return;
-
-}
-
-
-try{
-
-await apiRequest({
-
-action:"delete",
-
-id:r.id
-
-});
-
-
-}catch(error){
-
-console.error(error);
-
-alert(
-"⚠️ Das Restaurant konnte nicht gelöscht werden.\n\n"+
-error.message
-);
-
-return;
-
-}
-
-
-current=-1;
-
-
-await loadRestaurants();
-
-
-showHome();
-
-}
-
-
-/* =========================================================
-   FORMULAR LEEREN
+   FORMULAR ZURÜCKSETZEN
    ========================================================= */
 
 function clearForm(){
 
-[
-"fName",
-"fPlace",
-"fAddress",
-"fPhone",
-"fWeb",
-"fEmail",
-"fHours",
-"fClosed"
+  [
+    "fName",
+    "fOrt",
+    "fKategorie",
+    "fAdresse",
+    "fTelefon",
+    "fWebsite",
+    "fEmail",
+    "fOeffnungszeiten",
+    "fRuhetag",
+    "fNotizen"
+  ].forEach(id => {
 
-].forEach(id=>{
+    document.getElementById(
+      id
+    ).value = "";
 
-document.getElementById(id).value="";
+  });
 
-});
+  document.getElementById(
+    "adminMessage"
+  ).textContent =
+    "";
+}
 
 
-document.getElementById(
-"fCat"
-).value="Restaurant";
+function cancelEdit(){
 
+  editingRestaurant =
+    null;
+
+  clearForm();
+
+  document.getElementById(
+    "adminPanel"
+  ).style.display =
+    "none";
 }
 
 
 /* =========================================================
-   MODAL SCHLIESSEN
+   ÖFFNUNGSSTATUS
    ========================================================= */
 
-function closeModal(){
+function openingStatus(r){
 
-document.getElementById(
-"modal"
-).style.display="none";
+  const hours =
+    String(
+      r.openingHours || ""
+    ).trim();
+
+  const closed =
+    String(
+      r.closedDay || ""
+    ).toLowerCase();
 
 
-editMode=false;
+  if(!hours){
 
-editOriginal=null;
+    return {
+      text:"Öffnungszeiten nicht hinterlegt",
+      cls:"unknown"
+    };
+  }
 
+
+  const today =
+    [
+      "sonntag",
+      "montag",
+      "dienstag",
+      "mittwoch",
+      "donnerstag",
+      "freitag",
+      "samstag"
+    ][new Date().getDay()];
+
+
+  if(
+    closed &&
+    (
+      closed.includes(today) ||
+      (
+        today === "montag" &&
+        (closed.includes("mo") ||
+         closed.includes("montag"))
+      )
+    )
+  ){
+
+    return {
+      text:"Geschlossen heute",
+      cls:"closed"
+    };
+  }
+
+
+  const ranges =
+    hours.match(
+      /\d{1,2}[:.]\d{2}\s*[–-]\s*\d{1,2}[:.]\d{2}/g
+    );
+
+
+  if(!ranges){
+
+    return {
+      text:hours,
+      cls:"unknown"
+    };
+  }
+
+
+  const now =
+    new Date();
+
+  const minutes =
+    now.getHours()*60 +
+    now.getMinutes();
+
+
+  for(
+    const range of ranges
+  ){
+
+    const parts =
+      range.match(
+        /(\d{1,2})[:.](\d{2})\s*[–-]\s*(\d{1,2})[:.](\d{2})/
+      );
+
+    if(!parts)
+      continue;
+
+
+    const from =
+      Number(parts[1])*60 +
+      Number(parts[2]);
+
+    const to =
+      Number(parts[3])*60 +
+      Number(parts[4]);
+
+
+    if(
+      minutes >= from &&
+      minutes <= to
+    ){
+
+      return {
+        text:"Jetzt geöffnet",
+        cls:"open"
+      };
+    }
+  }
+
+
+  return {
+    text:"Jetzt geschlossen",
+    cls:"closed"
+  };
 }
 
 
 /* =========================================================
-   FILTER
-   ========================================================= */
-
-document.querySelectorAll(
-".chip"
-)
-.forEach(button=>{
-
-button.onclick=()=>{
-
-document.querySelectorAll(
-".chip"
-)
-.forEach(x=>
-x.classList.remove("active")
-);
-
-
-button.classList.add("active");
-
-
-filter =
-button.dataset.filter;
-
-
-render();
-
-};
-
-});
-
-
-/* =========================================================
-   SUCHE
-   ========================================================= */
-
-document.getElementById(
-"search"
-).oninput =
-render;
-
-
-/* =========================================================
-   SICHERER TEXT
+   HILFSFUNKTIONEN
    ========================================================= */
 
 function esc(value){
 
-return String(value||"")
+  return String(
+    value ?? ""
+  ).replace(
+    /[&<>"']/g,
+    char => ({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#39;"
+    }[char])
+  );
+}
 
-.replace(
-/&/g,
-"&amp;"
-)
 
-.replace(
-/</g,
-"&lt;"
-)
+function escAttr(value){
 
-.replace(
-/>/g,
-"&gt;"
-)
+  return esc(value);
+}
 
-.replace(
-/"/g,
-"&quot;"
-)
 
-.replace(
-/'/g,
-"&#039;"
-);
+function safeURL(url){
 
+  let u =
+    String(url || "").trim();
+
+  if(!u)
+    return "#";
+
+  if(
+    !/^https?:\/\//i.test(u)
+  ){
+
+    u =
+      "https://" + u;
+  }
+
+  return escAttr(u);
 }
 
 
 /* =========================================================
-   SICHERE WEBSEITE
-   ========================================================= */
-
-function safeUrl(url){
-
-try{
-
-const u =
-new URL(url);
-
-
-if(
-u.protocol==="http:" ||
-u.protocol==="https:"
-){
-
-return u.href;
-
-}
-
-}catch(e){}
-
-
-return "#";
-
-}
-
-
-/* =========================================================
-   APP STARTEN
+   START
    ========================================================= */
 
 loadRestaurants();
