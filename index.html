@@ -284,6 +284,12 @@ main{
   box-shadow:0 2px 6px rgba(23,53,45,.05);
 }
 
+.cardbottom .imagebutton{
+  background:#edf6f2;
+  border-color:#d5e7df;
+  color:var(--accent);
+}
+
 .detail{
   display:none;
 }
@@ -344,6 +350,7 @@ main{
   display:flex;
   gap:8px;
   margin-top:10px;
+  flex-wrap:wrap;
 }
 
 .detailtools button{
@@ -356,6 +363,11 @@ main{
 
 .detailtools .danger{
   color:var(--danger);
+}
+
+.detailtools .localimage{
+  color:var(--accent);
+  background:#edf6f2;
 }
 
 .info{
@@ -507,6 +519,15 @@ main{
   margin-top:-3px;
 }
 
+.localimagehint{
+  color:var(--accent);
+  background:#edf6f2;
+  border-radius:12px;
+  padding:10px;
+  font-size:12px;
+  line-height:1.45;
+}
+
 .removeimage{
   border:1px solid var(--line);
   background:#f7f5f0;
@@ -555,6 +576,7 @@ a{
 }
 
 /* Passwortfenster */
+
 .passwordmodal{
   display:none;
   position:fixed;
@@ -617,6 +639,10 @@ a{
   color:var(--ink);
 }
 
+.local-file-input{
+  display:none;
+}
+
 @media(min-width:700px){
   .grid{
     grid-template-columns:1fr 1fr;
@@ -628,15 +654,29 @@ a{
 <body>
 
 <header id="homeHeader">
-  <div class="eyebrow">Deine persönliche Sammlung</div>
-  <div class="title">Meine Lieblings-Restaurants am Tegernsee</div>
-  <div class="sub">Restaurants, Almen & besondere Plätze</div>
+
+  <div class="eyebrow">
+    Deine persönliche Sammlung
+  </div>
+
+  <div class="title">
+    Meine Lieblings-Restaurants am Tegernsee
+  </div>
+
+  <div class="sub">
+    Restaurants, Almen & besondere Plätze
+  </div>
 
   <div class="search">
     🔎
-    <input id="search" placeholder="Restaurant suchen …">
+    <input
+      id="search"
+      placeholder="Restaurant suchen …"
+    >
   </div>
+
 </header>
+
 
 <main id="home">
 
@@ -645,48 +685,118 @@ a{
     <span class="count" id="count">0</span>
   </div>
 
-  <button class="addbtn" onclick="openAdd()">
+  <button
+    class="addbtn"
+    onclick="openAdd()"
+  >
     ＋ Restaurant hinzufügen
   </button>
 
   <div class="sync">
-    <button onclick="refreshData()">↻ Daten aktualisieren</button>
-    <button onclick="showSyncInfo()">☁ Auto-Update</button>
+
+    <button onclick="refreshData()">
+      ↻ Daten aktualisieren
+    </button>
+
+    <button onclick="showSyncInfo()">
+      ☁ Auto-Update
+    </button>
+
   </div>
 
-  <div class="small" id="syncStatus">
+  <div
+    class="small"
+    id="syncStatus"
+  >
     Daten werden geladen …
   </div>
 
   <div class="filters">
-    <button class="chip active" data-filter="Alle">Alle</button>
-    <button class="chip" data-filter="Restaurant">Restaurants</button>
-    <button class="chip" data-filter="Alm">Almen</button>
-    <button class="chip" data-filter="Kreuth">Kreuth</button>
-    <button class="chip" data-filter="Tegernsee">Tegernsee</button>
+
+    <button
+      class="chip active"
+      data-filter="Alle"
+    >
+      Alle
+    </button>
+
+    <button
+      class="chip"
+      data-filter="Restaurant"
+    >
+      Restaurants
+    </button>
+
+    <button
+      class="chip"
+      data-filter="Alm"
+    >
+      Almen
+    </button>
+
+    <button
+      class="chip"
+      data-filter="Kreuth"
+    >
+      Kreuth
+    </button>
+
+    <button
+      class="chip"
+      data-filter="Tegernsee"
+    >
+      Tegernsee
+    </button>
+
   </div>
 
-  <div class="grid" id="cards"></div>
+  <div
+    class="grid"
+    id="cards"
+  ></div>
+
 </main>
 
-<main id="detail" class="detail">
 
-  <button class="back" onclick="showHome()">
+<main
+  id="detail"
+  class="detail"
+>
+
+  <button
+    class="back"
+    onclick="showHome()"
+  >
     ‹ Zurück zu meinen Favoriten
   </button>
 
-  <div class="hero" id="hero">🍽️</div>
+  <div
+    class="hero"
+    id="hero"
+  >
+    🍽️
+  </div>
 
   <h1 id="dname"></h1>
-  <div class="place" id="dplace"></div>
+
+  <div
+    class="place"
+    id="dplace"
+  ></div>
 
   <div class="actions">
 
-    <div class="action" onclick="openRoute()">
+    <div
+      class="action"
+      onclick="openRoute()"
+    >
       📍 Route
     </div>
 
-    <div class="action" onclick="callPlace()">
+    <div
+      class="action"
+      onclick="callPlace()"
+    >
       ☎️ Anrufen
     </div>
 
@@ -701,129 +811,265 @@ a{
 
   </div>
 
+
   <div class="detailtools">
-    <button onclick="editPlace()">✏️ Bearbeiten</button>
-    <button class="danger" onclick="deletePlace()">🗑️ Löschen</button>
+
+    <button onclick="editPlace()">
+      ✏️ Bearbeiten
+    </button>
+
+    <button
+      class="localimage"
+      onclick="startLocalImageUpload(currentPlace && currentPlace.id)"
+    >
+      📷 Bild vom Handy
+    </button>
+
+    <button
+      id="removeLocalImageButton"
+      class="danger"
+      onclick="removeLocalImage()"
+      style="display:none"
+    >
+      🗑️ Bild entfernen
+    </button>
+
+    <button
+      class="danger"
+      onclick="deletePlace()"
+    >
+      🗑️ Löschen
+    </button>
+
   </div>
+
 
   <div class="info">
 
     <div>
-      <span class="label">📍 Adresse</span>
-      <span id="daddress">Noch ergänzen</span>
+      <span class="label">
+        📍 Adresse
+      </span>
+
+      <span id="daddress">
+        Noch ergänzen
+      </span>
     </div>
 
-    <div>
-      <span class="label">🕐 Öffnungszeiten</span>
-      <span id="dhours">Noch ergänzen</span>
-    </div>
 
     <div>
-      <span class="label">🚫 Ruhetag</span>
-      <span id="dclosed">Noch ergänzen</span>
+      <span class="label">
+        🕐 Öffnungszeiten
+      </span>
+
+      <span id="dhours">
+        Noch ergänzen
+      </span>
     </div>
 
-    <div>
-      <span class="label">☎️ Telefon</span>
-      <span id="dphone">Noch ergänzen</span>
-    </div>
 
     <div>
-      <span class="label">⭐ Meine Bewertung</span>
-      <span id="drating">☆☆☆☆☆</span>
+      <span class="label">
+        🚫 Ruhetag
+      </span>
+
+      <span id="dclosed">
+        Noch ergänzen
+      </span>
     </div>
 
-    <div>
-      <span class="label">🌐 Webseite</span>
-      <span id="dweb">Noch ergänzen</span>
-    </div>
 
     <div>
-      <span class="label">✉️ E-Mail</span>
-      <span id="demail">Noch ergänzen</span>
+      <span class="label">
+        ☎️ Telefon
+      </span>
+
+      <span id="dphone">
+        Noch ergänzen
+      </span>
+    </div>
+
+
+    <div>
+      <span class="label">
+        ⭐ Meine Bewertung
+      </span>
+
+      <span id="drating">
+        ☆☆☆☆☆
+      </span>
+    </div>
+
+
+    <div>
+      <span class="label">
+        🌐 Webseite
+      </span>
+
+      <span id="dweb">
+        Noch ergänzen
+      </span>
+    </div>
+
+
+    <div>
+      <span class="label">
+        ✉️ E-Mail
+      </span>
+
+      <span id="demail">
+        Noch ergänzen
+      </span>
     </div>
 
   </div>
 
+
   <div class="note">
-    <b>📝 Meine Notizen</b>
+
+    <b>
+      📝 Meine Notizen
+    </b>
+
     <textarea
       id="note"
       placeholder="Was möchtest du dir merken?"
     ></textarea>
+
   </div>
 
 </main>
 
+
 <div class="bottomnav">
 
-  <button class="active" onclick="showHome()">
+  <button
+    class="active"
+    onclick="showHome()"
+  >
     🏠<br>Start
   </button>
 
-  <button onclick="focusSearch()">
+  <button
+    onclick="focusSearch()"
+  >
     🔎<br>Suchen
   </button>
 
-  <button onclick="showFavorites()">
+  <button
+    onclick="showFavorites()"
+  >
     ❤️<br>Favoriten
   </button>
 
 </div>
 
 
+<!-- Unsichtbare Bildauswahl vom Handy -->
+
+<input
+  id="localImageInput"
+  class="local-file-input"
+  type="file"
+  accept="image/*"
+  capture="environment"
+  onchange="handleLocalImageFile(this)"
+>
+
+
 <!-- Restaurant-Dialog -->
 
-<div class="modal" id="modal">
+<div
+  class="modal"
+  id="modal"
+>
 
   <div class="modalbox">
 
-    <h2 id="modalTitle">Restaurant hinzufügen</h2>
+    <h2 id="modalTitle">
+      Restaurant hinzufügen
+    </h2>
 
     <div class="formgrid">
 
       <label>Name</label>
+
       <input id="f_name">
 
+
       <label>Ort</label>
+
       <input id="f_ort">
 
+
       <label>Kategorie</label>
+
       <select id="f_kategorie">
-        <option value="Restaurant">Restaurant</option>
-        <option value="Alm">Alm</option>
-        <option value="Ausflugsziel">Ausflugsziel</option>
+
+        <option value="Restaurant">
+          Restaurant
+        </option>
+
+        <option value="Alm">
+          Alm
+        </option>
+
+        <option value="Ausflugsziel">
+          Ausflugsziel
+        </option>
+
       </select>
 
+
       <label>Adresse</label>
+
       <input id="f_adresse">
 
+
       <label>Telefon</label>
+
       <input id="f_telefon">
 
+
       <label>Website</label>
+
       <input id="f_website">
 
-      <label>🍽️ Tisch reservieren – Link</label>
+
+      <label>
+        🍽️ Tisch reservieren – Link
+      </label>
+
       <input
         id="f_reservierung"
         type="url"
         placeholder="https://..."
       >
 
+
       <label>E-Mail</label>
+
       <input id="f_email">
 
+
       <label>Öffnungszeiten</label>
+
       <textarea id="f_oeffnungszeiten"></textarea>
 
+
       <label>Ruhetag</label>
+
       <input id="f_ruhetag">
 
+
       <label>Notizen</label>
+
       <textarea id="f_notizen"></textarea>
 
-      <label>🖼️ Bild</label>
+
+      <label>
+        🖼️ Bild über Internet-URL
+      </label>
 
       <input
         id="f_bild"
@@ -833,12 +1079,31 @@ a{
       >
 
       <div class="imagehint">
-        Hier kannst du später die URL eines Restaurantbildes eintragen.
+        Optional: Eine Bild-URL aus dem Internet.
       </div>
 
-      <div class="imagepreview" id="imagepreview">
-        <img id="previewimg" alt="Bildvorschau">
+
+      <div class="localimagehint">
+
+        📷 <b>Bild direkt vom Handy:</b><br>
+        Das Bild wird nur auf diesem Handy gespeichert
+        und ist unabhängig von der zentralen Datenbank.
+
       </div>
+
+
+      <div
+        class="imagepreview"
+        id="imagepreview"
+      >
+
+        <img
+          id="previewimg"
+          alt="Bildvorschau"
+        >
+
+      </div>
+
 
       <button
         type="button"
@@ -846,34 +1111,47 @@ a{
         id="removeimage"
         onclick="removeImage()"
       >
-        🗑️ Bild entfernen
+        🗑️ Bild-URL entfernen
       </button>
 
     </div>
 
+
     <div class="modalbuttons">
 
-      <button class="cancel" onclick="closeModal()">
+      <button
+        class="cancel"
+        onclick="closeModal()"
+      >
         Abbrechen
       </button>
 
-      <button class="save" onclick="savePlace()">
+      <button
+        class="save"
+        onclick="savePlace()"
+      >
         Speichern
       </button>
 
     </div>
 
   </div>
+
 </div>
 
 
 <!-- Passwort-Dialog -->
 
-<div class="passwordmodal" id="passwordModal">
+<div
+  class="passwordmodal"
+  id="passwordModal"
+>
 
   <div class="passwordbox">
 
-    <h2>🔒 Admin-Passwort</h2>
+    <h2>
+      🔒 Admin-Passwort
+    </h2>
 
     <p id="passwordText">
       Bitte Admin-Passwort eingeben.
@@ -914,81 +1192,161 @@ a{
 const API_URL =
   "https://tegernsee-restaurants-api.msc4021.workers.dev";
 
+
 let restaurants = [];
-let currentFilter = "Alle";
-let currentPlace = null;
-let editId = null;
+
+let currentFilter =
+  "Alle";
+
+let currentPlace =
+  null;
+
+let editId =
+  null;
+
+
+/* --------------------------------------------------
+   FAVORITEN
+-------------------------------------------------- */
 
 const favorites =
   JSON.parse(
-    localStorage.getItem("tegernseeFavorites") || "[]"
+    localStorage.getItem(
+      "tegernseeFavorites"
+    ) || "[]"
   );
+
+
+/* --------------------------------------------------
+   LOKALE BILDER
+-------------------------------------------------- */
+
+const LOCAL_IMAGES_KEY =
+  "tegernseeLocalImages";
+
+
+let localImages = {};
+
+try{
+
+  localImages =
+    JSON.parse(
+      localStorage.getItem(
+        LOCAL_IMAGES_KEY
+      ) || "{}"
+    );
+
+}catch(error){
+
+  localImages = {};
+
+}
+
+
+let localImageTargetId =
+  null;
 
 
 /* --------------------------------------------------
    PASSWORT
 -------------------------------------------------- */
 
-let passwordResolver = null;
+let passwordResolver =
+  null;
+
 
 function askAdminPassword(message){
 
   return new Promise(resolve => {
 
-    passwordResolver = resolve;
+    passwordResolver =
+      resolve;
 
-    document.getElementById("passwordText").textContent =
-      message || "Bitte Admin-Passwort eingeben.";
+    document.getElementById(
+      "passwordText"
+    ).textContent =
+      message ||
+      "Bitte Admin-Passwort eingeben.";
 
     const input =
-      document.getElementById("passwordInput");
+      document.getElementById(
+        "passwordInput"
+      );
 
     input.value = "";
 
-    document.getElementById("passwordModal")
-      .style.display = "flex";
+    document.getElementById(
+      "passwordModal"
+    ).style.display =
+      "flex";
 
-    setTimeout(() => input.focus(),100);
+    setTimeout(
+      () => input.focus(),
+      100
+    );
+
   });
+
 }
+
 
 function confirmPassword(){
 
   const input =
-    document.getElementById("passwordInput");
+    document.getElementById(
+      "passwordInput"
+    );
 
-  const password = input.value;
+  const password =
+    input.value;
 
-  document.getElementById("passwordModal")
-    .style.display = "none";
+  document.getElementById(
+    "passwordModal"
+  ).style.display =
+    "none";
 
   if(passwordResolver){
 
-    const resolve = passwordResolver;
+    const resolve =
+      passwordResolver;
 
-    passwordResolver = null;
+    passwordResolver =
+      null;
 
     resolve(password);
+
   }
+
 }
+
 
 function cancelPassword(){
 
-  document.getElementById("passwordModal")
-    .style.display = "none";
+  document.getElementById(
+    "passwordModal"
+  ).style.display =
+    "none";
 
   if(passwordResolver){
 
-    const resolve = passwordResolver;
+    const resolve =
+      passwordResolver;
 
-    passwordResolver = null;
+    passwordResolver =
+      null;
 
     resolve(null);
+
   }
+
 }
 
-document.getElementById("passwordInput")
-  .addEventListener("keydown",function(event){
+
+document.getElementById(
+  "passwordInput"
+).addEventListener(
+  "keydown",
+  function(event){
 
     if(event.key === "Enter"){
       confirmPassword();
@@ -998,7 +1356,8 @@ document.getElementById("passwordInput")
       cancelPassword();
     }
 
-  });
+  }
+);
 
 
 /* --------------------------------------------------
@@ -1007,24 +1366,37 @@ document.getElementById("passwordInput")
 
 function cleanValue(value){
 
-  if(value === null || value === undefined){
+  if(
+    value === null ||
+    value === undefined
+  ){
     return "";
   }
 
-  if(typeof value === "object"){
+  if(
+    typeof value === "object"
+  ){
 
-    if(value.type === "null"){
+    if(
+      value.type === "null"
+    ){
       return "";
     }
 
-    if(value.value !== undefined){
-      return cleanValue(value.value);
+    if(
+      value.value !== undefined
+    ){
+      return cleanValue(
+        value.value
+      );
     }
 
     return "";
+
   }
 
   return String(value);
+
 }
 
 
@@ -1032,37 +1404,55 @@ function normalizeRestaurant(r){
 
   return {
 
-    id:cleanValue(r.id),
+    id:
+      cleanValue(r.id),
 
-    name:cleanValue(r.name),
+    name:
+      cleanValue(r.name),
 
-    ort:cleanValue(r.ort),
+    ort:
+      cleanValue(r.ort),
 
-    kategorie:cleanValue(r.kategorie),
+    kategorie:
+      cleanValue(r.kategorie),
 
-    adresse:cleanValue(r.adresse),
+    adresse:
+      cleanValue(r.adresse),
 
-    telefon:cleanValue(r.telefon),
+    telefon:
+      cleanValue(r.telefon),
 
-    website:cleanValue(r.website),
+    website:
+      cleanValue(r.website),
 
-    reservierung:cleanValue(r.reservierung),
+    reservierung:
+      cleanValue(r.reservierung),
 
-    email:cleanValue(r.email),
+    email:
+      cleanValue(r.email),
 
     oeffnungszeiten:
-      cleanValue(r.oeffnungszeiten),
+      cleanValue(
+        r.oeffnungszeiten
+      ),
 
     ruhetag:
-      cleanValue(r.ruhetag),
+      cleanValue(
+        r.ruhetag
+      ),
 
     notizen:
-      cleanValue(r.notizen),
+      cleanValue(
+        r.notizen
+      ),
 
     bild:
-      cleanValue(r.bild)
+      cleanValue(
+        r.bild
+      )
 
   };
+
 }
 
 
@@ -1073,7 +1463,9 @@ function normalizeRestaurant(r){
 async function loadData(){
 
   const status =
-    document.getElementById("syncStatus");
+    document.getElementById(
+      "syncStatus"
+    );
 
   try{
 
@@ -1082,12 +1474,15 @@ async function loadData(){
 
     const response =
       await fetch(
-        API_URL + "?t=" + Date.now(),
+        API_URL +
+        "?t=" +
+        Date.now(),
         {
           method:"GET",
           cache:"no-store",
           headers:{
-            "Accept":"application/json"
+            "Accept":
+              "application/json"
           }
         }
       );
@@ -1095,7 +1490,8 @@ async function loadData(){
     if(!response.ok){
 
       throw new Error(
-        "HTTP " + response.status
+        "HTTP " +
+        response.status
       );
 
     }
@@ -1113,14 +1509,21 @@ async function loadData(){
 
     restaurants =
       data
-        .map(normalizeRestaurant)
-        .filter(r => r.name)
-        .sort((a,b) =>
-          a.name.localeCompare(
-            b.name,
-            "de",
-            {sensitivity:"base"}
-          )
+        .map(
+          normalizeRestaurant
+        )
+        .filter(
+          r => r.name
+        )
+        .sort(
+          (a,b) =>
+            a.name.localeCompare(
+              b.name,
+              "de",
+              {
+                sensitivity:"base"
+              }
+            )
         );
 
     status.textContent =
@@ -1137,7 +1540,9 @@ async function loadData(){
     status.textContent =
       "⚠️ Die zentralen Restaurantdaten konnten nicht geladen werden.";
 
-    document.getElementById("cards").innerHTML = `
+    document.getElementById(
+      "cards"
+    ).innerHTML = `
 
       <div class="empty">
 
@@ -1155,7 +1560,9 @@ async function loadData(){
       </div>
 
     `;
+
   }
+
 }
 
 
@@ -1175,7 +1582,10 @@ function getDayName(){
     "Freitag",
     "Samstag"
 
-  ][new Date().getDay()];
+  ][
+    new Date().getDay()
+  ];
+
 }
 
 
@@ -1190,26 +1600,35 @@ function parseTimes(text){
 
   let m;
 
-  while((m = regex.exec(text)) !== null){
+  while(
+    (m = regex.exec(text)) !== null
+  ){
 
     matches.push({
 
       start:
-        parseInt(m[1],10) * 60 +
+        parseInt(m[1],10) *
+        60 +
         parseInt(m[2],10),
 
       end:
-        parseInt(m[3],10) * 60 +
+        parseInt(m[3],10) *
+        60 +
         parseInt(m[4],10)
 
     });
+
   }
 
   return matches;
+
 }
 
 
-function dayIsMentioned(text,day){
+function dayIsMentioned(
+  text,
+  day
+){
 
   const lower =
     (text || "").toLowerCase();
@@ -1229,16 +1648,23 @@ function dayIsMentioned(text,day){
   return lower.includes(
     names[day]
   );
+
 }
 
 
-function getOpeningStatus(place){
+function getOpeningStatus(
+  place
+){
 
   const hours =
-    cleanValue(place.oeffnungszeiten);
+    cleanValue(
+      place.oeffnungszeiten
+    );
 
   const closed =
-    cleanValue(place.ruhetag);
+    cleanValue(
+      place.ruhetag
+    );
 
   const today =
     getDayName();
@@ -1272,8 +1698,12 @@ function getOpeningStatus(place){
   }
 
   if(
-    /aktuelle öffnungszeiten bitte/i.test(hours) ||
-    /vorab telefonisch/i.test(hours)
+    /aktuelle öffnungszeiten bitte/i.test(
+      hours
+    ) ||
+    /vorab telefonisch/i.test(
+      hours
+    )
   ){
 
     return {
@@ -1283,22 +1713,27 @@ function getOpeningStatus(place){
 
   }
 
-  let relevantText = hours;
+  let relevantText =
+    hours;
 
   if(
     !/täglich/i.test(hours) &&
-    dayIsMentioned(hours,today)
+    dayIsMentioned(
+      hours,
+      today
+    )
   ){
 
     const parts =
       hours.split(/[;]+/);
 
     const relevant =
-      parts.filter(part =>
-        dayIsMentioned(
-          part,
-          today
-        )
+      parts.filter(
+        part =>
+          dayIsMentioned(
+            part,
+            today
+          )
       );
 
     if(relevant.length){
@@ -1307,10 +1742,13 @@ function getOpeningStatus(place){
         relevant.join(" ");
 
     }
+
   }
 
   const times =
-    parseTimes(relevantText);
+    parseTimes(
+      relevantText
+    );
 
   if(!times.length){
 
@@ -1325,13 +1763,15 @@ function getOpeningStatus(place){
     new Date();
 
   const minutes =
-    now.getHours() * 60 +
+    now.getHours() *
+    60 +
     now.getMinutes();
 
   const open =
-    times.some(t =>
-      minutes >= t.start &&
-      minutes <= t.end
+    times.some(
+      t =>
+        minutes >= t.start &&
+        minutes <= t.end
     );
 
   return open
@@ -1345,81 +1785,403 @@ function getOpeningStatus(place){
         type:"closed",
         text:"🔴 Jetzt geschlossen"
       };
+
 }
 
 
 /* --------------------------------------------------
-   BILDER
+   LOKALE BILDER
 -------------------------------------------------- */
 
-function imageHtml(place){
+function getRestaurantImage(
+  place
+){
 
-  if(!place.bild){
+  if(!place) return "";
 
-    return iconFor(place);
+  const local =
+    localImages[
+      String(place.id)
+    ];
+
+  if(local){
+    return local;
+  }
+
+  return cleanValue(
+    place.bild
+  );
+
+}
+
+
+function saveLocalImages(){
+
+  try{
+
+    localStorage.setItem(
+      LOCAL_IMAGES_KEY,
+      JSON.stringify(
+        localImages
+      )
+    );
+
+    return true;
+
+  }catch(error){
+
+    console.error(error);
+
+    return false;
+
+  }
+
+}
+
+
+function startLocalImageUpload(
+  id
+){
+
+  if(!id) return;
+
+  localImageTargetId =
+    String(id);
+
+  const input =
+    document.getElementById(
+      "localImageInput"
+    );
+
+  input.value = "";
+
+  input.click();
+
+}
+
+
+function handleLocalImageFile(
+  input
+){
+
+  const file =
+    input.files &&
+    input.files[0];
+
+  if(!file) return;
+
+  if(!localImageTargetId){
+
+    alert(
+      "Kein Restaurant ausgewählt."
+    );
+
+    return;
+
+  }
+
+  if(
+    !file.type.startsWith(
+      "image/"
+    )
+  ){
+
+    alert(
+      "Bitte ein Bild auswählen."
+    );
+
+    return;
+
+  }
+
+  const reader =
+    new FileReader();
+
+  reader.onload = function(){
+
+    const image =
+      new Image();
+
+    image.onload =
+      function(){
+
+        const maxSize =
+          1200;
+
+        let width =
+          image.width;
+
+        let height =
+          image.height;
+
+        if(
+          width > maxSize ||
+          height > maxSize
+        ){
+
+          if(width >= height){
+
+            height =
+              Math.round(
+                height *
+                maxSize /
+                width
+              );
+
+            width =
+              maxSize;
+
+          }else{
+
+            width =
+              Math.round(
+                width *
+                maxSize /
+                height
+              );
+
+            height =
+              maxSize;
+
+          }
+
+        }
+
+        const canvas =
+          document.createElement(
+            "canvas"
+          );
+
+        canvas.width =
+          width;
+
+        canvas.height =
+          height;
+
+        const ctx =
+          canvas.getContext(
+            "2d"
+          );
+
+        ctx.drawImage(
+          image,
+          0,
+          0,
+          width,
+          height
+        );
+
+        const dataUrl =
+          canvas.toDataURL(
+            "image/jpeg",
+            0.78
+          );
+
+        localImages[
+          localImageTargetId
+        ] =
+          dataUrl;
+
+        if(
+          !saveLocalImages()
+        ){
+
+          delete localImages[
+            localImageTargetId
+          ];
+
+          alert(
+            "Das Bild konnte nicht gespeichert werden. Der Speicher des Browsers ist möglicherweise voll."
+          );
+
+          return;
+
+        }
+
+        const savedId =
+          localImageTargetId;
+
+        localImageTargetId =
+          null;
+
+        render();
+
+        if(
+          currentPlace &&
+          String(currentPlace.id) ===
+          String(savedId)
+        ){
+
+          openDetail(
+            savedId
+          );
+
+        }
+
+      };
+
+    image.onerror =
+      function(){
+
+        alert(
+          "Das Bild konnte nicht verarbeitet werden."
+        );
+
+      };
+
+    image.src =
+      reader.result;
+
+  };
+
+  reader.readAsDataURL(
+    file
+  );
+
+}
+
+
+function removeLocalImage(){
+
+  if(!currentPlace) return;
+
+  const id =
+    String(
+      currentPlace.id
+    );
+
+  if(
+    !localImages[id]
+  ){
+    return;
+  }
+
+  if(
+    !confirm(
+      "Das auf diesem Handy gespeicherte Bild wirklich entfernen?"
+    )
+  ){
+    return;
+  }
+
+  delete localImages[id];
+
+  saveLocalImages();
+
+  openDetail(id);
+
+  render();
+
+}
+
+
+function imageHtml(
+  place
+){
+
+  const image =
+    getRestaurantImage(
+      place
+    );
+
+  if(!image){
+
+    return iconFor(
+      place
+    );
 
   }
 
   return `
     <img
-      src="${escapeAttr(place.bild)}"
+      src="${escapeAttr(image)}"
       alt=""
       loading="lazy"
       onerror="this.style.display='none'"
     >
   `;
+
 }
 
 
 function previewImage(){
 
   const url =
-    document.getElementById("f_bild")
-      .value.trim();
+    document.getElementById(
+      "f_bild"
+    )
+    .value
+    .trim();
 
   const box =
-    document.getElementById("imagepreview");
+    document.getElementById(
+      "imagepreview"
+    );
 
   const img =
-    document.getElementById("previewimg");
+    document.getElementById(
+      "previewimg"
+    );
 
   const remove =
-    document.getElementById("removeimage");
+    document.getElementById(
+      "removeimage"
+    );
 
   if(!url){
 
-    box.style.display="none";
-    remove.style.display="none";
-    img.src="";
+    box.style.display =
+      "none";
+
+    remove.style.display =
+      "none";
+
+    img.src = "";
+
     return;
+
   }
 
-  img.src=url;
+  img.src =
+    url;
 
-  box.style.display="grid";
-  remove.style.display="block";
+  box.style.display =
+    "grid";
 
-  img.onerror=function(){
+  remove.style.display =
+    "block";
 
-    box.style.display="none";
+  img.onerror =
+    function(){
 
-  };
+      box.style.display =
+        "none";
+
+    };
+
 }
 
 
 function removeImage(){
 
-  document.getElementById("f_bild")
-    .value="";
+  document.getElementById(
+    "f_bild"
+  ).value = "";
 
-  document.getElementById("imagepreview")
-    .style.display="none";
+  document.getElementById(
+    "imagepreview"
+  ).style.display =
+    "none";
 
-  document.getElementById("removeimage")
-    .style.display="none";
+  document.getElementById(
+    "removeimage"
+  ).style.display =
+    "none";
 
-  document.getElementById("previewimg")
-    .src="";
+  document.getElementById(
+    "previewimg"
+  ).src = "";
+
 }
 
 
@@ -1427,51 +2189,75 @@ function removeImage(){
    FAVORITEN
 -------------------------------------------------- */
 
-function iconFor(place){
+function iconFor(
+  place
+){
 
-  if(place.kategorie === "Alm"){
+  if(
+    place.kategorie === "Alm"
+  ){
     return "🏔️";
   }
 
-  if(place.kategorie === "Ausflugsziel"){
+  if(
+    place.kategorie ===
+    "Ausflugsziel"
+  ){
     return "🌲";
   }
 
   return "🍽️";
+
 }
 
 
-function isFavorite(id){
+function isFavorite(
+  id
+){
 
   return favorites.includes(
     String(id)
   );
+
 }
 
 
-function toggleFavorite(id){
+function toggleFavorite(
+  id
+){
 
-  id = String(id);
+  id =
+    String(id);
 
   const index =
-    favorites.indexOf(id);
+    favorites.indexOf(
+      id
+    );
 
   if(index >= 0){
 
-    favorites.splice(index,1);
+    favorites.splice(
+      index,
+      1
+    );
 
   }else{
 
-    favorites.push(id);
+    favorites.push(
+      id
+    );
 
   }
 
   localStorage.setItem(
     "tegernseeFavorites",
-    JSON.stringify(favorites)
+    JSON.stringify(
+      favorites
+    )
   );
 
   render();
+
 }
 
 
@@ -1482,67 +2268,92 @@ function toggleFavorite(id){
 function filteredRestaurants(){
 
   const search =
-    document.getElementById("search")
-      .value
-      .trim()
-      .toLowerCase();
+    document.getElementById(
+      "search"
+    )
+    .value
+    .trim()
+    .toLowerCase();
 
-  return restaurants.filter(r => {
+  return restaurants.filter(
+    r => {
 
-    const matchesSearch =
-      !search ||
+      const matchesSearch =
+        !search ||
 
-      [
-        r.name,
-        r.ort,
-        r.kategorie,
-        r.adresse
+        [
+          r.name,
+          r.ort,
+          r.kategorie,
+          r.adresse
 
-      ]
-      .join(" ")
-      .toLowerCase()
-      .includes(search);
+        ]
+        .join(" ")
+        .toLowerCase()
+        .includes(
+          search
+        );
 
-    let matchesFilter = true;
+      let matchesFilter =
+        true;
 
-    if(currentFilter === "Restaurant"){
+      if(
+        currentFilter ===
+        "Restaurant"
+      ){
 
-      matchesFilter =
-        r.kategorie === "Restaurant";
+        matchesFilter =
+          r.kategorie ===
+          "Restaurant";
+
+      }
+
+      if(
+        currentFilter === "Alm"
+      ){
+
+        matchesFilter =
+          r.kategorie ===
+          "Alm";
+
+      }
+
+      if(
+        currentFilter ===
+        "Kreuth"
+      ){
+
+        matchesFilter =
+          r.ort
+            .toLowerCase()
+            .includes(
+              "kreuth"
+            );
+
+      }
+
+      if(
+        currentFilter ===
+        "Tegernsee"
+      ){
+
+        matchesFilter =
+          r.ort
+            .toLowerCase()
+            .includes(
+              "tegernsee"
+            );
+
+      }
+
+      return (
+        matchesSearch &&
+        matchesFilter
+      );
 
     }
+  );
 
-    if(currentFilter === "Alm"){
-
-      matchesFilter =
-        r.kategorie === "Alm";
-
-    }
-
-    if(currentFilter === "Kreuth"){
-
-      matchesFilter =
-        r.ort
-          .toLowerCase()
-          .includes("kreuth");
-
-    }
-
-    if(currentFilter === "Tegernsee"){
-
-      matchesFilter =
-        r.ort
-          .toLowerCase()
-          .includes("tegernsee");
-
-    }
-
-    return (
-      matchesSearch &&
-      matchesFilter
-    );
-
-  });
 }
 
 
@@ -1550,7 +2361,9 @@ function filteredRestaurants(){
    RESERVIERUNG
 -------------------------------------------------- */
 
-function reserveTable(url){
+function reserveTable(
+  url
+){
 
   if(!url) return;
 
@@ -1573,10 +2386,13 @@ function render(){
     filteredRestaurants();
 
   const cards =
-    document.getElementById("cards");
+    document.getElementById(
+      "cards"
+    );
 
-  document.getElementById("count")
-    .textContent =
+  document.getElementById(
+    "count"
+  ).textContent =
     list.length;
 
   if(!list.length){
@@ -1587,110 +2403,151 @@ function render(){
       </div>`;
 
     return;
+
   }
 
   cards.innerHTML =
-    list.map(place => {
+    list.map(
+      place => {
 
-      const status =
-        getOpeningStatus(place);
+        const status =
+          getOpeningStatus(
+            place
+          );
 
-      const fav =
-        isFavorite(place.id);
+        const fav =
+          isFavorite(
+            place.id
+          );
 
-      return `
+        const hasLocalImage =
+          !!localImages[
+            String(place.id)
+          ];
 
-        <div class="card">
+        return `
 
-          <div class="cardtop">
+          <div class="card">
 
-            <div class="icon">
-              ${imageHtml(place)}
-            </div>
+            <div class="cardtop">
 
-            <div class="cardmain">
-
-              <div class="cardname">
-                ${escapeHtml(place.name)}
+              <div class="icon">
+                ${imageHtml(place)}
               </div>
 
-              <div class="place">
+              <div class="cardmain">
 
-                ${escapeHtml(place.ort)}
+                <div class="cardname">
+                  ${escapeHtml(
+                    place.name
+                  )}
+                </div>
 
+                <div class="place">
+
+                  ${escapeHtml(
+                    place.ort
+                  )}
+
+                  ${
+                    place.kategorie
+                    ? " · " +
+                      escapeHtml(
+                        place.kategorie
+                      )
+                    : ""
+                  }
+
+                </div>
+
+                <div
+                  class="status ${status.type}"
+                >
+                  ${status.text}
+                </div>
+
+              </div>
+
+              <button
+                class="fav"
+                onclick="toggleFavorite('${escapeAttr(place.id)}')"
+              >
                 ${
-                  place.kategorie
-                  ? " · " +
-                    escapeHtml(place.kategorie)
-                  : ""
+                  fav
+                  ? "❤️"
+                  : "♡"
                 }
-
-              </div>
-
-              <div class="status ${status.type}">
-                ${status.text}
-              </div>
+              </button>
 
             </div>
 
-            <button
-              class="fav"
-              onclick="toggleFavorite('${escapeAttr(place.id)}')"
-            >
-              ${fav ? "❤️" : "♡"}
-            </button>
+
+            <div class="cardbottom">
+
+              <button
+                onclick="openDetail('${escapeAttr(place.id)}')"
+              >
+                Details
+              </button>
+
+
+              <button
+                onclick="routeTo('${escapeAttr(place.id)}')"
+              >
+                📍 Route
+              </button>
+
+
+              ${
+                place.telefon
+
+                ? `
+                  <button
+                    onclick="callPhone('${escapeAttr(place.telefon)}')"
+                  >
+                    ☎️ Anrufen
+                  </button>
+                `
+
+                : ""
+              }
+
+
+              ${
+                place.reservierung
+
+                ? `
+                  <button
+                    onclick="reserveTable('${escapeAttr(place.reservierung)}')"
+                  >
+                    🍽️ Tisch reservieren
+                  </button>
+                `
+
+                : ""
+              }
+
+
+              <button
+                class="imagebutton"
+                onclick="startLocalImageUpload('${escapeAttr(place.id)}')"
+              >
+                ${
+                  hasLocalImage
+                  ? "📷 Bild ändern"
+                  : "📷 Bild"
+                }
+              </button>
+
+            </div>
 
           </div>
 
-          <div class="cardbottom">
+        `;
 
-            <button
-              onclick="openDetail('${escapeAttr(place.id)}')"
-            >
-              Details
-            </button>
+      }
+    ).join("");
 
-            <button
-              onclick="routeTo('${escapeAttr(place.id)}')"
-            >
-              📍 Route
-            </button>
-
-            ${
-              place.telefon
-
-              ? `
-                <button
-                  onclick="callPhone('${escapeAttr(place.telefon)}')"
-                >
-                  ☎️ Anrufen
-                </button>
-              `
-
-              : ""
-            }
-
-            ${
-              place.reservierung
-
-              ? `
-                <button
-                  onclick="reserveTable('${escapeAttr(place.reservierung)}')"
-                >
-                  🍽️ Tisch reservieren
-                </button>
-              `
-
-              : ""
-            }
-
-          </div>
-
-        </div>
-
-      `;
-
-    }).join("");
 }
 
 
@@ -1698,21 +2555,50 @@ function render(){
    SICHERHEIT HTML
 -------------------------------------------------- */
 
-function escapeHtml(value){
+function escapeHtml(
+  value
+){
 
-  return cleanValue(value)
+  return cleanValue(
+    value
+  )
 
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/'/g,"&#039;");
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+
+    .replace(
+      /</g,
+      "&lt;"
+    )
+
+    .replace(
+      />/g,
+      "&gt;"
+    )
+
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+
 }
 
 
-function escapeAttr(value){
+function escapeAttr(
+  value
+){
 
-  return escapeHtml(value);
+  return escapeHtml(
+    value
+  );
+
 }
 
 
@@ -1720,7 +2606,9 @@ function escapeAttr(value){
    DETAILANSICHT
 -------------------------------------------------- */
 
-function openDetail(id){
+function openDetail(
+  id
+){
 
   currentPlace =
     restaurants.find(
@@ -1729,23 +2617,32 @@ function openDetail(id){
         String(id)
     );
 
-  if(!currentPlace) return;
+  if(!currentPlace)
+    return;
 
-  document.getElementById("home")
-    .style.display="none";
+  document.getElementById(
+    "home"
+  ).style.display =
+    "none";
 
-  document.getElementById("homeHeader")
-    .style.display="none";
+  document.getElementById(
+    "homeHeader"
+  ).style.display =
+    "none";
 
-  document.getElementById("detail")
-    .style.display="block";
+  document.getElementById(
+    "detail"
+  ).style.display =
+    "block";
 
-  document.getElementById("dname")
-    .textContent =
+  document.getElementById(
+    "dname"
+  ).textContent =
     currentPlace.name;
 
-  document.getElementById("dplace")
-    .textContent =
+  document.getElementById(
+    "dplace"
+  ).textContent =
     [
       currentPlace.ort,
       currentPlace.kategorie
@@ -1753,40 +2650,52 @@ function openDetail(id){
     .filter(Boolean)
     .join(" · ");
 
-  document.getElementById("daddress")
-    .textContent =
+  document.getElementById(
+    "daddress"
+  ).textContent =
     currentPlace.adresse ||
     "Noch ergänzen";
 
-  document.getElementById("dhours")
-    .textContent =
+  document.getElementById(
+    "dhours"
+  ).textContent =
     currentPlace.oeffnungszeiten ||
     "Noch ergänzen";
 
-  document.getElementById("dclosed")
-    .textContent =
+  document.getElementById(
+    "dclosed"
+  ).textContent =
     currentPlace.ruhetag ||
     "Kein Ruhetag hinterlegt";
 
-  document.getElementById("dphone")
-    .textContent =
+  document.getElementById(
+    "dphone"
+  ).textContent =
     currentPlace.telefon ||
     "Noch ergänzen";
 
-  document.getElementById("demail")
-    .textContent =
+  document.getElementById(
+    "demail"
+  ).textContent =
     currentPlace.email ||
     "Noch ergänzen";
 
-  const web =
-    document.getElementById("dweb");
 
-  if(currentPlace.website){
+  const web =
+    document.getElementById(
+      "dweb"
+    );
+
+  if(
+    currentPlace.website
+  ){
 
     web.innerHTML = `
 
       <a
-        href="${escapeAttr(currentPlace.website)}"
+        href="${escapeAttr(
+          currentPlace.website
+        )}"
         target="_blank"
         rel="noopener"
       >
@@ -1802,10 +2711,15 @@ function openDetail(id){
 
   }
 
-  const reservationAction =
-    document.getElementById("reservationAction");
 
-  if(currentPlace.reservierung){
+  const reservationAction =
+    document.getElementById(
+      "reservationAction"
+    );
+
+  if(
+    currentPlace.reservierung
+  ){
 
     reservationAction.style.display =
       "block";
@@ -1817,16 +2731,26 @@ function openDetail(id){
 
   }
 
-  const hero =
-    document.getElementById("hero");
 
-  if(currentPlace.bild){
+  const hero =
+    document.getElementById(
+      "hero"
+    );
+
+  const image =
+    getRestaurantImage(
+      currentPlace
+    );
+
+  if(image){
 
     hero.innerHTML = `
 
       <img
-        src="${escapeAttr(currentPlace.bild)}"
-        alt="${escapeAttr(currentPlace.name)}"
+        src="${escapeAttr(image)}"
+        alt="${escapeAttr(
+          currentPlace.name
+        )}"
         onerror="this.parentElement.innerHTML='🍽️'"
       >
 
@@ -1835,30 +2759,70 @@ function openDetail(id){
   }else{
 
     hero.innerHTML =
-      iconFor(currentPlace);
+      iconFor(
+        currentPlace
+      );
 
   }
 
-  document.getElementById("note")
-    .value =
-    currentPlace.notizen || "";
+
+  const removeLocalButton =
+    document.getElementById(
+      "removeLocalImageButton"
+    );
+
+  if(
+    localImages[
+      String(currentPlace.id)
+    ]
+  ){
+
+    removeLocalButton.style.display =
+      "block";
+
+  }else{
+
+    removeLocalButton.style.display =
+      "none";
+
+  }
+
+
+  document.getElementById(
+    "note"
+  ).value =
+    currentPlace.notizen ||
+    "";
+
 }
 
 
+/* --------------------------------------------------
+   STARTSEITE
+-------------------------------------------------- */
+
 function showHome(){
 
-  document.getElementById("detail")
-    .style.display="none";
+  document.getElementById(
+    "detail"
+  ).style.display =
+    "none";
 
-  document.getElementById("home")
-    .style.display="block";
+  document.getElementById(
+    "home"
+  ).style.display =
+    "block";
 
-  document.getElementById("homeHeader")
-    .style.display="block";
+  document.getElementById(
+    "homeHeader"
+  ).style.display =
+    "block";
 
-  currentPlace=null;
+  currentPlace =
+    null;
 
   render();
+
 }
 
 
@@ -1866,30 +2830,42 @@ function focusSearch(){
 
   showHome();
 
-  document.getElementById("search")
-    .focus();
+  document.getElementById(
+    "search"
+  ).focus();
 
   window.scrollTo({
     top:0,
     behavior:"smooth"
   });
+
 }
 
+
+/* --------------------------------------------------
+   FAVORITENANSICHT
+-------------------------------------------------- */
 
 function showFavorites(){
 
   showHome();
 
   const list =
-    restaurants.filter(r =>
-      isFavorite(r.id)
+    restaurants.filter(
+      r =>
+        isFavorite(
+          r.id
+        )
     );
 
   const cards =
-    document.getElementById("cards");
+    document.getElementById(
+      "cards"
+    );
 
-  document.getElementById("count")
-    .textContent =
+  document.getElementById(
+    "count"
+  ).textContent =
     list.length;
 
   if(!list.length){
@@ -1901,98 +2877,131 @@ function showFavorites(){
     `;
 
     return;
+
   }
 
+
   cards.innerHTML =
-    list.map(place => {
+    list.map(
+      place => {
 
-      const status =
-        getOpeningStatus(place);
+        const status =
+          getOpeningStatus(
+            place
+          );
 
-      return `
+        const hasLocalImage =
+          !!localImages[
+            String(place.id)
+          ];
 
-        <div class="card">
+        return `
 
-          <div class="cardtop">
+          <div class="card">
 
-            <div class="icon">
-              ${imageHtml(place)}
+            <div class="cardtop">
+
+              <div class="icon">
+                ${imageHtml(place)}
+              </div>
+
+              <div class="cardmain">
+
+                <div class="cardname">
+                  ${escapeHtml(
+                    place.name
+                  )}
+                </div>
+
+                <div class="place">
+                  ${escapeHtml(
+                    place.ort
+                  )}
+                </div>
+
+                <div
+                  class="status ${status.type}"
+                >
+                  ${status.text}
+                </div>
+
+              </div>
+
+              <button
+                class="fav"
+                onclick="toggleFavorite('${escapeAttr(place.id)}')"
+              >
+                ❤️
+              </button>
+
             </div>
 
-            <div class="cardmain">
 
-              <div class="cardname">
-                ${escapeHtml(place.name)}
-              </div>
+            <div class="cardbottom">
 
-              <div class="place">
-                ${escapeHtml(place.ort)}
-              </div>
+              <button
+                onclick="openDetail('${escapeAttr(place.id)}')"
+              >
+                Details
+              </button>
 
-              <div class="status ${status.type}">
-                ${status.text}
-              </div>
+              <button
+                onclick="routeTo('${escapeAttr(place.id)}')"
+              >
+                📍 Route
+              </button>
+
+
+              ${
+                place.telefon
+
+                ? `
+                  <button
+                    onclick="callPhone('${escapeAttr(place.telefon)}')"
+                  >
+                    ☎️ Anrufen
+                  </button>
+                `
+
+                : ""
+              }
+
+
+              ${
+                place.reservierung
+
+                ? `
+                  <button
+                    onclick="reserveTable('${escapeAttr(place.reservierung)}')"
+                  >
+                    🍽️ Tisch reservieren
+                  </button>
+                `
+
+                : ""
+              }
+
+
+              <button
+                class="imagebutton"
+                onclick="startLocalImageUpload('${escapeAttr(place.id)}')"
+              >
+                ${
+                  hasLocalImage
+                  ? "📷 Bild ändern"
+                  : "📷 Bild"
+                }
+              </button>
 
             </div>
-
-            <button
-              class="fav"
-              onclick="toggleFavorite('${escapeAttr(place.id)}')"
-            >
-              ❤️
-            </button>
 
           </div>
 
-          <div class="cardbottom">
+        `;
 
-            <button
-              onclick="openDetail('${escapeAttr(place.id)}')"
-            >
-              Details
-            </button>
+      }
+    ).join("");
 
-            <button
-              onclick="routeTo('${escapeAttr(place.id)}')"
-            >
-              📍 Route
-            </button>
-
-            ${
-              place.telefon
-
-              ? `
-                <button
-                  onclick="callPhone('${escapeAttr(place.telefon)}')"
-                >
-                  ☎️ Anrufen
-                </button>
-              `
-
-              : ""
-            }
-
-            ${
-              place.reservierung
-
-              ? `
-                <button
-                  onclick="reserveTable('${escapeAttr(place.reservierung)}')"
-                >
-                  🍽️ Tisch reservieren
-                </button>
-              `
-
-              : ""
-            }
-
-          </div>
-
-        </div>
-
-      `;
-
-    }).join("");
 }
 
 
@@ -2000,7 +3009,9 @@ function showFavorites(){
    ROUTE / TELEFON
 -------------------------------------------------- */
 
-function routeTo(id){
+function routeTo(
+  id
+){
 
   const place =
     restaurants.find(
@@ -2009,7 +3020,8 @@ function routeTo(id){
         String(id)
     );
 
-  if(!place) return;
+  if(!place)
+    return;
 
   const destination =
     encodeURIComponent(
@@ -2030,25 +3042,35 @@ function routeTo(id){
     "_blank"
 
   );
+
 }
 
 
 function openRoute(){
 
   if(currentPlace){
-    routeTo(currentPlace.id);
+
+    routeTo(
+      currentPlace.id
+    );
+
   }
 
 }
 
 
-function callPhone(phone){
+function callPhone(
+  phone
+){
 
   if(phone){
 
     window.location.href =
       "tel:" +
-      phone.replace(/[^\d+]/g,"");
+      phone.replace(
+        /[^\d+]/g,
+        ""
+      );
 
   }
 
@@ -2074,16 +3096,21 @@ function callPlace(){
 
 function openAdd(){
 
-  editId=null;
+  editId =
+    null;
 
-  document.getElementById("modalTitle")
-    .textContent =
+  document.getElementById(
+    "modalTitle"
+  ).textContent =
     "Restaurant hinzufügen";
 
   clearForm();
 
-  document.getElementById("modal")
-    .style.display="block";
+  document.getElementById(
+    "modal"
+  ).style.display =
+    "block";
+
 }
 
 
@@ -2093,68 +3120,99 @@ function openAdd(){
 
 function editPlace(){
 
-  if(!currentPlace) return;
+  if(!currentPlace)
+    return;
 
   editId =
     currentPlace.id;
 
-  document.getElementById("modalTitle")
-    .textContent =
+  document.getElementById(
+    "modalTitle"
+  ).textContent =
     "Restaurant bearbeiten";
 
-  document.getElementById("f_name")
-    .value =
+
+  document.getElementById(
+    "f_name"
+  ).value =
     currentPlace.name;
 
-  document.getElementById("f_ort")
-    .value =
+
+  document.getElementById(
+    "f_ort"
+  ).value =
     currentPlace.ort;
 
-  document.getElementById("f_kategorie")
-    .value =
+
+  document.getElementById(
+    "f_kategorie"
+  ).value =
     currentPlace.kategorie ||
     "Restaurant";
 
-  document.getElementById("f_adresse")
-    .value =
+
+  document.getElementById(
+    "f_adresse"
+  ).value =
     currentPlace.adresse;
 
-  document.getElementById("f_telefon")
-    .value =
+
+  document.getElementById(
+    "f_telefon"
+  ).value =
     currentPlace.telefon;
 
-  document.getElementById("f_website")
-    .value =
+
+  document.getElementById(
+    "f_website"
+  ).value =
     currentPlace.website;
 
-  document.getElementById("f_reservierung")
-    .value =
+
+  document.getElementById(
+    "f_reservierung"
+  ).value =
     currentPlace.reservierung;
 
-  document.getElementById("f_email")
-    .value =
+
+  document.getElementById(
+    "f_email"
+  ).value =
     currentPlace.email;
 
-  document.getElementById("f_oeffnungszeiten")
-    .value =
+
+  document.getElementById(
+    "f_oeffnungszeiten"
+  ).value =
     currentPlace.oeffnungszeiten;
 
-  document.getElementById("f_ruhetag")
-    .value =
+
+  document.getElementById(
+    "f_ruhetag"
+  ).value =
     currentPlace.ruhetag;
 
-  document.getElementById("f_notizen")
-    .value =
+
+  document.getElementById(
+    "f_notizen"
+  ).value =
     currentPlace.notizen;
 
-  document.getElementById("f_bild")
-    .value =
+
+  document.getElementById(
+    "f_bild"
+  ).value =
     currentPlace.bild;
+
 
   previewImage();
 
-  document.getElementById("modal")
-    .style.display="block";
+
+  document.getElementById(
+    "modal"
+  ).style.display =
+    "block";
+
 }
 
 
@@ -2178,32 +3236,49 @@ function clearForm(){
     "f_notizen",
     "f_bild"
 
-  ].forEach(id => {
+  ].forEach(
+    id => {
 
-    document.getElementById(id)
-      .value="";
+      document.getElementById(
+        id
+      ).value = "";
 
-  });
+    }
+  );
 
-  document.getElementById("f_kategorie")
-    .value =
+
+  document.getElementById(
+    "f_kategorie"
+  ).value =
     "Restaurant";
 
-  document.getElementById("imagepreview")
-    .style.display="none";
 
-  document.getElementById("removeimage")
-    .style.display="none";
+  document.getElementById(
+    "imagepreview"
+  ).style.display =
+    "none";
 
-  document.getElementById("previewimg")
-    .src="";
+
+  document.getElementById(
+    "removeimage"
+  ).style.display =
+    "none";
+
+
+  document.getElementById(
+    "previewimg"
+  ).src =
+    "";
+
 }
 
 
 function closeModal(){
 
-  document.getElementById("modal")
-    .style.display="none";
+  document.getElementById(
+    "modal"
+  ).style.display =
+    "none";
 
 }
 
@@ -2213,65 +3288,89 @@ function getFormData(){
   return {
 
     name:
-      document.getElementById("f_name")
-        .value
-        .trim(),
+      document.getElementById(
+        "f_name"
+      )
+      .value
+      .trim(),
 
     ort:
-      document.getElementById("f_ort")
-        .value
-        .trim(),
+      document.getElementById(
+        "f_ort"
+      )
+      .value
+      .trim(),
 
     kategorie:
-      document.getElementById("f_kategorie")
-        .value,
+      document.getElementById(
+        "f_kategorie"
+      ).value,
 
     adresse:
-      document.getElementById("f_adresse")
-        .value
-        .trim(),
+      document.getElementById(
+        "f_adresse"
+      )
+      .value
+      .trim(),
 
     telefon:
-      document.getElementById("f_telefon")
-        .value
-        .trim(),
+      document.getElementById(
+        "f_telefon"
+      )
+      .value
+      .trim(),
 
     website:
-      document.getElementById("f_website")
-        .value
-        .trim(),
+      document.getElementById(
+        "f_website"
+      )
+      .value
+      .trim(),
 
     reservierung:
-      document.getElementById("f_reservierung")
-        .value
-        .trim(),
+      document.getElementById(
+        "f_reservierung"
+      )
+      .value
+      .trim(),
 
     email:
-      document.getElementById("f_email")
-        .value
-        .trim(),
+      document.getElementById(
+        "f_email"
+      )
+      .value
+      .trim(),
 
     oeffnungszeiten:
-      document.getElementById("f_oeffnungszeiten")
-        .value
-        .trim(),
+      document.getElementById(
+        "f_oeffnungszeiten"
+      )
+      .value
+      .trim(),
 
     ruhetag:
-      document.getElementById("f_ruhetag")
-        .value
-        .trim(),
+      document.getElementById(
+        "f_ruhetag"
+      )
+      .value
+      .trim(),
 
     notizen:
-      document.getElementById("f_notizen")
-        .value
-        .trim(),
+      document.getElementById(
+        "f_notizen"
+      )
+      .value
+      .trim(),
 
     bild:
-      document.getElementById("f_bild")
-        .value
-        .trim()
+      document.getElementById(
+        "f_bild"
+      )
+      .value
+      .trim()
 
   };
+
 }
 
 
@@ -2291,14 +3390,18 @@ async function savePlace(){
     );
 
     return;
+
   }
+
 
   const password =
     await askAdminPassword(
       "Bitte Admin-Passwort zum Speichern eingeben."
     );
 
-  if(password === null) return;
+  if(password === null)
+    return;
+
 
   if(password === ""){
 
@@ -2307,11 +3410,14 @@ async function savePlace(){
     );
 
     return;
+
   }
+
 
   try{
 
     let body;
+
 
     if(editId){
 
@@ -2337,6 +3443,7 @@ async function savePlace(){
 
     }
 
+
     const response =
       await fetch(
         API_URL,
@@ -2345,30 +3452,39 @@ async function savePlace(){
           method:"POST",
 
           headers:{
+
             "Content-Type":
               "application/json",
 
             "Authorization":
-              "Bearer " + password
+              "Bearer " +
+              password
+
           },
 
           body:
-            JSON.stringify(body)
+            JSON.stringify(
+              body
+            )
 
         }
       );
 
+
     if(!response.ok){
 
       throw new Error(
-        "HTTP " + response.status
+        "HTTP " +
+        response.status
       );
 
     }
 
+
     closeModal();
 
     await loadData();
+
 
     if(editId){
 
@@ -2389,9 +3505,12 @@ async function savePlace(){
 
     }
 
+
   }catch(error){
 
-    console.error(error);
+    console.error(
+      error
+    );
 
     alert(
       "Speichern fehlgeschlagen.\n\n" +
@@ -2399,6 +3518,7 @@ async function savePlace(){
     );
 
   }
+
 }
 
 
@@ -2408,26 +3528,32 @@ async function savePlace(){
 
 async function deletePlace(){
 
-  if(!currentPlace) return;
+  if(!currentPlace)
+    return;
 
-  if(!confirm(
 
-    "Möchtest du „" +
-    currentPlace.name +
-    "“ wirklich löschen?"
-
-  )){
+  if(
+    !confirm(
+      "Möchtest du „" +
+      currentPlace.name +
+      "“ wirklich löschen?"
+    )
+  ){
 
     return;
 
   }
+
 
   const password =
     await askAdminPassword(
       "Bitte Admin-Passwort zum Löschen eingeben."
     );
 
-  if(password === null) return;
+
+  if(password === null)
+    return;
+
 
   if(password === ""){
 
@@ -2439,6 +3565,7 @@ async function deletePlace(){
 
   }
 
+
   try{
 
     const response =
@@ -2449,11 +3576,14 @@ async function deletePlace(){
           method:"POST",
 
           headers:{
+
             "Content-Type":
               "application/json",
 
             "Authorization":
-              "Bearer " + password
+              "Bearer " +
+              password
+
           },
 
           body:
@@ -2461,28 +3591,47 @@ async function deletePlace(){
 
               action:"delete",
 
-              id:currentPlace.id
+              id:
+                currentPlace.id
 
             })
 
         }
       );
 
+
     if(!response.ok){
 
       throw new Error(
-        "HTTP " + response.status
+        "HTTP " +
+        response.status
       );
 
     }
+
+
+    /* Auch das lokale Bild löschen,
+       wenn das Restaurant gelöscht wird. */
+
+    delete localImages[
+      String(
+        currentPlace.id
+      )
+    ];
+
+    saveLocalImages();
+
 
     showHome();
 
     await loadData();
 
+
   }catch(error){
 
-    console.error(error);
+    console.error(
+      error
+    );
 
     alert(
       "Löschen fehlgeschlagen.\n\n" +
@@ -2490,6 +3639,7 @@ async function deletePlace(){
     );
 
   }
+
 }
 
 
@@ -2497,99 +3647,121 @@ async function deletePlace(){
    NOTIZEN SPEICHERN
 -------------------------------------------------- */
 
-let noteTimer = null;
+let noteTimer =
+  null;
 
-document.getElementById("note")
-  .addEventListener(
-    "input",
-    function(){
 
-      if(!currentPlace) return;
+document.getElementById(
+  "note"
+).addEventListener(
+  "input",
+  function(){
 
-      clearTimeout(noteTimer);
+    if(!currentPlace)
+      return;
 
-      noteTimer =
-        setTimeout(
-          async () => {
+    clearTimeout(
+      noteTimer
+    );
 
-            const password =
-              await askAdminPassword(
-                "Admin-Passwort zum Speichern der Notiz eingeben."
+
+    noteTimer =
+      setTimeout(
+        async () => {
+
+          const password =
+            await askAdminPassword(
+              "Admin-Passwort zum Speichern der Notiz eingeben."
+            );
+
+
+          if(password === null)
+            return;
+
+
+          if(password === ""){
+
+            alert(
+              "Bitte ein Passwort eingeben."
+            );
+
+            return;
+
+          }
+
+
+          try{
+
+            const response =
+              await fetch(
+                API_URL,
+                {
+
+                  method:"POST",
+
+                  headers:{
+
+                    "Content-Type":
+                      "application/json",
+
+                    "Authorization":
+                      "Bearer " +
+                      password
+
+                  },
+
+                  body:
+                    JSON.stringify({
+
+                      action:"update",
+
+                      id:
+                        currentPlace.id,
+
+                      restaurant:{
+                        ...currentPlace,
+                        notizen:
+                          this.value
+                      }
+
+                    })
+
+                }
               );
 
-            if(password === null) return;
 
-            if(password === ""){
+            if(!response.ok){
 
-              alert(
-                "Bitte ein Passwort eingeben."
+              throw new Error(
+                "HTTP " +
+                response.status
               );
-
-              return;
 
             }
 
-            try{
 
-              const response =
-                await fetch(
-                  API_URL,
-                  {
+            currentPlace.notizen =
+              this.value;
 
-                    method:"POST",
 
-                    headers:{
-                      "Content-Type":
-                        "application/json",
+          }catch(error){
 
-                      "Authorization":
-                        "Bearer " + password
-                    },
+            console.error(
+              error
+            );
 
-                    body:
-                      JSON.stringify({
+            alert(
+              "Notiz konnte nicht gespeichert werden."
+            );
 
-                        action:"update",
+          }
 
-                        id:currentPlace.id,
+        },
+        900
+      );
 
-                        restaurant:{
-                          ...currentPlace,
-                          notizen:this.value
-                        }
-
-                      })
-
-                  }
-                );
-
-              if(!response.ok){
-
-                throw new Error(
-                  "HTTP " +
-                  response.status
-                );
-
-              }
-
-              currentPlace.notizen =
-                this.value;
-
-            }catch(error){
-
-              console.error(error);
-
-              alert(
-                "Notiz konnte nicht gespeichert werden."
-              );
-
-            }
-
-          },
-          900
-        );
-    }
-  );
+  }
+);
 
 
 /* --------------------------------------------------
@@ -2608,7 +3780,10 @@ function showSyncInfo(){
   alert(
 
     "Die App lädt die Restaurantdaten beim Öffnen " +
-    "und beim Aktualisieren direkt aus der zentralen Online-Datenbank."
+    "und beim Aktualisieren direkt aus der zentralen Online-Datenbank.\n\n" +
+
+    "Die persönlichen Handy-Bilder werden zusätzlich " +
+    "lokal auf diesem Gerät gespeichert."
 
   );
 
@@ -2619,26 +3794,31 @@ function showSyncInfo(){
    SUCHE
 -------------------------------------------------- */
 
-document.getElementById("search")
-  .addEventListener(
-    "input",
-    render
-  );
+document.getElementById(
+  "search"
+).addEventListener(
+  "input",
+  render
+);
 
 
 /* --------------------------------------------------
    FILTER
 -------------------------------------------------- */
 
-document.querySelectorAll(".chip")
-  .forEach(button => {
+document.querySelectorAll(
+  ".chip"
+).forEach(
+  button => {
 
     button.addEventListener(
       "click",
       () => {
 
         document
-          .querySelectorAll(".chip")
+          .querySelectorAll(
+            ".chip"
+          )
           .forEach(
             b =>
               b.classList.remove(
@@ -2646,19 +3826,23 @@ document.querySelectorAll(".chip")
               )
           );
 
+
         button.classList.add(
           "active"
         );
 
+
         currentFilter =
           button.dataset.filter;
+
 
         render();
 
       }
     );
 
-  });
+  }
+);
 
 
 /* --------------------------------------------------
