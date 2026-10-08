@@ -183,30 +183,32 @@ main{
 }
 
 .card{
-  background:linear-gradient(145deg,#ffffff,#f8faf8);
-  border-radius:22px;
-  padding:17px;
+  background:#ffffff;
+  border-radius:24px;
+  padding:0;
+  overflow:hidden;
   box-shadow:0 8px 24px rgba(23,53,45,.10);
-  border:1px solid rgba(45,106,86,.08);
-  transition:transform .15s ease,box-shadow .15s ease;
+  border:1px solid rgba(45,106,86,.10);
 }
 
 .cardtop{
   display:flex;
-  gap:12px;
+  gap:14px;
+  padding:18px 18px 14px;
+  align-items:center;
 }
 
 .icon{
-  width:72px;
-  height:72px;
+  width:86px;
+  height:86px;
   flex:none;
-  border-radius:18px;
+  border-radius:20px;
   background:linear-gradient(145deg,#e5eee9,#cbded6);
   display:grid;
   place-items:center;
-  font-size:30px;
+  font-size:34px;
   overflow:hidden;
-  box-shadow:0 4px 12px rgba(23,53,45,.10);
+  box-shadow:0 4px 12px rgba(23,53,45,.12);
 }
 
 .icon img{
@@ -221,31 +223,34 @@ main{
 }
 
 .cardname{
-  font-size:17px;
+  font-size:19px;
   font-weight:800;
   line-height:1.2;
+  color:var(--ink);
 }
 
 .place{
   color:var(--muted);
   font-size:13px;
-  margin-top:4px;
+  margin-top:5px;
 }
 
 .fav{
   border:0;
-  background:transparent;
-  font-size:23px;
+  background:#f4f7f5;
+  border-radius:50%;
+  font-size:21px;
   padding:0;
-  width:34px;
-  height:34px;
+  width:40px;
+  height:40px;
+  flex:none;
 }
 
 .status{
   display:inline-block;
-  margin-top:8px;
+  margin-top:9px;
   font-size:12px;
-  font-weight:700;
+  font-weight:750;
 }
 
 .status.open{color:#278253}
@@ -254,22 +259,23 @@ main{
 
 .cardbottom{
   display:flex;
-  justify-content:space-between;
   gap:8px;
-  margin-top:13px;
-  padding-top:12px;
-  border-top:1px solid var(--line);
+  padding:12px 18px 16px;
+  border-top:1px solid #edf0ed;
+  background:#fafcfb;
 }
 
 .cardbottom button{
   flex:1;
-  border:0;
-  background:#f4f6f3;
+  border:1px solid #e1e8e4;
+  background:white;
   color:var(--ink);
-  padding:9px 6px;
-  border-radius:11px;
+  padding:10px 6px;
+  border-radius:13px;
   font-size:12px;
-}
+  font-weight:700;
+  box-shadow:0 2px 6px rgba(23,53,45,.05);
+  }
 
 .detail{
   display:none;
