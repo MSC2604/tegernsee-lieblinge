@@ -597,6 +597,82 @@ a{
     grid-template-columns:1fr 1fr;
   }
 }
+
+/* 8-BILDER-DESIGN */
+.showcase{
+  margin:18px 0 20px;
+}
+
+.showcase-title{
+  font-size:18px;
+  font-weight:800;
+  margin:0 2px 12px;
+}
+
+.showcase-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.showcase-card{
+  background:white;
+  border:1px solid rgba(0,0,0,.035);
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:var(--shadow);
+  cursor:pointer;
+  transition:transform .15s ease;
+}
+
+.showcase-card:active{
+  transform:scale(.98);
+}
+
+.showcase-visual{
+  height:105px;
+  display:grid;
+  place-items:center;
+  font-size:42px;
+  background:linear-gradient(145deg,#dceae4,#b7d2c7);
+}
+
+.showcase-content{
+  padding:12px;
+}
+
+.showcase-number{
+  color:var(--accent);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.08em;
+}
+
+.showcase-card h3{
+  margin:3px 0 4px;
+  font-size:15px;
+}
+
+.showcase-card p{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.35;
+}
+
+.showcase-card.wide{
+  grid-column:1 / -1;
+}
+
+@media(min-width:700px){
+  .showcase-grid{
+    grid-template-columns:repeat(4,1fr);
+  }
+
+  .showcase-card.wide{
+    grid-column:span 2;
+  }
+    }
 </style>
 </head>
 
@@ -615,6 +691,89 @@ a{
 
 <main id="home">
 
+<div class="showcase">
+
+  <div class="showcase-title">
+    🌄 Meine Tegernsee-Welt
+  </div>
+
+  <div class="showcase-grid">
+
+    <div class="showcase-card" onclick="showHome()">
+      <div class="showcase-visual">🏔️</div>
+      <div class="showcase-content">
+        <div class="showcase-number">01 · START</div>
+        <h3>Meine Lieblinge</h3>
+        <p>Deine persönliche Sammlung am Tegernsee</p>
+      </div>
+    </div>
+
+    <div class="showcase-card" onclick="focusSearch()">
+      <div class="showcase-visual">🍽️</div>
+      <div class="showcase-content">
+        <div class="showcase-number">02 · RESTAURANTS</div>
+        <h3>Restaurant-Liste</h3>
+        <p>Alle Restaurants schnell finden</p>
+      </div>
+    </div>
+
+    <div class="showcase-card" onclick="document.querySelector('[data-filter=&quot;Restaurant&quot;]').click()">
+      <div class="showcase-visual">🥘</div>
+      <div class="showcase-content">
+        <div class="showcase-number">03 · KATEGORIEN</div>
+        <h3>Restaurants & Almen</h3>
+        <p>Nach Kategorie auswählen</p>
+      </div>
+    </div>
+
+    <div class="showcase-card" onclick="showFavorites()">
+      <div class="showcase-visual">❤️</div>
+      <div class="showcase-content">
+        <div class="showcase-number">04 · FAVORITEN</div>
+        <h3>Meine Favoriten</h3>
+        <p>Deine persönlichen Lieblingsplätze</p>
+      </div>
+    </div>
+
+    <div class="showcase-card" onclick="openAdd()">
+      <div class="showcase-visual">➕</div>
+      <div class="showcase-content">
+        <div class="showcase-number">05 · HINZUFÜGEN</div>
+        <h3>Neues Restaurant</h3>
+        <p>Einfach einen neuen Eintrag anlegen</p>
+      </div>
+    </div>
+
+    <div class="showcase-card" onclick="focusSearch()">
+      <div class="showcase-visual">📋</div>
+      <div class="showcase-content">
+        <div class="showcase-number">06 · DETAILS</div>
+        <h3>Restaurant-Details</h3>
+        <p>Adresse, Telefon, Website & mehr</p>
+      </div>
+    </div>
+
+    <div class="showcase-card" onclick="showSyncInfo()">
+      <div class="showcase-visual">☁️</div>
+      <div class="showcase-content">
+        <div class="showcase-number">07 · ONLINE</div>
+        <h3>Zentrale Datenbank</h3>
+        <p>Aktuelle Daten für alle Nutzer</p>
+      </div>
+    </div>
+
+    <div class="showcase-card wide" onclick="focusSearch()">
+      <div class="showcase-visual">🗺️</div>
+      <div class="showcase-content">
+        <div class="showcase-number">08 · UNTERWEGS</div>
+        <h3>Tegernsee entdecken</h3>
+        <p>Restaurant suchen und anschließend direkt die Route öffnen</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+  
   <div class="sectionhead">
     <h2>❤️ Meine Favoriten</h2>
     <span class="count" id="count">0</span>
