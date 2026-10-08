@@ -284,12 +284,6 @@ main{
   box-shadow:0 2px 6px rgba(23,53,45,.05);
 }
 
-.cardbottom .imagebutton{
-  background:#edf6f2;
-  border-color:#d5e7df;
-  color:var(--accent);
-}
-
 .detail{
   display:none;
 }
@@ -363,11 +357,6 @@ main{
 
 .detailtools .danger{
   color:var(--danger);
-}
-
-.detailtools .localimage{
-  color:var(--accent);
-  background:#edf6f2;
 }
 
 .info{
@@ -513,12 +502,6 @@ main{
   object-fit:cover;
 }
 
-.imagehint{
-  color:var(--muted);
-  font-size:12px;
-  margin-top:-3px;
-}
-
 .localimagehint{
   color:var(--accent);
   background:#edf6f2;
@@ -526,6 +509,16 @@ main{
   padding:10px;
   font-size:12px;
   line-height:1.45;
+}
+
+.gallerybutton{
+  width:100%;
+  border:1px solid #d5e7df;
+  background:#edf6f2;
+  color:var(--accent);
+  border-radius:13px;
+  padding:12px;
+  font-weight:750;
 }
 
 .removeimage{
@@ -819,22 +812,6 @@ a{
     </button>
 
     <button
-      class="localimage"
-      onclick="startLocalImageUpload(currentPlace && currentPlace.id)"
-    >
-      📷 Bild vom Handy
-    </button>
-
-    <button
-      id="removeLocalImageButton"
-      class="danger"
-      onclick="removeLocalImage()"
-      style="display:none"
-    >
-      🗑️ Bild entfernen
-    </button>
-
-    <button
       class="danger"
       onclick="deletePlace()"
     >
@@ -972,7 +949,6 @@ a{
   class="local-file-input"
   type="file"
   accept="image/*"
-  capture="environment"
   onchange="handleLocalImageFile(this)"
 >
 
@@ -1067,52 +1043,49 @@ a{
       <textarea id="f_notizen"></textarea>
 
 
-      <label>
-        🖼️ Bild über Internet-URL
-      </label>
-
-      <input
-        id="f_bild"
-        type="url"
-        placeholder="Bild-URL einfügen"
-        oninput="previewImage()"
-      >
-
-      <div class="imagehint">
-        Optional: Eine Bild-URL aus dem Internet.
-      </div>
-
-
-      <div class="localimagehint">
-
-        📷 <b>Bild direkt vom Handy:</b><br>
-        Das Bild wird nur auf diesem Handy gespeichert
-        und ist unabhängig von der zentralen Datenbank.
-
-      </div>
-
+      <!-- Bild nur beim Bearbeiten -->
 
       <div
-        class="imagepreview"
-        id="imagepreview"
+        id="editImageSection"
+        style="display:none"
       >
 
-        <img
-          id="previewimg"
-          alt="Bildvorschau"
+        <label>
+          📷 Restaurantbild
+        </label>
+
+        <button
+          type="button"
+          class="gallerybutton"
+          onclick="chooseGalleryImage()"
         >
+          📷 Bild aus Galerie wählen
+        </button>
+
+        <div class="localimagehint">
+          Das Bild wird auf diesem Handy für dieses Restaurant gespeichert.
+        </div>
+
+        <div
+          class="imagepreview"
+          id="imagepreview"
+        >
+          <img
+            id="previewimg"
+            alt="Bildvorschau"
+          >
+        </div>
+
+        <button
+          type="button"
+          class="removeimage"
+          id="removeimage"
+          onclick="removeImage()"
+        >
+          🗑️ Bild entfernen
+        </button>
 
       </div>
-
-
-      <button
-        type="button"
-        class="removeimage"
-        id="removeimage"
-        onclick="removeImage()"
-      >
-        🗑️ Bild-URL entfernen
-      </button>
 
     </div>
 
@@ -1243,8 +1216,17 @@ try{
 }
 
 
-let localImageTargetId =
+/*
+   Dieses Bild ist während des Bearbeitens
+   nur vorgemerkt und wird erst nach erfolgreichem
+   Speichern dauerhaft übernommen.
+*/
+
+let pendingLocalImage =
   null;
+
+let pendingRemoveLocalImage =
+  false;
 
 
 /* --------------------------------------------------
@@ -1839,14 +1821,23 @@ function saveLocalImages(){
 }
 
 
-function startLocalImageUpload(
-  id
-){
+/*
+   Galerie öffnen.
+   Das funktioniert ausschließlich aus dem
+   Bearbeiten-Fenster.
+*/
 
-  if(!id) return;
+function chooseGalleryImage(){
 
-  localImageTargetId =
-    String(id);
+  if(!editId){
+
+    alert(
+      "Ein Bild kann nur beim Bearbeiten eines Restaurants ausgewählt werden."
+    );
+
+    return;
+
+  }
 
   const input =
     document.getElementById(
@@ -1870,10 +1861,10 @@ function handleLocalImageFile(
 
   if(!file) return;
 
-  if(!localImageTargetId){
+  if(!editId){
 
     alert(
-      "Kein Restaurant ausgewählt."
+      "Ein Bild kann nur beim Bearbeiten ausgewählt werden."
     );
 
     return;
@@ -1977,46 +1968,21 @@ function handleLocalImageFile(
             0.78
           );
 
-        localImages[
-          localImageTargetId
-        ] =
+        /*
+          Noch nicht dauerhaft speichern.
+          Erst wenn der Benutzer auf
+          „Speichern“ tippt.
+        */
+
+        pendingLocalImage =
           dataUrl;
 
-        if(
-          !saveLocalImages()
-        ){
+        pendingRemoveLocalImage =
+          false;
 
-          delete localImages[
-            localImageTargetId
-          ];
-
-          alert(
-            "Das Bild konnte nicht gespeichert werden. Der Speicher des Browsers ist möglicherweise voll."
-          );
-
-          return;
-
-        }
-
-        const savedId =
-          localImageTargetId;
-
-        localImageTargetId =
-          null;
-
-        render();
-
-        if(
-          currentPlace &&
-          String(currentPlace.id) ===
-          String(savedId)
-        ){
-
-          openDetail(
-            savedId
-          );
-
-        }
+        showPendingImage(
+          dataUrl
+        );
 
       };
 
@@ -2041,36 +2007,151 @@ function handleLocalImageFile(
 }
 
 
-function removeLocalImage(){
+function showPendingImage(
+  dataUrl
+){
 
-  if(!currentPlace) return;
-
-  const id =
-    String(
-      currentPlace.id
+  const box =
+    document.getElementById(
+      "imagepreview"
     );
 
-  if(
-    !localImages[id]
-  ){
+  const img =
+    document.getElementById(
+      "previewimg"
+    );
+
+  const remove =
+    document.getElementById(
+      "removeimage"
+    );
+
+  img.src =
+    dataUrl;
+
+  box.style.display =
+    "grid";
+
+  remove.style.display =
+    "block";
+
+}
+
+
+function prepareExistingImage(){
+
+  if(!editId){
+
+    document.getElementById(
+      "imagepreview"
+    ).style.display =
+      "none";
+
+    document.getElementById(
+      "removeimage"
+    ).style.display =
+      "none";
+
     return;
+
+  }
+
+  const image =
+    localImages[
+      String(editId)
+    ];
+
+  if(image){
+
+    pendingLocalImage =
+      image;
+
+    pendingRemoveLocalImage =
+      false;
+
+    showPendingImage(
+      image
+    );
+
+  }else{
+
+    pendingLocalImage =
+      null;
+
+    pendingRemoveLocalImage =
+      false;
+
+    document.getElementById(
+      "imagepreview"
+    ).style.display =
+      "none";
+
+    document.getElementById(
+      "removeimage"
+    ).style.display =
+      "none";
+
+  }
+
+}
+
+
+function removeImage(){
+
+  if(!editId)
+    return;
+
+  pendingLocalImage =
+    null;
+
+  pendingRemoveLocalImage =
+    true;
+
+  document.getElementById(
+    "imagepreview"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "previewimg"
+  ).src =
+    "";
+
+  document.getElementById(
+    "removeimage"
+  ).style.display =
+    "none";
+
+}
+
+
+function applyPendingLocalImage(){
+
+  if(!editId)
+    return true;
+
+  const id =
+    String(editId);
+
+  if(
+    pendingRemoveLocalImage
+  ){
+
+    delete localImages[id];
+
   }
 
   if(
-    !confirm(
-      "Das auf diesem Handy gespeicherte Bild wirklich entfernen?"
-    )
+    pendingLocalImage &&
+    !pendingRemoveLocalImage
   ){
-    return;
+
+    localImages[id] =
+      pendingLocalImage;
+
   }
 
-  delete localImages[id];
-
-  saveLocalImages();
-
-  openDetail(id);
-
-  render();
+  return saveLocalImages();
 
 }
 
@@ -2100,87 +2181,6 @@ function imageHtml(
       onerror="this.style.display='none'"
     >
   `;
-
-}
-
-
-function previewImage(){
-
-  const url =
-    document.getElementById(
-      "f_bild"
-    )
-    .value
-    .trim();
-
-  const box =
-    document.getElementById(
-      "imagepreview"
-    );
-
-  const img =
-    document.getElementById(
-      "previewimg"
-    );
-
-  const remove =
-    document.getElementById(
-      "removeimage"
-    );
-
-  if(!url){
-
-    box.style.display =
-      "none";
-
-    remove.style.display =
-      "none";
-
-    img.src = "";
-
-    return;
-
-  }
-
-  img.src =
-    url;
-
-  box.style.display =
-    "grid";
-
-  remove.style.display =
-    "block";
-
-  img.onerror =
-    function(){
-
-      box.style.display =
-        "none";
-
-    };
-
-}
-
-
-function removeImage(){
-
-  document.getElementById(
-    "f_bild"
-  ).value = "";
-
-  document.getElementById(
-    "imagepreview"
-  ).style.display =
-    "none";
-
-  document.getElementById(
-    "removeimage"
-  ).style.display =
-    "none";
-
-  document.getElementById(
-    "previewimg"
-  ).src = "";
 
 }
 
@@ -2420,11 +2420,6 @@ function render(){
             place.id
           );
 
-        const hasLocalImage =
-          !!localImages[
-            String(place.id)
-          ];
-
         return `
 
           <div class="card">
@@ -2526,18 +2521,6 @@ function render(){
 
                 : ""
               }
-
-
-              <button
-                class="imagebutton"
-                onclick="startLocalImageUpload('${escapeAttr(place.id)}')"
-              >
-                ${
-                  hasLocalImage
-                  ? "📷 Bild ändern"
-                  : "📷 Bild"
-                }
-              </button>
 
             </div>
 
@@ -2766,28 +2749,6 @@ function openDetail(
   }
 
 
-  const removeLocalButton =
-    document.getElementById(
-      "removeLocalImageButton"
-    );
-
-  if(
-    localImages[
-      String(currentPlace.id)
-    ]
-  ){
-
-    removeLocalButton.style.display =
-      "block";
-
-  }else{
-
-    removeLocalButton.style.display =
-      "none";
-
-  }
-
-
   document.getElementById(
     "note"
   ).value =
@@ -2890,11 +2851,6 @@ function showFavorites(){
             place
           );
 
-        const hasLocalImage =
-          !!localImages[
-            String(place.id)
-          ];
-
         return `
 
           <div class="card">
@@ -2980,18 +2936,6 @@ function showFavorites(){
 
                 : ""
               }
-
-
-              <button
-                class="imagebutton"
-                onclick="startLocalImageUpload('${escapeAttr(place.id)}')"
-              >
-                ${
-                  hasLocalImage
-                  ? "📷 Bild ändern"
-                  : "📷 Bild"
-                }
-              </button>
 
             </div>
 
@@ -3099,12 +3043,23 @@ function openAdd(){
   editId =
     null;
 
+  pendingLocalImage =
+    null;
+
+  pendingRemoveLocalImage =
+    false;
+
   document.getElementById(
     "modalTitle"
   ).textContent =
     "Restaurant hinzufügen";
 
   clearForm();
+
+  document.getElementById(
+    "editImageSection"
+  ).style.display =
+    "none";
 
   document.getElementById(
     "modal"
@@ -3125,6 +3080,12 @@ function editPlace(){
 
   editId =
     currentPlace.id;
+
+  pendingLocalImage =
+    null;
+
+  pendingRemoveLocalImage =
+    false;
 
   document.getElementById(
     "modalTitle"
@@ -3200,12 +3161,12 @@ function editPlace(){
 
 
   document.getElementById(
-    "f_bild"
-  ).value =
-    currentPlace.bild;
+    "editImageSection"
+  ).style.display =
+    "block";
 
 
-  previewImage();
+  prepareExistingImage();
 
 
   document.getElementById(
@@ -3233,8 +3194,7 @@ function clearForm(){
     "f_email",
     "f_oeffnungszeiten",
     "f_ruhetag",
-    "f_notizen",
-    "f_bild"
+    "f_notizen"
 
   ].forEach(
     id => {
@@ -3279,6 +3239,12 @@ function closeModal(){
     "modal"
   ).style.display =
     "none";
+
+  pendingLocalImage =
+    null;
+
+  pendingRemoveLocalImage =
+    false;
 
 }
 
@@ -3358,13 +3324,6 @@ function getFormData(){
     notizen:
       document.getElementById(
         "f_notizen"
-      )
-      .value
-      .trim(),
-
-    bild:
-      document.getElementById(
-        "f_bild"
       )
       .value
       .trim()
@@ -3481,18 +3440,43 @@ async function savePlace(){
     }
 
 
+    /*
+      Erst nachdem das zentrale Speichern
+      erfolgreich war, wird das lokale Bild
+      übernommen.
+    */
+
+    if(editId){
+
+      if(
+        !applyPendingLocalImage()
+      ){
+
+        alert(
+          "Das Restaurant wurde gespeichert, aber das Bild konnte auf diesem Handy nicht gespeichert werden."
+        );
+
+      }
+
+    }
+
+
+    const savedEditId =
+      editId;
+
+
     closeModal();
 
     await loadData();
 
 
-    if(editId){
+    if(savedEditId){
 
       const updated =
         restaurants.find(
           r =>
             String(r.id) ===
-            String(editId)
+            String(savedEditId)
         );
 
       if(updated){
@@ -3609,9 +3593,6 @@ async function deletePlace(){
 
     }
 
-
-    /* Auch das lokale Bild löschen,
-       wenn das Restaurant gelöscht wird. */
 
     delete localImages[
       String(
