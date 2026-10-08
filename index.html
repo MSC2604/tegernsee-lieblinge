@@ -263,10 +263,11 @@ main{
   padding:12px 18px 16px;
   border-top:1px solid #edf0ed;
   background:#fafcfb;
+  flex-wrap:wrap;
 }
 
 .cardbottom button{
-  flex:1;
+  flex:1 1 30%;
   border:1px solid #e1e8e4;
   background:white;
   color:var(--ink);
@@ -319,16 +320,18 @@ main{
 .actions{
   display:flex;
   gap:9px;
+  flex-wrap:wrap;
 }
 
 .action{
-  flex:1;
+  flex:1 1 30%;
   background:white;
   border-radius:14px;
   padding:12px;
   text-align:center;
   font-weight:700;
   box-shadow:var(--shadow);
+  cursor:pointer;
 }
 
 .detailtools{
@@ -672,8 +675,24 @@ a{
   <div class="place" id="dplace"></div>
 
   <div class="actions">
-    <div class="action" onclick="openRoute()">📍 Route</div>
-    <div class="action" onclick="callPlace()">☎️ Anrufen</div>
+
+    <div class="action" onclick="openRoute()">
+      📍 Route
+    </div>
+
+    <div class="action" onclick="callPlace()">
+      ☎️ Anrufen
+    </div>
+
+    <div
+      class="action"
+      id="reservationAction"
+      onclick="reserveTable(currentPlace.reservierung)"
+      style="display:none"
+    >
+      🍽️ Tisch reservieren
+    </div>
+
   </div>
 
   <div class="detailtools">
@@ -731,6 +750,7 @@ a{
 </main>
 
 <div class="bottomnav">
+
   <button class="active" onclick="showHome()">
     🏠<br>Start
   </button>
@@ -742,6 +762,7 @@ a{
   <button onclick="showFavorites()">
     ❤️<br>Favoriten
   </button>
+
 </div>
 
 
@@ -776,6 +797,13 @@ a{
 
       <label>Website</label>
       <input id="f_website">
+
+      <label>🍽️ Tisch reservieren – Link</label>
+      <input
+        id="f_reservierung"
+        type="url"
+        placeholder="https://..."
+      >
 
       <label>E-Mail</label>
       <input id="f_email">
@@ -818,6 +846,7 @@ a{
     </div>
 
     <div class="modalbuttons">
+
       <button class="cancel" onclick="closeModal()">
         Abbrechen
       </button>
@@ -825,6 +854,7 @@ a{
       <button class="save" onclick="savePlace()">
         Speichern
       </button>
+
     </div>
 
   </div>
@@ -869,6 +899,7 @@ a{
     </div>
 
   </div>
+
 </div>
 
 
@@ -926,8 +957,11 @@ function confirmPassword(){
     .style.display = "none";
 
   if(passwordResolver){
+
     const resolve = passwordResolver;
+
     passwordResolver = null;
+
     resolve(password);
   }
 }
@@ -938,8 +972,11 @@ function cancelPassword(){
     .style.display = "none";
 
   if(passwordResolver){
+
     const resolve = passwordResolver;
+
     passwordResolver = null;
+
     resolve(null);
   }
 }
@@ -1002,6 +1039,8 @@ function normalizeRestaurant(r){
     telefon:cleanValue(r.telefon),
 
     website:cleanValue(r.website),
+
+    reservierung:cleanValue(r.reservierung),
 
     email:cleanValue(r.email),
 
@@ -1502,6 +1541,23 @@ function filteredRestaurants(){
 
 
 /* --------------------------------------------------
+   RESERVIERUNG
+-------------------------------------------------- */
+
+function reserveTable(url){
+
+  if(!url) return;
+
+  window.open(
+    url,
+    "_blank",
+    "noopener"
+  );
+
+}
+
+
+/* --------------------------------------------------
    LISTE
 -------------------------------------------------- */
 
@@ -1602,6 +1658,20 @@ function render(){
                   onclick="callPhone('${escapeAttr(place.telefon)}')"
                 >
                   ☎️ Anrufen
+                </button>
+              `
+
+              : ""
+            }
+
+            ${
+              place.reservierung
+
+              ? `
+                <button
+                  onclick="reserveTable('${escapeAttr(place.reservierung)}')"
+                >
+                  🍽️ Tisch reservieren
                 </button>
               `
 
@@ -1723,6 +1793,21 @@ function openDetail(id){
 
     web.textContent =
       "Noch ergänzen";
+
+  }
+
+  const reservationAction =
+    document.getElementById("reservationAction");
+
+  if(currentPlace.reservierung){
+
+    reservationAction.style.display =
+      "block";
+
+  }else{
+
+    reservationAction.style.display =
+      "none";
 
   }
 
@@ -1867,6 +1952,34 @@ function showFavorites(){
               📍 Route
             </button>
 
+            ${
+              place.telefon
+
+              ? `
+                <button
+                  onclick="callPhone('${escapeAttr(place.telefon)}')"
+                >
+                  ☎️ Anrufen
+                </button>
+              `
+
+              : ""
+            }
+
+            ${
+              place.reservierung
+
+              ? `
+                <button
+                  onclick="reserveTable('${escapeAttr(place.reservierung)}')"
+                >
+                  🍽️ Tisch reservieren
+                </button>
+              `
+
+              : ""
+            }
+
           </div>
 
         </div>
@@ -2008,6 +2121,10 @@ function editPlace(){
     .value =
     currentPlace.website;
 
+  document.getElementById("f_reservierung")
+    .value =
+    currentPlace.reservierung;
+
   document.getElementById("f_email")
     .value =
     currentPlace.email;
@@ -2048,6 +2165,7 @@ function clearForm(){
     "f_adresse",
     "f_telefon",
     "f_website",
+    "f_reservierung",
     "f_email",
     "f_oeffnungszeiten",
     "f_ruhetag",
@@ -2114,6 +2232,11 @@ function getFormData(){
 
     website:
       document.getElementById("f_website")
+        .value
+        .trim(),
+
+    reservierung:
+      document.getElementById("f_reservierung")
         .value
         .trim(),
 
