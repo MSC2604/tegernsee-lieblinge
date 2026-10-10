@@ -199,7 +199,7 @@ main{
 
 .icon{
   width:100%;
-  height:180px;
+  height:220px;
   flex:none;
   border-radius:20px;
   background:linear-gradient(145deg,#e5eee9,#cbded6);
@@ -297,7 +297,7 @@ main{
 }
 
 .hero{
-  height:190px;
+  height:230px;
   border-radius:22px;
   background:linear-gradient(145deg,#dceae4,#aac8bb);
   display:grid;
@@ -685,6 +685,14 @@ a{
     ＋ Restaurant hinzufügen
   </button>
 
+  <button
+    class="addbtn contactbtn"
+    style="margin-top:9px;background:#ffffff;color:var(--accent);border:1px solid var(--line);box-shadow:none"
+    onclick="window.location.href='mailto:msc4021@arcor.de?subject=Vorschlag%20f%C3%BCr%20Meine%20Lieblings-Restaurants%20am%20Tegernsee'"
+  >
+    ✉️ Kontakt
+  </button>
+
   <div class="sync">
 
     <button onclick="refreshData()">
@@ -713,33 +721,12 @@ a{
       Alle
     </button>
 
-    <button
-      class="chip"
-      data-filter="Restaurant"
-    >
-      Restaurants
-    </button>
-
-    <button
-      class="chip"
-      data-filter="Alm"
-    >
-      Almen
-    </button>
-
-    <button
-      class="chip"
-      data-filter="Kreuth"
-    >
-      Kreuth
-    </button>
-
-    <button
-      class="chip"
-      data-filter="Tegernsee"
-    >
-      Tegernsee
-    </button>
+    <button class="chip" data-filter="Tegernsee">Tegernsee</button>
+    <button class="chip" data-filter="Gmund">Gmund</button>
+    <button class="chip" data-filter="Rottach-Egern">Rottach-Egern</button>
+    <button class="chip" data-filter="Kreuth">Kreuth</button>
+    <button class="chip" data-filter="Bad Wiessee">Bad Wiessee</button>
+    <button class="chip" data-filter="Schliersee">Schliersee</button>
 
   </div>
 
@@ -970,46 +957,51 @@ a{
 
       <label>Name</label>
 
-      <input id="f_name">
+      <input id="f_name" autocomplete="off">
 
 
       <label>Ort</label>
-
-      <input id="f_ort">
-
+      <select id="f_ort" autocomplete="off">
+        <option value="Tegernsee">Tegernsee</option>
+        <option value="Gmund">Gmund</option>
+        <option value="Rottach-Egern">Rottach-Egern</option>
+        <option value="Kreuth">Kreuth</option>
+        <option value="Bad Wiessee">Bad Wiessee</option>
+        <option value="Schliersee">Schliersee</option>
+        <option value="Anderer Ort">Anderer Ort</option>
+      </select>
 
       <label>Kategorie</label>
-
-      <select id="f_kategorie">
-
-        <option value="Restaurant">
-          Restaurant
-        </option>
-
-        <option value="Alm">
-          Alm
-        </option>
-
-        <option value="Ausflugsziel">
-          Ausflugsziel
-        </option>
-
+      <select id="f_kategorie" autocomplete="off">
+        <option value="Restaurant">Restaurant</option>
+        <option value="Alm">Alm</option>
+        <option value="Ausflugsziel">Ausflugsziel</option>
+        <option value="Café">Café</option>
+        <option value="Gasthof">Gasthof</option>
+        <option value="Wirtshaus">Wirtshaus</option>
+        <option value="Biergarten">Biergarten</option>
+        <option value="Pizzeria">Pizzeria</option>
+        <option value="Eisdiele">Eisdiele</option>
+        <option value="Hotelrestaurant">Hotelrestaurant</option>
+        <option value="Konditorei">Konditorei</option>
+        <option value="Brauerei">Brauerei</option>
+        <option value="Imbiss">Imbiss</option>
       </select>
 
 
       <label>Adresse</label>
 
-      <input id="f_adresse">
+      <input id="f_adresse" autocomplete="off">
 
 
       <label>Telefon</label>
 
-      <input id="f_telefon">
+      <input id="f_telefon" autocomplete="off">
 
 
       <label>Website</label>
 
-      <input id="f_website">
+      <input id="f_website" autocomplete="off">
 
 
       <label>
@@ -1025,7 +1017,7 @@ a{
 
       <label>E-Mail</label>
 
-      <input id="f_email">
+      <input id="f_email" autocomplete="off">
 
 
       <label>Öffnungszeiten</label>
@@ -1035,7 +1027,7 @@ a{
 
       <label>Ruhetag</label>
 
-      <input id="f_ruhetag">
+      <input id="f_ruhetag" autocomplete="off">
 
 
       <label>Notizen</label>
@@ -1778,22 +1770,10 @@ function getOpeningStatus(
 function getRestaurantImage(
   place
 ){
-
   if(!place) return "";
-
-  const local =
-    localImages[
-      String(place.id)
-    ];
-
-  if(local){
-    return local;
-  }
-
-  return cleanValue(
-    place.bild
-  );
-
+  // Bilder werden zentral im Feld "bild" gespeichert,
+  // damit alle Nutzer dasselbe Bild sehen.
+  return cleanValue(place.bild);
 }
 
 
@@ -1897,7 +1877,7 @@ function handleLocalImageFile(
       function(){
 
         const maxSize =
-          1200;
+          800;
 
         let width =
           image.width;
@@ -2056,10 +2036,10 @@ function prepareExistingImage(){
 
   }
 
-  const image =
-    localImages[
-      String(editId)
-    ];
+  const existingPlace = restaurants.find(
+    place => String(place.id) === String(editId)
+  );
+  const image = existingPlace ? cleanValue(existingPlace.bild) : "";
 
   if(image){
 
@@ -2126,35 +2106,9 @@ function removeImage(){
 
 
 function applyPendingLocalImage(){
-
-  if(!editId)
-    return true;
-
-  const id =
-    String(editId);
-
-  if(
-    pendingRemoveLocalImage
-  ){
-
-    delete localImages[id];
-
-  }
-
-  if(
-    pendingLocalImage &&
-    !pendingRemoveLocalImage
-  ){
-
-    localImages[id] =
-      pendingLocalImage;
-
-  }
-
-  return saveLocalImages();
-
+  // Bilder werden jetzt zusammen mit den Restaurantdaten zentral gespeichert.
+  return true;
 }
-
 
 function imageHtml(
   place
@@ -2266,94 +2220,20 @@ function toggleFavorite(
 -------------------------------------------------- */
 
 function filteredRestaurants(){
-
-  const search =
-    document.getElementById(
-      "search"
-    )
-    .value
-    .trim()
-    .toLowerCase();
-
-  return restaurants.filter(
-    r => {
-
-      const matchesSearch =
-        !search ||
-
-        [
-          r.name,
-          r.ort,
-          r.kategorie,
-          r.adresse
-
-        ]
-        .join(" ")
-        .toLowerCase()
-        .includes(
-          search
-        );
-
-      let matchesFilter =
-        true;
-
-      if(
-        currentFilter ===
-        "Restaurant"
-      ){
-
-        matchesFilter =
-          r.kategorie ===
-          "Restaurant";
-
+  const search = document.getElementById("search").value.trim().toLowerCase();
+  return restaurants.filter(r => {
+    const matchesSearch = !search || [r.name, r.ort, r.kategorie, r.adresse].join(" ").toLowerCase().includes(search);
+    let matchesFilter = true;
+    if (currentFilter !== "Alle") {
+      const locationFilters = ["Tegernsee", "Gmund", "Rottach-Egern", "Kreuth", "Bad Wiessee", "Schliersee"];
+      if (locationFilters.includes(currentFilter)) {
+        matchesFilter = String(r.ort || "").toLowerCase().includes(currentFilter.toLowerCase());
+      } else {
+        matchesFilter = String(r.kategorie || "").toLowerCase() === currentFilter.toLowerCase();
       }
-
-      if(
-        currentFilter === "Alm"
-      ){
-
-        matchesFilter =
-          r.kategorie ===
-          "Alm";
-
-      }
-
-      if(
-        currentFilter ===
-        "Kreuth"
-      ){
-
-        matchesFilter =
-          r.ort
-            .toLowerCase()
-            .includes(
-              "kreuth"
-            );
-
-      }
-
-      if(
-        currentFilter ===
-        "Tegernsee"
-      ){
-
-        matchesFilter =
-          r.ort
-            .toLowerCase()
-            .includes(
-              "tegernsee"
-            );
-
-      }
-
-      return (
-        matchesSearch &&
-        matchesFilter
-      );
-
     }
-  );
-
+    return matchesSearch && matchesFilter;
+  });
 }
 
 
@@ -3326,7 +3206,12 @@ function getFormData(){
         "f_notizen"
       )
       .value
-      .trim()
+      .trim(),
+
+    bild:
+      pendingRemoveLocalImage
+        ? ""
+        : (pendingLocalImage || (currentPlace && editId && String(currentPlace.id) === String(editId) ? cleanValue(currentPlace.bild) : ""))
 
   };
 
@@ -3341,6 +3226,12 @@ async function savePlace(){
 
   const restaurant =
     getFormData();
+
+  if(restaurant.ort === "Anderer Ort"){
+    const otherOrt = prompt("Bitte den Ortsnamen eingeben:");
+    if(!otherOrt || !otherOrt.trim()) return;
+    restaurant.ort = otherOrt.trim();
+  }
 
   if(!restaurant.name){
 
@@ -3441,9 +3332,8 @@ async function savePlace(){
 
 
     /*
-      Erst nachdem das zentrale Speichern
-      erfolgreich war, wird das lokale Bild
-      übernommen.
+      Bild und Restaurantdaten wurden gemeinsam
+      in der zentralen Datenbank gespeichert.
     */
 
     if(editId){
@@ -3592,15 +3482,6 @@ async function deletePlace(){
       );
 
     }
-
-
-    delete localImages[
-      String(
-        currentPlace.id
-      )
-    ];
-
-    saveLocalImages();
 
 
     showHome();
@@ -3760,11 +3641,11 @@ function showSyncInfo(){
 
   alert(
 
-    "Die App lädt die Restaurantdaten beim Öffnen " +
-    "und beim Aktualisieren direkt aus der zentralen Online-Datenbank.\n\n" +
+    "Die App lädt Restaurantdaten und gespeicherte Bilder " +
+    "beim Öffnen und beim Aktualisieren aus der zentralen Online-Datenbank.\n\n" +
 
-    "Die persönlichen Handy-Bilder werden zusätzlich " +
-    "lokal auf diesem Gerät gespeichert."
+    "Änderungen werden nach erfolgreichem Speichern zentral übernommen " +
+    "und sind anschließend auch für andere Nutzer verfügbar."
 
   );
 
