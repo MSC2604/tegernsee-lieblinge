@@ -972,9 +972,10 @@ a{
       </select>
 
       <label>Kategorie</label>
-      <select id="f_kategorie" autocomplete="off">
+      <select id="f_kategorie" autocomplete="off" onchange="toggleCustomCategory()">
         <option value="Restaurant">Restaurant</option>
-        <option value="Alm">Alm</option>
+        <option value="Almwirtschaft">Almwirtschaft</option>
+        <option value="Bäckerei &amp; Café">Bäckerei &amp; Café</option>
         <option value="Ausflugsziel">Ausflugsziel</option>
         <option value="Café">Café</option>
         <option value="Gasthof">Gasthof</option>
@@ -986,7 +987,9 @@ a{
         <option value="Konditorei">Konditorei</option>
         <option value="Brauerei">Brauerei</option>
         <option value="Imbiss">Imbiss</option>
+        <option value="__custom__">Eigene Kategorie …</option>
       </select>
+      <input id="f_kategorie_custom" autocomplete="off" placeholder="Eigene Kategorie eingeben" style="display:none" aria-label="Eigene Kategorie eingeben">
 
 
       <label>Adresse</label>
@@ -1388,7 +1391,9 @@ function normalizeRestaurant(r){
       cleanValue(r.ort),
 
     kategorie:
-      cleanValue(r.kategorie),
+      cleanValue(r.kategorie) === "Alm"
+        ? "Almwirtschaft"
+        : cleanValue(r.kategorie),
 
     adresse:
       cleanValue(r.adresse),
@@ -2148,7 +2153,8 @@ function iconFor(
 ){
 
   if(
-    place.kategorie === "Alm"
+    place.kategorie === "Alm" ||
+    place.kategorie === "Almwirtschaft"
   ){
     return "🏔️";
   }
@@ -2915,6 +2921,25 @@ function callPlace(){
 
 
 /* --------------------------------------------------
+   BENUTZERDEFINIERTE KATEGORIE
+-------------------------------------------------- */
+
+function toggleCustomCategory(){
+
+  const select = document.getElementById("f_kategorie");
+  const customInput = document.getElementById("f_kategorie_custom");
+  const useCustom = select.value === "__custom__";
+
+  customInput.style.display = useCustom ? "block" : "none";
+  customInput.required = useCustom;
+
+  if(!useCustom){
+    customInput.value = "";
+  }
+}
+
+
+/* --------------------------------------------------
    HINZUFÜGEN
 -------------------------------------------------- */
 
@@ -2985,11 +3010,20 @@ function editPlace(){
     currentPlace.ort;
 
 
-  document.getElementById(
-    "f_kategorie"
-  ).value =
-    currentPlace.kategorie ||
-    "Restaurant";
+  const categorySelect = document.getElementById("f_kategorie");
+  const categoryCustom = document.getElementById("f_kategorie_custom");
+  const savedCategory = currentPlace.kategorie || "Restaurant";
+  const hasStandardCategory = Array.from(categorySelect.options)
+    .some(option => option.value === savedCategory && option.value !== "__custom__");
+
+  if(hasStandardCategory){
+    categorySelect.value = savedCategory;
+    categoryCustom.value = "";
+  }else{
+    categorySelect.value = "__custom__";
+    categoryCustom.value = savedCategory;
+  }
+  toggleCustomCategory();
 
 
   document.getElementById(
@@ -3092,6 +3126,8 @@ function clearForm(){
   ).value =
     "Restaurant";
 
+  document.getElementById("f_kategorie_custom").value = "";
+  toggleCustomCategory();
 
   document.getElementById(
     "imagepreview"
@@ -3148,9 +3184,9 @@ function getFormData(){
       .trim(),
 
     kategorie:
-      document.getElementById(
-        "f_kategorie"
-      ).value,
+      document.getElementById("f_kategorie").value === "__custom__"
+        ? document.getElementById("f_kategorie_custom").value.trim()
+        : document.getElementById("f_kategorie").value,
 
     adresse:
       document.getElementById(
@@ -3241,6 +3277,12 @@ async function savePlace(){
 
     return;
 
+  }
+
+  if(!restaurant.kategorie){
+    alert("Bitte eine eigene Kategorie eingeben.");
+    document.getElementById("f_kategorie_custom").focus();
+    return;
   }
 
 
