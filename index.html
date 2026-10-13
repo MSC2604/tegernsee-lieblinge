@@ -955,16 +955,22 @@ a{
 
     <div class="formgrid">
 
-      <label>Name</label>
+      
+<label>Name</label>
 
-      <input id="f_name" autocomplete="off">
+<input id="f_name" autocomplete="off">
+
 <button type="button" onclick="searchRestaurantWeb()" style="grid-column:1/-1; width:100%; padding:11px 14px; border:1px solid #b7d8cc; border-radius:10px; background:#edf7f2; color:#245846; font-weight:600; cursor:pointer;">
   🔎 Restaurant im Web suchen
 </button>
 
+<button type="button" onclick="lookupRestaurantInApp()" style="grid-column:1/-1; width:100%; padding:11px 14px; border:1px solid #b7d8cc; border-radius:10px; background:#edf7f2; color:#245846; font-weight:600; cursor:pointer;">
+  ✨ Restaurantdaten automatisch suchen
+</button>
 
-      <label>Ort</label>
-      <select id="f_ort" autocomplete="off">
+<label>Ort</label>
+<select id="f_ort" autocomplete="off">
+
         <option value="Tegernsee">Tegernsee</option>
         <option value="Gmund">Gmund</option>
         <option value="Rottach-Egern">Rottach-Egern</option>
@@ -2927,6 +2933,129 @@ function callPlace(){
    BENUTZERDEFINIERTE KATEGORIE
 -------------------------------------------------- */
 
+async function lookupRestaurantInApp(){
+  const input = document.getElementById("f_name");
+  const name = (input.value || "").trim();
+
+  if (!name) {
+    alert("Bitte zuerst den Restaurantnamen eingeben.");
+    input.focus();
+    return;
+  }
+
+  try {
+    const url = API_URL + "?action=lookup&name=" + encodeURIComponent(name);
+    const response = await fetch(url, {
+      method: "GET",
+      cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || data.error || "Die Suche ist fehlgeschlagen.");
+    }
+
+    const candidates = Array.isArray(data.candidates)
+      ? data.candidates
+      : [];
+
+    if (candidates.length === 0) {
+      alert("Keine passenden Daten gefunden. Du kannst die Google-Suche nutzen oder die Angaben manuell ergänzen.");
+      return;
+    }
+
+    let selected = candidates[0];
+
+    if (candidates.length > 1) {
+      const list = candidates.map((r, i) =>
+        (i + 1) + ". " + (r.name || "Unbekannt") +
+        (r.adresse ? " — " + r.adresse : "") +
+        (r.ort ? " (" + r.ort + ")" : "")
+      ).join("\n");
+
+      const answer = prompt(
+        "Bitte den passenden Treffer auswählen:\n\n" +
+        list + "\n\nNummer eingeben:",
+        "1"
+      );
+
+      if (answer === null) return;
+
+      const index = Number(answer);
+
+      if (!Number.isInteger(index) || index < 1 || index > candidates.length) {
+        alert("Bitte eine gültige Nummer eingeben.");
+        return;
+      }
+
+      selected = candidates[index - 1];
+    }
+
+    function fillIfBlank(id, value) {
+      const field = document.getElementById(id);
+      if (field && value && !field.value.trim()) {
+        field.value = value;
+      }
+    }
+
+    fillIfBlank("f_adresse", selected.adresse);
+    fillIfBlank("f_telefon", selected.telefon);
+    fillIfBlank("f_website", selected.website);
+    fillIfBlank("f_email", selected.email);
+    fillIfBlank("f_oeffnungszeiten", selected.oeffnungszeiten);
+    fillIfBlank("f_ruhetag", selected.ruhetag);
+    fillIfBlank("f_notizen", selected.notizen);
+    fillIfBlank("f_reservierung", selected.reservierung);
+
+    const ort = document.getElementById("f_ort");
+    if (ort && selected.ort) {
+      const option = Array.from(ort.options).find(
+        o => o.value.toLowerCase() === selected.ort.toLowerCase()
+      );
+      if (option) {
+        ort.value = option.value;
+      } else if (!ort.value) {
+        ort.value = "Anderer Ort";
+      }
+    }
+
+    const category = document.getElementById("f_kategorie");
+    const customCategory = document.getElementById("f_kategorie_custom");
+
+    if (category && selected.kategorie) {
+      const option = Array.from(category.options).find(
+        o => o.value.toLowerCase() === selected.kategorie.toLowerCase()
+      );
+
+      if (option) {
+        category.value = option.value;
+        if (customCategory) customCategory.value = "";
+      } else if (Array.from(category.options).some(o => o.value === "__custom__")) {
+        category.value = "__custom__";
+        if (customCategory) customCategory.value = selected.kategorie;
+      }
+
+      if (typeof toggleCustomCategory === "function") {
+        toggleCustomCategory();
+      }
+    }
+
+    alert(
+      "Suchergebnisse wurden ins Formular übernommen.\n\n" +
+      "Bitte prüfe alle Angaben sorgfältig. Es wurde noch nichts gespeichert."
+    );
+
+  } catch (error) {
+    alert(
+      "Die automatische Suche ist momentan nicht verfügbar.\n\n" +
+      "Deine bisherigen Eingaben bleiben erhalten. Du kannst die Google-Suche als Alternative nutzen.\n\n" +
+      "Hinweis: " + error.message
+    );
+  }
+}
+  
 function searchRestaurantWeb(){
 
   const input = document.getElementById("f_name");
