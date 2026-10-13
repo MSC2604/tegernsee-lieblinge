@@ -958,6 +958,11 @@ a{
       <label>Name</label>
 
       <input id="f_name" autocomplete="off">
+      ```html
+<button type="button" onclick="searchRestaurantWeb()" style="grid-column:1/-1; width:100%; padding:11px 14px; border:1px solid #b7d8cc; border-radius:10px; background:#edf7f2; color:#245846; font-weight:600; cursor:pointer;">
+  🔎 Restaurant im Web suchen
+</button>
+```
 
 
       <label>Ort</label>
@@ -2924,7 +2929,25 @@ function callPlace(){
    BENUTZERDEFINIERTE KATEGORIE
 -------------------------------------------------- */
 
-function toggleCustomCategory(){
+```javascript
+function searchRestaurantWeb(){
+
+  const input = document.getElementById("f_name");
+  const name = (input.value || "").trim();
+
+  if(!name){
+    alert("Bitte zuerst den Restaurantnamen eingeben.");
+    input.focus();
+    return;
+  }
+
+  const query = name + " Tegernsee Adresse Öffnungszeiten Telefon Website";
+  const url = "https://www.google.com/search?q=" + encodeURIComponent(query);
+  window.open(url, "_blank");
+
+}
+```
+  function toggleCustomCategory(){
 
   const select = document.getElementById("f_kategorie");
   const customInput = document.getElementById("f_kategorie_custom");
