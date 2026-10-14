@@ -3406,10 +3406,10 @@ function getFormData(){
    SPEICHERN
 -------------------------------------------------- */
 
+
 async function savePlace(){
 
-  const restaurant =
-    getFormData();
+  const restaurant = getFormData();
 
   if(restaurant.ort === "Anderer Ort"){
     const otherOrt = prompt("Bitte den Ortsnamen eingeben:");
@@ -3418,13 +3418,8 @@ async function savePlace(){
   }
 
   if(!restaurant.name){
-
-    alert(
-      "Bitte zuerst einen Namen eingeben."
-    );
-
+    alert("Bitte zuerst einen Namen eingeben.");
     return;
-
   }
 
   if(!restaurant.kategorie){
@@ -3433,156 +3428,119 @@ async function savePlace(){
     return;
   }
 
+  const password = await askAdminPassword(
+    "Bitte Admin-Passwort zum Speichern eingeben."
+  );
 
-  const password =
-    await askAdminPassword(
-      "Bitte Admin-Passwort zum Speichern eingeben."
-    );
-
-  if(password === null)
-    return;
-
+  if(password === null) return;
 
   if(password === ""){
-
-    alert(
-      "Bitte ein Passwort eingeben."
-    );
-
+    alert("Bitte ein Passwort eingeben.");
     return;
-
   }
-
 
   try{
 
-    let body;
+    const isEditing = Boolean(editId);
+    const savedEditId = editId;
 
-
-    if(editId){
-
-      body = {
-
-        action:"update",
-
-        id:editId,
-
-        restaurant
-
-      };
-
-    }else{
-
-      body = {
-
-        action:"create",
-
-        restaurant
-
-      };
-
-    }
-
-
-    const response =
-      await fetch(
-        API_URL,
-        {
-
-          method:"POST",
-
-          headers:{
-
-            "Content-Type":
-              "application/json",
-
-            "Authorization":
-              "Bearer " +
-              password
-
-          },
-
-          body:
-            JSON.stringify(
-              body
-            )
-
+    const body = isEditing
+      ? {
+          action: "update",
+          id: editId,
+          restaurant
         }
-      );
+      : {
+          action: "create",
+          restaurant
+        };
 
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + password
+      },
+      body: JSON.stringify(body)
+    });
 
     if(!response.ok){
+      throw new Error("HTTP " + response.status);
+    }
 
+    // Antwort des Servers prüfen, sofern sie JSON enthält.
+    let result = null;
+
+    try{
+      result = await response.json();
+    }catch(_){
+      // Manche Worker-Antworten enthalten kein JSON.
+    }
+
+    if(
+      result &&
+      (
+        result.success === false ||
+        result.ok === false ||
+        result.error
+      )
+    ){
       throw new Error(
-        "HTTP " +
-        response.status
+        result.error || "Der Server hat das Speichern abgelehnt."
       );
-
     }
 
-
-    /*
-      Bild und Restaurantdaten wurden gemeinsam
-      in der zentralen Datenbank gespeichert.
-    */
-
-    if(editId){
-
-      if(
-        !applyPendingLocalImage()
-      ){
-
-        alert(
-          "Das Restaurant wurde gespeichert, aber das Bild konnte auf diesem Handy nicht gespeichert werden."
-        );
-
-      }
-
+    if(isEditing && !applyPendingLocalImage()){
+      alert(
+        "Die Restaurantdaten wurden gespeichert, " +
+        "aber das Bild konnte auf diesem Handy nicht gespeichert werden."
+      );
     }
-
-
-    const savedEditId =
-      editId;
-
 
     closeModal();
 
     await loadData();
 
-
-    if(savedEditId){
-
-      const updated =
-        restaurants.find(
+    // Prüfen, ob der Eintrag nach dem Neuladen vorhanden ist.
+    const savedRestaurant = isEditing
+      ? restaurants.find(
+          r => String(r.id) === String(savedEditId)
+        )
+      : restaurants.find(
           r =>
-            String(r.id) ===
-            String(savedEditId)
+            String(r.name || "").trim().toLowerCase() ===
+            String(restaurant.name || "").trim().toLowerCase()
         );
 
-      if(updated){
+    if(savedRestaurant){
+      alert(
+        isEditing
+          ? "Restaurant erfolgreich aktualisiert."
+          : "Restaurant erfolgreich gespeichert."
+      );
 
-        openDetail(
-          updated.id
-        );
-
+      if(isEditing){
+        openDetail(savedRestaurant.id);
       }
-
+    }else{
+      alert(
+        "Der Server hat die Anfrage angenommen, aber der Eintrag " +
+        "wurde nach dem Neuladen nicht gefunden. Bitte prüfe die " +
+        "Restaurantliste, bevor du erneut speicherst."
+      );
     }
-
 
   }catch(error){
 
-    console.error(
-      error
-    );
+    console.error(error);
 
     alert(
       "Speichern fehlgeschlagen.\n\n" +
-      "Bitte Admin-Passwort und Verbindung prüfen."
+      "Bitte Admin-Passwort und Verbindung prüfen.\n\n" +
+      (error.message || "")
     );
 
   }
-
 }
 
 
