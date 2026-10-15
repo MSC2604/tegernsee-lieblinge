@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -438,6 +439,7 @@ main{
 }
 
 .modal{
+
   display:none;
   position:fixed;
   inset:0;
@@ -877,6 +879,7 @@ a{
 
 
     <div>
+
       <span class="label">
         ✉️ E-Mail
       </span>
@@ -997,6 +1000,7 @@ a{
         <option value="Brauerei">Brauerei</option>
         <option value="Imbiss">Imbiss</option>
         <option value="__custom__">Eigene Kategorie …</option>
+
       </select>
       <input id="f_kategorie_custom" autocomplete="off" placeholder="Eigene Kategorie eingeben" style="display:none" aria-label="Eigene Kategorie eingeben">
 
@@ -1357,6 +1361,7 @@ function cleanValue(value){
     value === undefined
   ){
     return "";
+
   }
 
   if(
@@ -1597,6 +1602,7 @@ function parseTimes(text){
       start:
         parseInt(m[1],10) *
         60 +
+
         parseInt(m[2],10),
 
       end:
@@ -1717,6 +1723,7 @@ function getOpeningStatus(
 
     const relevant =
       parts.filter(
+
         part =>
           dayIsMentioned(
             part,
@@ -1957,6 +1964,7 @@ function handleLocalImageFile(
         );
 
         const dataUrl =
+
           canvas.toDataURL(
             "image/jpeg",
             0.78
@@ -2077,6 +2085,7 @@ function prepareExistingImage(){
 
     document.getElementById(
       "imagepreview"
+
     ).style.display =
       "none";
 
@@ -2558,7 +2567,7 @@ function openDetail(
     currentPlace.email ||
     "Noch ergänzen";
 
-
+  
   const web =
     document.getElementById(
       "dweb"
@@ -2797,6 +2806,7 @@ function showFavorites(){
               </button>
 
               <button
+
                 onclick="routeTo('${escapeAttr(place.id)}')"
               >
                 📍 Route
@@ -2933,6 +2943,7 @@ function callPlace(){
    BENUTZERDEFINIERTE KATEGORIE
 -------------------------------------------------- */
 
+
 async function lookupRestaurantInApp(){
   const input = document.getElementById("f_name");
   const name = (input.value || "").trim();
@@ -3010,10 +3021,12 @@ async function lookupRestaurantInApp(){
     fillIfBlank("f_reservierung", selected.reservierung);
 
     const ort = document.getElementById("f_ort");
+
     if (ort && selected.ort) {
       const option = Array.from(ort.options).find(
         o => o.value.toLowerCase() === selected.ort.toLowerCase()
       );
+
       if (option) {
         ort.value = option.value;
       } else if (!ort.value) {
@@ -3032,14 +3045,16 @@ async function lookupRestaurantInApp(){
       if (option) {
         category.value = option.value;
         if (customCategory) customCategory.value = "";
-      } else if (Array.from(category.options).some(o => o.value === "__custom__")) {
+      } else if (
+        Array.from(category.options).some(o => o.value === "__custom__")
+      ) {
         category.value = "__custom__";
         if (customCategory) customCategory.value = selected.kategorie;
       }
+    }
 
-      if (typeof toggleCustomCategory === "function") {
-        toggleCustomCategory();
-      }
+    if (typeof toggleCustomCategory === "function") {
+      toggleCustomCategory();
     }
 
     alert(
@@ -3157,7 +3172,7 @@ function editPlace(){
   ).value =
     currentPlace.ort;
 
-
+  
   const categorySelect = document.getElementById("f_kategorie");
   const categoryCustom = document.getElementById("f_kategorie_custom");
   const savedCategory = currentPlace.kategorie || "Restaurant";
@@ -3517,6 +3532,7 @@ async function savePlace(){
         isEditing
           ? "Restaurant erfolgreich aktualisiert."
           : "Restaurant erfolgreich gespeichert."
+
       );
 
       if(isEditing){
@@ -3757,6 +3773,7 @@ document.getElementById(
           }catch(error){
 
             console.error(
+
               error
             );
 
