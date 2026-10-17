@@ -1736,36 +1736,56 @@ function parseTimes(text){
 }
 
 
-function dayIsMentioned(
-  text,
-  day
-){
 
-  const lower =
-    (text || "").toLowerCase();
 
-  const names = {
+function dayIsMentioned(text, day) {
+  const lower = (text || "").toLowerCase();
 
-    Montag:"montag",
-    Dienstag:"dienstag",
-    Mittwoch:"mittwoch",
-    Donnerstag:"donnerstag",
-    Freitag:"freitag",
-    Samstag:"samstag",
-    Sonntag:"sonntag"
+  const weekdays = [
+    "montag",
+    "dienstag",
+    "mittwoch",
+    "donnerstag",
+    "freitag",
+    "samstag",
+    "sonntag"
+  ];
 
-  };
-
-  return lower.includes(
-    names[day]
+  const targetIndex = weekdays.indexOf(
+    String(day || "").toLowerCase()
   );
 
+  if (targetIndex < 0) return false;
+
+  // Einzelne Wochentage erkennen.
+  if (lower.includes(weekdays[targetIndex])) {
+    return true;
+  }
+
+  // Bereiche wie „Donnerstag - Sonntag“ erkennen.
+  const rangeRegex =
+    /(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag)\s*(?:-|–|—|bis)\s*(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag)/g;
+
+  let match;
+
+  while ((match = rangeRegex.exec(lower)) !== null) {
+    const startIndex = weekdays.indexOf(match[1]);
+    const endIndex = weekdays.indexOf(match[2]);
+
+    if (
+      startIndex <= endIndex &&
+      targetIndex >= startIndex &&
+      targetIndex <= endIndex
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
-
-function getOpeningStatus(
-  place
-){
+function getOpeningStatus(place)
+{
 
   const hours =
     cleanValue(
@@ -1828,7 +1848,7 @@ function getOpeningStatus(
 let relevantText = hours;
 
 const parts = hours
-  .split(/[;\n\r]+/)
+  .split(/[;,\n\r]+/)
   .map(part => part.trim())
   .filter(Boolean);
 
