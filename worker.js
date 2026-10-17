@@ -532,18 +532,8 @@ console.log("Tavily usage account:", {
         extracted: extractedByUrl.has(record.url)
       }));
 
-      const notes = [
-        "Zusammengeführter Recherchevorschlag.",
-        "Bitte alle Angaben vor dem Speichern prüfen.",
-        "",
-        "Verwendete Quellen:",
-        ...sources.map(source =>
-          `- ${source.title}\n  ${source.url}` +
-          (source.extracted ? "\n  Webseite zusätzlich ausgelesen." : "")
-        ),
-        "",
-        "Nicht alle Angaben sind von jeder Quelle bestätigt."
-      ].join("\n");
+      
+const notes = "";
 
       return [{
         name: cleanName,
