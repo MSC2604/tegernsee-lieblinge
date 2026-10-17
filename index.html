@@ -115,32 +115,19 @@ main{
   font-weight:700;
 }
 
-.addbtn{
-  width:100%;
-  border:0;
-  background:var(--accent);
-  color:white;
-  padding:14px;
-  border-radius:15px;
-  font-weight:750;
-  box-shadow:var(--shadow);
+.home-actions{display:grid;gap:9px;margin:4px 0 12px}
+.primary-actions,.secondary-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.secondary-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+.addbtn,.sync button,.secondary-action{
+  width:100%;min-width:0;min-height:44px;
+  border:1px solid var(--accent);background:var(--accent);color:#fff;
+  padding:11px 8px;border-radius:13px;font-weight:750;font-size:13px;
+  box-shadow:var(--shadow);line-height:1.25;
 }
-
-.sync{
-  display:flex;
-  gap:8px;
-  margin-top:10px;
-}
-
-.sync button{
-  flex:1;
-  border:1px solid var(--line);
-  background:white;
-  color:var(--ink);
-  border-radius:13px;
-  padding:10px 8px;
-  font-size:13px;
-}
+.sync{display:contents}
+.sync button{border-color:var(--accent);background:var(--accent);color:#fff}
+.secondary-action{border:1px solid var(--accent);background:#fff;color:var(--accent);margin:0!important}
+@media(max-width:420px){.primary-actions,.secondary-actions{gap:6px}.addbtn,.sync button,.secondary-action{font-size:12px;padding:10px 5px}}
 
 .small{
   text-align:center;
@@ -693,7 +680,9 @@ a{
 .brandcopy .sub{font-size:clamp(13px,1.5vw,17px)}
 .menu-mark{border:0;background:transparent;color:#fff;font-size:32px;padding:4px 8px;flex:none}
 .secondary-action{background:#fff!important;color:var(--accent)!important;border:1px solid #d8e4df!important;box-shadow:none!important}
-.welcome-hero{position:relative;min-height:260px;margin:22px 0 24px;border-radius:22px;overflow:hidden;background:linear-gradient(0deg,rgba(11,48,60,.78),rgba(11,48,60,.02) 75%),url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=85') center 52%/cover no-repeat;box-shadow:var(--shadow);display:flex;align-items:flex-end}
+.welcome-hero{position:relative;min-height:260px;margin:22px 0 24px;border-radius:22px;overflow:hidden;background-image:linear-gradient(0deg,rgba(11,48,60,.78),rgba(11,48,60,.02) 75%),var(--welcome-image,url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=85'));background-position:center;background-size:cover;background-repeat:no-repeat;box-shadow:var(--shadow);display:flex;align-items:flex-end}
+.change-hero-image{position:absolute;right:12px;top:12px;border:1px solid rgba(255,255,255,.85);border-radius:999px;background:rgba(255,255,255,.93);color:#1f5747;padding:9px 13px;font-weight:750;font-size:12px;cursor:pointer}
+.welcome-copy h2{letter-spacing:.02em}
 .welcome-copy{padding:24px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.25)}
 .welcome-copy h2{margin:0 0 6px;font-size:clamp(25px,4vw,36px);font-weight:850}
 .welcome-copy p{margin:0;font-size:clamp(16px,2vw,22px);font-style:italic}
@@ -731,32 +720,17 @@ a{
     <span class="count" id="count">0</span>
   </div>
 
-  <button
-    class="addbtn"
-    onclick="openAdd()"
-  >
-    ＋ Restaurant hinzufügen
-  </button>
-
-  <div class="sync">
-    <button onclick="refreshData()">↻ Daten aktualisieren</button>
-    <button onclick="showSyncInfo()">◷ Auto-Update</button>
+  <div class="home-actions" aria-label="App-Aktionen">
+    <div class="primary-actions">
+      <button class="addbtn" onclick="openAdd()">＋ Restaurant hinzufügen</button>
+      <div class="sync"><button onclick="refreshData()">↻ Daten aktualisieren</button></div>
+      <div class="sync"><button onclick="showSyncInfo()">◷ Auto-Update</button></div>
+    </div>
+    <div class="secondary-actions">
+      <button class="secondary-action contactbtn" onclick="window.location.href='mailto:msc4021@arcor.de?subject=Vorschlag%20f%C3%BCr%20Meine%20Lieblings-Restaurants%20am%20Tegernsee'">✉️ Kontakt für Vorschläge</button>
+      <button type="button" id="toggleTavilyUsage" aria-expanded="false" aria-controls="tavilyUsageCard" class="secondary-action">▥ Suchkontingent anzeigen</button>
+    </div>
   </div>
-
-  <button
-    class="addbtn contactbtn secondary-action"
-    style="margin-top:10px"
-    onclick="window.location.href='mailto:msc4021@arcor.de?subject=Vorschlag%20f%C3%BCr%20Meine%20Lieblings-Restaurants%20am%20Tegernsee'"
-  >✉️ Kontakt für Vorschläge</button>
-
-  <button
-    type="button"
-    id="toggleTavilyUsage"
-    aria-expanded="false"
-    aria-controls="tavilyUsageCard"
-    class="addbtn"
-    style="margin-top:10px"
-  >▥ Suchkontingent anzeigen</button>
 
   <section class="tavily-usage" id="tavilyUsageCard" aria-live="polite" hidden>
     <div class="tavily-usage-head">
@@ -779,11 +753,13 @@ a{
     Daten werden geladen …
   </div>
 
-  <section class="welcome-hero" aria-label="Willkommen am Tegernsee">
+  <section class="welcome-hero" id="welcomeHero" aria-label="Willkommen am Tegernsee">
     <div class="welcome-copy">
-      <h2>Willkommen am Tegernsee</h2>
+      <h2>Tegernsee</h2>
       <p>Entdecken. Genießen. Wohlfühlen.</p>
     </div>
+    <button class="change-hero-image" type="button" id="changeHeroImage">Titelbild ändern</button>
+    <input type="file" id="heroImagePicker" accept="image/*" hidden>
   </section>
 
   <div class="sectionhead">
@@ -4080,6 +4056,34 @@ if (toggleTavilyUsage && tavilyUsageCard) {
     if (isOpening) loadTavilyUsage();
   });
 }
+
+
+// Eigenes Titelbild auswählen (nur auf diesem Gerät gespeichert)
+(function setupWelcomeHeroImage(){
+  const hero = document.getElementById("welcomeHero");
+  const picker = document.getElementById("heroImagePicker");
+  const button = document.getElementById("changeHeroImage");
+  if (!hero || !picker || !button) return;
+  try {
+    const saved = localStorage.getItem("tegernseeWelcomeHeroImage");
+    if (saved) hero.style.setProperty("--welcome-image", "url(" + JSON.stringify(saved).slice(1,-1) + ")");
+  } catch (e) {}
+  button.addEventListener("click", () => picker.click());
+  picker.addEventListener("change", () => {
+    const file = picker.files && picker.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { alert("Bitte wähle eine Bilddatei aus."); return; }
+    if (file.size > 5 * 1024 * 1024) { alert("Bitte wähle ein Bild mit höchstens 5 MB."); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const data = reader.result;
+      hero.style.setProperty("--welcome-image", "url(" + JSON.stringify(data).slice(1,-1) + ")");
+      try { localStorage.setItem("tegernseeWelcomeHeroImage", data); }
+      catch (e) { alert("Das Bild ist zu groß für den lokalen Speicher. Bitte ein kleineres Bild wählen."); }
+    };
+    reader.readAsDataURL(file);
+  });
+})();
 
 </script>
 
