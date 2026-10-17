@@ -756,7 +756,15 @@ a{
     Daten werden geladen …
   </div>
 
-  <section class="tavily-usage" id="tavilyUsageCard" aria-live="polite">
+  <button
+    type="button"
+    id="toggleTavilyUsage"
+    aria-expanded="false"
+    aria-controls="tavilyUsageCard"
+    style="margin:10px 0 0;padding:9px 13px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--accent);font-weight:700"
+  >📊 Suchkontingent anzeigen</button>
+
+  <section class="tavily-usage" id="tavilyUsageCard" aria-live="polite" hidden>
     <div class="tavily-usage-head">
       <span>🔎 Kontingent der automatischen Suche</span>
       <span id="tavilyUsagePercent">Lade …</span>
@@ -1278,7 +1286,7 @@ async function loadTavilyUsage(){
     percentEl.textContent = percent + " % verbraucht";
     progressEl.max = 100;
     progressEl.value = percent;
-    noteEl.textContent = "Wird beim Öffnen, nach einer Suche und anschließend alle 5 Minuten aktualisiert.";
+    noteEl.textContent = "Zuletzt erfolgreich abgerufen. Nach einer automatischen Suche wird die Anzeige erneut aktualisiert.";
   }catch(error){
     usedEl.textContent = "–";
     remainingEl.textContent = "–";
@@ -4044,8 +4052,21 @@ setInterval(
 -------------------------------------------------- */
 
 loadData();
-loadTavilyUsage();
-setInterval(loadTavilyUsage, 5 * 60 * 1000);
+
+const toggleTavilyUsage = document.getElementById("toggleTavilyUsage");
+const tavilyUsageCard = document.getElementById("tavilyUsageCard");
+
+if (toggleTavilyUsage && tavilyUsageCard) {
+  toggleTavilyUsage.addEventListener("click", () => {
+    const isOpening = tavilyUsageCard.hidden;
+    tavilyUsageCard.hidden = !isOpening;
+    toggleTavilyUsage.setAttribute("aria-expanded", String(isOpening));
+    toggleTavilyUsage.textContent = isOpening
+      ? "📊 Suchkontingent ausblenden"
+      : "📊 Suchkontingent anzeigen";
+    if (isOpening) loadTavilyUsage();
+  });
+}
 
 </script>
 
