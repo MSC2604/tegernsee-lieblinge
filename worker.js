@@ -95,66 +95,72 @@ export default {
     // TAVILY: VERBRAUCH UND GUTHABEN
     // --------------------------------------------------
 
-    async function getTavilyUsage() {
-      if (!env.TAVILY_API_KEY) {
-        throw new Error("TAVILY_API_KEY ist nicht eingerichtet.");
-      }
+    
+async function getTavilyUsage() {
+  if (!env.TAVILY_API_KEY) {
+    throw new Error("TAVILY_API_KEY ist nicht eingerichtet.");
+  }
 
-      const response = await fetch("https://api.tavily.com/usage", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${env.TAVILY_API_KEY}`
-        }
-      });
+  const response = await fetch("https://api.tavily.com/usage", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${env.TAVILY_API_KEY}`
+    },
+    cache: "no-store"
+  });
 
-      const data = await response.json();
+  const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(
-          `Tavily Usage HTTP-Fehler (${response.status}).`
-        );
-      }
+  if (!response.ok) {
+    throw new Error(
+      `Tavily Usage HTTP-Fehler (${response.status}).`
+    );
+  }
 
-      const key = data.key || {};
-      const account = data.account || {};
+  const key = data.key || {};
+  const account = data.account || {};
 
-      // Zuerst die Werte des API-Schlüssels verwenden.
-      // Wenn dort kein Limit vorhanden ist, das Kontolimit prüfen.
-      const used = Number.isFinite(Number(key.usage))
-        ? Number(key.usage)
-        : Number(account.plan_usage);
+  // Gesamtverbrauch des Kontos bevorzugen.
+  const accountUsed = account.plan_usage;
+  const keyUsed = key.usage;
 
-      let limit = key.limit;
+  const used =
+    accountUsed != null && Number.isFinite(Number(accountUsed))
+      ? Number(accountUsed)
+      : keyUsed != null && Number.isFinite(Number(keyUsed))
+        ? Number(keyUsed)
+        : null;
 
-      if (limit == null) {
-        limit = account.plan_limit;
-      }
+  // Kontolimit bevorzugen, ansonsten das Schlüssellimit.
+  const accountLimit = account.plan_limit;
+  const keyLimit = key.limit;
 
-      const validUsed = Number.isFinite(used) ? used : null;
-      const validLimit =
-        limit != null && Number.isFinite(Number(limit))
-          ? Number(limit)
-          : null;
+  const limit =
+    accountLimit != null && Number.isFinite(Number(accountLimit))
+      ? Number(accountLimit)
+      : keyLimit != null && Number.isFinite(Number(keyLimit))
+        ? Number(keyLimit)
+        : null;
 
-      return {
-        available: validUsed !== null && validLimit !== null,
-        plan: account.current_plan || "Laut Tavily-Konto",
-        used: validUsed,
-        limit: validLimit,
-        remaining:
-          validUsed !== null && validLimit !== null
-            ? Math.max(0, validLimit - validUsed)
-            : null,
-        searchUsage: key.search_usage ?? null,
-        extractUsage: key.extract_usage ?? null,
-        crawlUsage: key.crawl_usage ?? null,
-        mapUsage: key.map_usage ?? null,
-        note: validLimit === null
-          ? "Tavily hat für diesen Schlüssel kein auswertbares Limit geliefert."
-          : "Aktuelle Werte direkt von Tavily."
-      };
-    }
+  const available = used !== null && limit !== null;
 
+  return {
+    available,
+    plan: account.current_plan || "Laut Tavily-Konto",
+    used,
+    limit,
+    remaining: available
+      ? Math.max(0, limit - used)
+      : null,
+    searchUsage: key.search_usage ?? null,
+    extractUsage: key.extract_usage ?? null,
+    crawlUsage: key.crawl_usage ?? null,
+    mapUsage: key.map_usage ?? null,
+    note: !available
+      ? "Tavily hat keine auswertbaren Verbrauchswerte geliefert."
+      : "Verbrauch und Limit stammen bevorzugt aus dem Tavily-Konto."
+  };
+}
     // --------------------------------------------------
     // RESTAURANTSUCHE
     // Keine Datenbankänderungen während der Recherche.
