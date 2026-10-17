@@ -1824,38 +1824,52 @@ function getOpeningStatus(
 
   }
 
-  let relevantText =
-    hours;
 
-  if(
-    !/täglich/i.test(hours) &&
-    dayIsMentioned(
-      hours,
-      today
-    )
-  ){
+let relevantText = hours;
 
-    const parts =
-      hours.split(/[;]+/);
+const parts = hours
+  .split(/[;\n\r]+/)
+  .map(part => part.trim())
+  .filter(Boolean);
 
-    const relevant =
-      parts.filter(
+const weekdays = [
+  "Montag", "Dienstag", "Mittwoch",
+  "Donnerstag", "Freitag", "Samstag", "Sonntag"
+];
 
-        part =>
-          dayIsMentioned(
-            part,
-            today
-          )
-      );
+const hasWeekdayInfo = weekdays.some(
+  day => parts.some(part => dayIsMentioned(part, day))
+);
 
-    if(relevant.length){
+const todayParts = parts.filter(
+  part => dayIsMentioned(part, today)
+);
 
-      relevantText =
-        relevant.join(" ");
+if (todayParts.some(
+  part => /\bgeschlossen\b|\bruhetag\b/i.test(part)
+)) {
+  return {
+    type: "closed",
+    text: "🔴 Heute geschlossen"
+  };
+}
 
-    }
-
-  }
+if (todayParts.length) {
+  relevantText = todayParts.join(" ");
+} else if (hasWeekdayInfo) {
+  return {
+    type: "unknown",
+    text: "⚪ Öffnungszeiten prüfen"
+  };
+} else if (
+  /\b(heute\s+)?geschlossen\b/i.test(hours) &&
+  !parseTimes(hours).length
+) {
+  return {
+    type: "closed",
+    text: "🔴 Heute geschlossen"
+  };
+}
 
   const times =
     parseTimes(
@@ -1883,7 +1897,7 @@ function getOpeningStatus(
     times.some(
       t =>
         minutes >= t.start &&
-        minutes <= t.end
+        minutes < t.end
     );
 
   return open
