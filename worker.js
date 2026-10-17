@@ -118,7 +118,12 @@ async function getTavilyUsage() {
   }
 
   const key = data.key || {};
-  const account = data.account || {};
+const account = data.account || {};
+
+console.log("Tavily usage account:", {
+  plan_usage: account.plan_usage,
+  plan_limit: account.plan_limit
+});
 
   // Gesamtverbrauch des Kontos bevorzugen.
   const accountUsed = account.plan_usage;
