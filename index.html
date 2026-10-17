@@ -1699,44 +1699,47 @@ function getDayName(){
 }
 
 
-function parseTimes(text){
-
-  if(!text) return [];
+function parseTimes(text) {
+  if (!text) return [];
 
   const matches = [];
 
+  // Unterstützt z. B.:
+  // 10–23 Uhr
+  // 10:00–23:00 Uhr
+  // 09:00-17:00 Uhr
+  // 10 bis 23 Uhr
+  // 10:30–14:00 und 17:00–22:00 Uhr
+
   const regex =
-    /(\d{1,2}):(\d{2})\s*(?:–|-|bis)\s*(\d{1,2}):(\d{2})/g;
+    /\b(\d{1,2})(?::(\d{2}))?\s*(?:Uhr\s*)?(?:–|—|-|bis)\s*(\d{1,2})(?::(\d{2}))?\s*(?:Uhr)?\b/gi;
 
   let m;
 
-  while(
-    (m = regex.exec(text)) !== null
-  ){
+  while ((m = regex.exec(String(text))) !== null) {
+    const startHour = Number(m[1]);
+    const startMinute = m[2] === undefined ? 0 : Number(m[2]);
+    const endHour = Number(m[3]);
+    const endMinute = m[4] === undefined ? 0 : Number(m[4]);
+
+    // Ungültige Uhrzeiten überspringen
+    if (
+      startHour > 23 ||
+      startMinute > 59 ||
+      endHour > 23 ||
+      endMinute > 59
+    ) {
+      continue;
+    }
 
     matches.push({
-
-      start:
-        parseInt(m[1],10) *
-        60 +
-
-        parseInt(m[2],10),
-
-      end:
-        parseInt(m[3],10) *
-        60 +
-        parseInt(m[4],10)
-
+      start: startHour * 60 + startMinute,
+      end: endHour * 60 + endMinute
     });
-
   }
 
   return matches;
-
 }
-
-
-
 
 function dayIsMentioned(text, day) {
   const lower = (text || "").toLowerCase();
