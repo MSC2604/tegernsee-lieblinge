@@ -725,8 +725,19 @@ const notes = "";
           const restaurantId = String(body.restaurantId || "").trim();
           const kind = String(body.kind || "").trim();
           const filename = String(body.filename || "karte").replace(/[^a-zA-Z0-9._() -]/g, "_").slice(0, 120);
-          const mimeType = String(body.mimeType || "application/octet-stream").toLowerCase();
+          let mimeType = String(body.mimeType || "application/octet-stream").toLowerCase();
           const dataUrl = String(body.dataUrl || "");
+          if (mimeType === "application/octet-stream") {
+            const ext = filename.toLowerCase().split(".").pop();
+            const inferred = {
+              pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg",
+              png: "image/png", webp: "image/webp", gif: "image/gif",
+              txt: "text/plain", doc: "application/msword",
+              docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              odt: "application/vnd.oasis.opendocument.text"
+            };
+            if (inferred[ext]) mimeType = inferred[ext];
+          }
           if (!restaurantId || !["speisekarte", "getraenkekarte"].includes(kind)) {
             return json({ error: "Restaurant oder Kartenart ist ungültig." }, 400);
           }
