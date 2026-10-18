@@ -710,6 +710,10 @@ a{
 .app-menu-item{width:100%;display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:14px;padding:14px;margin:8px 0;font-weight:750}
 .app-menu-item span:first-child{font-size:22px;width:28px;text-align:center}
 #mapView{display:none;max-width:1100px}
+.lookup-review{grid-column:1/-1;border:1px solid #b7d8cc;background:#f3faf6;color:#244d3c;border-radius:12px;padding:12px;margin:4px 0 10px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.lookup-review strong{display:block;margin:0 0 6px}
+.lookup-review ul{margin:6px 0 10px;padding-left:20px}
+.lookup-review a{color:#245846;text-decoration:underline;overflow-wrap:anywhere}
 #incompleteView{display:none;max-width:1000px;margin:0 auto;padding:18px}
 .incomplete-summary{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0 16px;color:var(--muted)}
 .incomplete-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px;margin:10px 0;box-shadow:var(--shadow)}
@@ -1104,6 +1108,7 @@ a{
 <button type="button" onclick="lookupRestaurantInApp()" style="grid-column:1/-1; width:100%; padding:11px 14px; border:1px solid #b7d8cc; border-radius:10px; background:#edf7f2; color:#245846; font-weight:600; cursor:pointer;">
   ✨ Restaurantdaten automatisch suchen
 </button>
+<div id="lookupReview" class="lookup-review" hidden></div>
 
 <label>Ort</label>
 <select id="f_ort" autocomplete="off">
@@ -3464,22 +3469,30 @@ async function lookupRestaurantInApp(){
     if (!categoryValue) missing.splice(1, 0, "Kategorie");
 
     const sourceList = Array.isArray(selected.quellen)
-      ? selected.quellen.filter(source => source && /^https?:\/\//i.test(source.url || "")).slice(0, 3)
+      ? selected.quellen.filter(source => source && /^https?:\/\//i.test(source.url || "")).slice(0, 5)
       : [];
-    const sourceText = sourceList.length
-      ? "\n\nQuellen zur Kontrolle:\n" + sourceList.map((source, i) =>
-          (i + 1) + ". " + (source.title || "Quelle") + "\n" + source.url
-        ).join("\n")
-      : "\n\nEs wurden keine direkten Quellenlinks zurückgegeben; bitte die Angaben besonders sorgfältig prüfen.";
-
-    const missingText = missing.length
-      ? "\n\nNoch fehlend: " + missing.join(", ") + "."
-      : "\n\nDie wichtigsten Formularfelder sind ausgefüllt; bitte trotzdem alle Angaben prüfen.";
+    const review = document.getElementById("lookupReview");
+    if (review) {
+      const missingHtml = missing.length
+        ? "<strong>Noch fehlende Angaben</strong><ul>" + missing.map(label => "<li>" + escapeHtml(label) + "</li>").join("") + "</ul>"
+        : "<strong>Die wichtigsten Formularfelder sind ausgefüllt.</strong>";
+      const sourcesHtml = sourceList.length
+        ? "<strong>Quellen zur Kontrolle</strong><ul>" + sourceList.map(source =>
+            '<li><a href="' + escapeAttr(source.url) + '" target="_blank" rel="noopener noreferrer">' +
+            escapeHtml(source.title || source.url) + "</a>" +
+            (source.extracted ? " <span>(Webseite ausgelesen)</span>" : "") +
+            "</li>"
+          ).join("") + "</ul>"
+        : "<p>Keine direkten Quellenlinks gefunden. Bitte Angaben besonders sorgfältig prüfen.</p>";
+      review.innerHTML = "<strong>Bitte Suchergebnisse prüfen – noch nicht gespeichert</strong>" +
+        "<p>Die automatisch gefundenen Angaben sind Vorschläge und nicht garantiert aktuell oder korrekt.</p>" +
+        missingHtml + sourcesHtml;
+      review.hidden = false;
+    }
     alert(
-      "Suchergebnisse wurden ins Formular übernommen.\n\n" +
-      "Wichtig: Die Angaben sind Vorschläge und nicht automatisch verifiziert. Bitte gleiche sie mit den Quellen ab." +
-      missingText + sourceText +
-      "\n\nEs wurde noch nichts gespeichert."
+      "Die gefundenen Angaben wurden ins Formular übernommen.\\n\\n" +
+      (missing.length ? "Noch fehlend: " + missing.join(", ") + ".\\n\\n" : "") +
+      "Bitte prüfe die Angaben und die jetzt im Formular angezeigten Quellen. Es wurde noch nichts gespeichert."
     );
     loadTavilyUsage();
 
