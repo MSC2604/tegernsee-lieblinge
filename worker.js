@@ -509,19 +509,26 @@ console.log("Tavily usage account:", {
       }
 
       function extractClosedDay(text) {
-        const days =
-          "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag";
-
-        const first = String(text || "").match(
-          new RegExp("\\b(" + days + ")\\b.{0,30}\\bRuhetag\\b", "i")
-        );
+        const value = String(text || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+        const days = "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag";
+        const shortDays = "Mo(?:ntag)?|Di(?:enstag)?|Mi(?:ttwoch)?|Do(?:nnerstag)?|Fr(?:eitag)?|Sa(?:mstag)?|So(?:nntag)?";
+        const first = value.match(new RegExp("\\b(" + days + ")\\b.{0,35}\\bRuhetag\\b", "i"));
         if (first) return first[1];
+        const second = value.match(new RegExp("\\bRuhetag(?:e)?\\s*[:：]?\\s*(" + days + ")\\b", "i"));
+        if (second) return second[1];
 
-        const second = String(text || "").match(
-          new RegExp("\\bRuhetag\\s*[:：]?\\s*(" + days + ")\\b", "i")
-        );
-        return second ? second[1] : "";
+        // Viele Restaurantseiten nennen Schließtage ohne das Wort "Ruhetag".
+        const closed = value.match(new RegExp("\\b(" + days + ")\\b(?:\\s*(?:,|und|&|/)\\s*(" + days + "))?\\s*(?:ist|sind)?\\s*(?:Ruhetag|geschlossen|Betriebsferien)\\b", "i"));
+        if (closed) return [closed[1], closed[2]].filter(Boolean).join(" und ");
+
+        const shortClosed = value.match(new RegExp("\\b(" + shortDays + ")\\s*(?:,|/|&|und)\\s*(" + shortDays + ")\\s*(?:Ruhetag|geschlossen)\\b", "i"));
+        if (shortClosed) {
+          const expand = day => ({mo:"Montag",di:"Dienstag",mi:"Mittwoch",do:"Donnerstag",fr:"Freitag",sa:"Samstag",so:"Sonntag"})[day.slice(0,2).toLowerCase()];
+          return [expand(shortClosed[1]), expand(shortClosed[2])].join(" und ");
+        }
+        return "";
       }
+
 
       function extractHours(text) {
         const lines = String(text || "")
@@ -537,6 +544,13 @@ console.log("Tavily usage account:", {
 
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
+
+          // Erfasst auch kompakte Zeilen wie "Mi–So 11:30–23:00 Uhr".
+          if (!opening && hoursPattern.test(line) &&
+              /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\bMo\b|\bDi\b|\bMi\b|\bDo\b|\bFr\b|\bSa\b|\bSo\b)/i.test(line) &&
+              !/küche|speisekarte|reservier/i.test(line)) {
+            opening = line;
+          }
 
           if (/^öffnungszeiten\b/i.test(line)) {
             const inline = line.replace(/^öffnungszeiten\s*[:：]?\s*/i, "");
