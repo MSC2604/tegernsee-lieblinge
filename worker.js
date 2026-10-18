@@ -194,7 +194,7 @@ console.log("Tavily usage account:", {
         headers: tavilyHeaders,
         body: JSON.stringify({
           query:
-            `"${cleanName}" Tegernseer Tal Restaurant Adresse Telefon E-Mail ` +
+            `"${cleanName}" (Kreuth OR Tegernsee OR Gmund OR Rottach-Egern OR "Bad Wiessee" OR Schliersee) Restaurant Adresse Telefon E-Mail ` +
             "offizielle Website Öffnungszeiten Küchenzeiten Ruhetag Speisekarte Getränkekarte Reservierung Tisch reservieren",
           topic: "general",
           search_depth: "basic",
@@ -223,7 +223,7 @@ console.log("Tavily usage account:", {
           method: "POST",
           headers: tavilyHeaders,
           body: JSON.stringify({
-            query: `"${cleanName}" offizielle Speisekarte Getränkekarte online Tischreservierung reservieren`,
+            query: `"${cleanName}" (Kreuth OR Tegernsee OR Gmund OR Rottach-Egern OR "Bad Wiessee" OR Schliersee) offizielle Speisekarte Getränkekarte online Tischreservierung reservieren`,
             topic: "general",
             search_depth: "basic",
             max_results: 8,
@@ -290,14 +290,40 @@ console.log("Tavily usage account:", {
         }
       }
 
-      // Treffer nach markanten Namensbestandteilen filtern.
-      const relevant = results.filter(result => {
-        const title = normalize(result.title);
-        const content = normalize(result.content);
-        return nameTokens.some(token =>
-          title.includes(token) || content.includes(token)
+      // Treffer müssen sowohl zum Namen als auch zur Region Tegernsee passen.
+      // Ein Namensähnlichkeitstreffer wie "Hagn's" in Hagen reicht allein nicht.
+      const localPlaces = [
+        "tegernsee", "gmund", "rottach egern", "kreuth",
+        "bad wiessee", "schliersee", "enterbach", "weissach",
+        "waakirchen", "hausham", "bayrischzell"
+      ];
+      function hasLocalEvidence(result) {
+        const haystack = normalize([
+          result.title || "",
+          result.content || "",
+          result.url || ""
+        ].join(" "));
+        const postalCode = /\\b(?:83700|83703|83707|83708|83727|83730|83734|83684)\\b/.test(
+          String([result.title || "", result.content || "", result.url || ""].join(" "))
         );
-      });
+        return postalCode || localPlaces.some(place => haystack.includes(place));
+      }
+
+      function hasStrongNameMatch(result) {
+        const title = normalize(result.title);
+        let host = "";
+        try { host = normalize(new URL(result.url).hostname.replace(/^www\\./i, "")); } catch {}
+        // Markante Namensbestandteile müssen im Titel oder in der Domain stehen,
+        // nicht nur irgendwo im allgemeinen Suchtext.
+        return nameTokens.some(token =>
+          title.split(/\\s+/).includes(token) ||
+          host.split(/\\s+/).some(part => part === token || part.startsWith(token))
+        );
+      }
+
+      const relevant = results.filter(result =>
+        hasStrongNameMatch(result) && hasLocalEvidence(result)
+      );
 
       if (!relevant.length) return [];
 
