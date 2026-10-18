@@ -640,14 +640,16 @@ console.log("Tavily usage account:", {
         crawledPages.add(pageKey);
         try {
           const response = await fetch(pageKey, {
-            redirect: "manual",
+            redirect: "follow",
             headers: { "Accept": "text/html" },
             signal: AbortSignal.timeout(5000)
           });
-          if (!response.ok || !/^text\/html\b/i.test(response.headers.get("content-type") || "")) continue;
+          // Redirects must stay on the same official host.
+          if (!response.ok || hostKey(response.url || pageKey) !== officialHost ||
+              !/^text\/html\b/i.test(response.headers.get("content-type") || "")) continue;
           const html = (await response.text()).slice(0, 800000);
           const baseTag = html.match(/<base\s+[^>]*href\s*=\s*["']([^"']+)["']/i);
-          let baseUrl = pageKey;
+          let baseUrl = response.url || pageKey;
           if (baseTag) {
             try { const b = new URL(baseTag[1], pageKey); if (hostKey(b.href) === officialHost) baseUrl = b.href; } catch {}
           }
