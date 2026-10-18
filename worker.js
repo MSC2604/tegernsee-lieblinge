@@ -183,18 +183,27 @@ console.log("Tavily usage account:", {
         throw new Error("Bitte einen gültigen Restaurantnamen eingeben.");
       }
 
+      // Ortszusätze aus dem Suchbegriff entfernen, damit Varianten wie
+      // "Postillion", "Postillion Rottach-Egern" und "Postillion am Tegernsee"
+      // denselben stabilen Kernnamen verwenden. Die Region wird separat ergänzt.
+      const searchName = cleanName
+        .replace(/^\s*(?:restaurant|gasthof|wirtshaus)\s+/i, "")
+        .replace(/\s*[,–—-]?\s*(?:am\s+)?(?:rottach[\s-]?egern|bad\s+wiessee|schliersee|kreuth|gmund(?:\s+am\s+tegernsee)?|tegernsee)\s*$/i, "")
+        .trim() || cleanName;
+
       const tavilyHeaders = {
         Authorization: `Bearer ${env.TAVILY_API_KEY}`,
         "Content-Type": "application/json"
       };
 
-      // 1. Kostengünstige Basissuche
+      // 1. Kostengünstige Basissuche. Der Suchkern ist unabhängig davon,
+      // ob der Nutzer den Ort an den Namen angehängt hat.
       const searchResponse = await fetch("https://api.tavily.com/search", {
         method: "POST",
         headers: tavilyHeaders,
         body: JSON.stringify({
           query:
-            `"${cleanName}" (Kreuth OR Tegernsee OR Gmund OR Rottach-Egern OR "Bad Wiessee" OR Schliersee) Restaurant Adresse Telefon E-Mail ` +
+            `"${searchName}" (Kreuth OR Tegernsee OR Gmund OR Rottach-Egern OR "Bad Wiessee" OR Schliersee) Restaurant Adresse Telefon E-Mail ` +
             "offizielle Website Öffnungszeiten Küchenzeiten Ruhetag Speisekarte Getränkekarte Reservierung Tisch reservieren",
           topic: "general",
           search_depth: "basic",
@@ -223,7 +232,7 @@ console.log("Tavily usage account:", {
           method: "POST",
           headers: tavilyHeaders,
           body: JSON.stringify({
-            query: `"${cleanName}" (Kreuth OR Tegernsee OR Gmund OR Rottach-Egern OR "Bad Wiessee" OR Schliersee) offizielle Speisekarte Getränkekarte online Tischreservierung reservieren`,
+            query: `"${searchName}" (Kreuth OR Tegernsee OR Gmund OR Rottach-Egern OR "Bad Wiessee" OR Schliersee) offizielle Speisekarte Getränkekarte online Tischreservierung reservieren`,
             topic: "general",
             search_depth: "basic",
             max_results: 8,
@@ -257,14 +266,20 @@ console.log("Tavily usage account:", {
           .trim();
       }
 
-      const normalizedName = normalize(cleanName);
+      const normalizedName = normalize(searchName);
+      const localNameTokens = new Set([
+        "tegernsee", "gmund", "rottach", "egern", "bad", "wiessee",
+        "schliersee", "kreuth", "enterbach", "weissach", "waakirchen",
+        "hausham", "bayrischzell"
+      ]);
       const nameTokens = normalizedName
         .split(/\s+/)
         .filter(token =>
           token.length > 2 &&
+          !localNameTokens.has(token) &&
           ![
-            "der", "die", "das", "zum", "zur", "am", "im",
-            "gasthof", "restaurant", "wirtshaus"
+            "der", "die", "das", "zum", "zur", "am", "im", "bei",
+            "restaurant", "gasthof", "wirtshaus", "cafe", "café"
           ].includes(token)
         );
 
@@ -406,9 +421,10 @@ console.log("Tavily usage account:", {
           .replace(/&nbsp;|&#160;/gi, " ")
           .replace(/&amp;/gi, "&");
 
-        // Support house-number ranges such as "17–19" and common street types.
+        // Support house-number ranges and both spaced and abbreviated street names,
+        // including compound abbreviations such as "Nördliche Hauptstr. 17–19".
         const streetPattern =
-          /\b[A-ZÄÖÜ][\p{L}.'-]*(?:[ \t]+[\p{L}.'-]+){0,4}[ \t]+(?:straße|strasse|str\.|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b/iu;
+          /\b(?:[A-ZÄÖÜ][\p{L}.'-]*(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)|[A-ZÄÖÜ][\p{L}.'-]*(?:[ \t]+[\p{L}.'-]+){0,4}[ \t]+(?:straße|strasse|straße|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig))[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b/iu;
 
         const match = value.match(streetPattern);
         if (!match) return "";
@@ -558,7 +574,7 @@ console.log("Tavily usage account:", {
         const hoursPattern =
           /\b\d{1,2}(?:[:.]\d{2})?\s*(?:Uhr)?\s*(?:-|–|—|bis|\/)\s*\d{1,2}(?:[:.]\d{2})?\s*(?:Uhr)?/i;
         const dayPattern =
-          /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\bMo\b|\bDi\b|\bMi\b|\bDo\b|\bFr\b|\bSa\b|\bSo\b)/i;
+          /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\bMo\b|\bDi\b|\bMi\b|\bDo\b|\bFr\b|\bSa\b|\bSo\b|\btäglich\b|\ttaeglich\b)/i;
         const noisePattern =
           /tripadvisor|bewertung|bewertungen|review|ratings?|out of \s*5|sterne|unhöflich|unhoeflich|unhofflich|rude service|left the place|extremely|food was|service was|image \d+/i;
 
