@@ -3749,10 +3749,24 @@ async function loadRestaurantCards(restaurantId, officialWebsite){
       if(!el) return;
       const card = cards[kind] || {};
       const target = card.url || officialWebsite || "";
+      let audit = "";
+      if(card.checkedAt){
+        const checked = new Date(card.checkedAt);
+        const dateText = Number.isNaN(checked.getTime()) ? "" : checked.toLocaleDateString("de-DE");
+        if(card.checkStatus === "unreachable" || card.checkStatus === "error" || card.checkStatus === "too_large"){
+          audit = '<p class="menu-check-note">Letzte Quellenprüfung: ' + escapeAttr(dateText) + ' – nicht vollständig prüfbar.</p>';
+        }else if(card.checkStatus === "baseline"){
+          audit = '<p class="menu-check-note">Offizielle Quelle zuletzt geprüft: ' + escapeAttr(dateText) + '.</p>';
+        }else{
+          audit = '<p class="menu-check-note">Offizielle Quelle zuletzt geprüft: ' + escapeAttr(dateText) + (card.changedAt ? ' · Inhaltsänderung erkannt' : '') + '.</p>';
+        }
+      }else if(card.url){
+        audit = '<p class="menu-check-note">Die automatische Prüfung startet mit dem nächsten täglichen Lauf.</p>';
+      }
       if(target && /^https?:\/\//i.test(target)){
         const text = card.url ? label : "Offizielle Website öffnen";
         el.innerHTML = '<a href="' + escapeAttr(target) + '" target="_blank" rel="noopener noreferrer">🌐 ' + text + '</a>' +
-          (card.url ? '<p>Offizieller Kartenlink</p>' : '<p>Keine direkte Karte hinterlegt. Bitte auf der offiziellen Website nachsehen.</p>');
+          (card.url ? '<p>Offizieller Kartenlink</p>' : '<p>Keine direkte Karte hinterlegt. Bitte auf der offiziellen Website nachsehen.</p>') + audit;
       }else{
         el.textContent = "Noch keine offizielle Karte oder Website hinterlegt.";
       }
