@@ -642,7 +642,15 @@ console.log("Tavily usage account:", {
             else if (!openingLines.length) openingLines.push(candidate);
           }
           if (isKitchen && !kitchen) {
-            kitchen = line.replace(/^(?:warme\s+)?küche(?:nzeiten)?\s*[:：]?\s*/i, "").slice(0, 150);
+            // Nur den Küchenzeit-Abschnitt speichern, nicht davor stehende
+            // Öffnungszeiten oder Ruhetage derselben Textzeile übernehmen.
+            const kitchenStart = line.search(/(?:warme\s+küche|küchenzeiten|küche|kitchen)/i);
+            const kitchenText = kitchenStart >= 0 ? line.slice(kitchenStart) : line;
+            kitchen = kitchenText
+              .replace(/^(?:warme\s+)?küche(?:nzeiten)?\s*[:：]?\s*/i, "")
+              .replace(/^kitchen\s*[:：]?\s*/i, "")
+              .trim()
+              .slice(0, 150);
           }
         }
 
