@@ -212,9 +212,41 @@ console.log("Tavily usage account:", {
       }
 
       const searchData = await searchResponse.json();
-      const results = Array.isArray(searchData.results)
+      let results = Array.isArray(searchData.results)
         ? searchData.results
         : [];
+
+      // Zusätzliche gezielte Suche nach Karten- und Reservierungsseiten.
+      // Ein Fehler hier darf die normale Restaurantsuche nicht abbrechen.
+      try {
+        const specialResponse = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          headers: tavilyHeaders,
+          body: JSON.stringify({
+            query: `"${cleanName}" offizielle Speisekarte Getränkekarte online Tischreservierung reservieren`,
+            topic: "general",
+            search_depth: "basic",
+            max_results: 8,
+            country: "germany",
+            include_answer: false,
+            include_raw_content: false
+          })
+        });
+        if (specialResponse.ok) {
+          const specialData = await specialResponse.json();
+          const specialResults = Array.isArray(specialData.results) ? specialData.results : [];
+          const seenUrls = new Set(results.map(item => String(item.url || "")));
+          for (const item of specialResults) {
+            const itemUrl = String(item.url || "");
+            if (itemUrl && !seenUrls.has(itemUrl)) {
+              results.push(item);
+              seenUrls.add(itemUrl);
+            }
+          }
+        }
+      } catch (error) {
+        console.log("Gezielte Karten-/Reservierungssuche übersprungen:", String(error));
+      }
 
       function normalize(value) {
         return String(value || "")
@@ -533,8 +565,39 @@ console.log("Tavily usage account:", {
         extracted: extractedByUrl.has(record.url)
       }));
 
-      
-const notes = "";
+      // Nur konkrete Karten- bzw. Buchungsseiten übernehmen, keine geratenen URLs.
+      function findSpecialUrl(kind) {
+        const scored = records.map(record => {
+          let parsed;
+          try { parsed = new URL(record.url); } catch { return { url: "", score: 0 }; }
+          if (!["http:", "https:"].includes(parsed.protocol)) return { url: "", score: 0 };
+          const path = normalize(parsed.pathname + " " + parsed.search);
+          const title = normalize(record.title);
+          const host = parsed.hostname.toLowerCase();
+          let score = 0;
+          if (kind === "speisekarte") {
+            if (/speisekarte|speise karte|menu|menue|mittagstisch|tageskarte/.test(path)) score += 12;
+            if (/speisekarte|speise karte|menu|menue|tageskarte/.test(title)) score += 8;
+          } else if (kind === "getraenkekarte") {
+            if (/getraenkekarte|getraenke karte|drink.?menu|beverage.?menu/.test(path)) score += 15;
+            if (/getraenkekarte|getraenke karte|drink.?menu|beverage.?menu/.test(title)) score += 10;
+          } else if (kind === "reservierung") {
+            if (/reservierung|reservieren|booking|book.?a.?table|table.?reservation/.test(path)) score += 15;
+            if (/reservierung|reservieren|book.?a.?table|table.?reservation/.test(title)) score += 10;
+            if (/thefork\.|opentable\.|quandoo\.|resmio\./.test(host)) score += 12;
+          }
+          if (isDirectory(record.url)) score -= 4;
+          else score += 2;
+          return { url: record.url, score };
+        }).filter(item => item.url && item.score >= 10)
+          .sort((a, b) => b.score - a.score);
+        return scored.length ? scored[0].url : "";
+      }
+
+      const speisekarte_url = findSpecialUrl("speisekarte");
+      const getraenkekarte_url = findSpecialUrl("getraenkekarte");
+      const reservierung_url = findSpecialUrl("reservierung");
+      const notes = "";
 
       return [{
         name: cleanName,
@@ -547,7 +610,9 @@ const notes = "";
         oeffnungszeiten: firstValue("oeffnungszeiten"),
         ruhetag: firstValue("ruhetag"),
         notizen: notes.slice(0, 2200),
-        reservierung: "",
+        reservierung: reservierung_url,
+        speisekarte_url,
+        getraenkekarte_url,
         bild: "",
         quellen: sources
           .filter(source => /^https?:\/\//i.test(source.url || ""))
