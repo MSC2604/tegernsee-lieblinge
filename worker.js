@@ -579,8 +579,8 @@ console.log("Tavily usage account:", {
             if (/speisekarte|speise karte|menu|menue|mittagstisch|tageskarte/.test(path)) score += 12;
             if (/speisekarte|speise karte|menu|menue|tageskarte/.test(title)) score += 8;
           } else if (kind === "getraenkekarte") {
-            if (/getraenkekarte|getraenke karte|drink.?menu|beverage.?menu/.test(path)) score += 15;
-            if (/getraenkekarte|getraenke karte|drink.?menu|beverage.?menu/.test(title)) score += 10;
+            if (/getrankekarte|getranke karte|getraenkekarte|drink.?menu|beverage.?menu/.test(path)) score += 15;
+            if (/getrankekarte|getranke karte|getraenkekarte|drink.?menu|beverage.?menu/.test(title)) score += 10;
           } else if (kind === "reservierung") {
             if (/reservierung|reservieren|booking|book.?a.?table|table.?reservation/.test(path)) score += 15;
             if (/reservierung|reservieren|book.?a.?table|table.?reservation/.test(title)) score += 10;
