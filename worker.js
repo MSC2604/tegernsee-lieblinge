@@ -539,7 +539,7 @@ console.log("Tavily usage account:", {
           .replace(/<[^>]*>/g, " ")
           .replace(/&nbsp;|&#160;/gi, " ")
           .replace(/&amp;/gi, "&")
-          .replace(/\s+/g, " ");
+          .replace(/[ \t]+/g, " ");
 
         const lines = normalized
           .split(/\r?\n/)
