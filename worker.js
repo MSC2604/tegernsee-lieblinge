@@ -431,9 +431,9 @@ console.log("Tavily usage account:", {
           new RegExp("\\b(?:83700|83703|83707|83708|83727)\\s+" + townPattern + "(?=\\b|[-,.;])", "i")
         );
         if (postal) {
-          const town = postal[1].replace(/\\s+/g, " ").trim();
-          if (/^bad\\s+wiessee$/i.test(town)) return "Bad Wiessee";
-          if (/^rottach[-\\s]egern$/i.test(town)) return "Rottach-Egern";
+          const town = postal[1].replace(/\s+/g, " ").trim();
+          if (/^bad\s+wiessee$/i.test(town)) return "Bad Wiessee";
+          if (/^rottach[-\s]egern$/i.test(town)) return "Rottach-Egern";
           if (/^gmund/i.test(town)) return "Gmund";
           return town.charAt(0).toUpperCase() + town.slice(1);
         }
@@ -442,9 +442,9 @@ console.log("Tavily usage account:", {
           new RegExp("\\b(?:in|bei|Ortsteil|OT)\\s+" + townPattern + "(?=\\b|[-,.;])", "i")
         );
         if (!contextual) return "";
-        const town = contextual[1].replace(/\\s+/g, " ").trim();
-        if (/^bad\\s+wiessee$/i.test(town)) return "Bad Wiessee";
-        if (/^rottach[-\\s]egern$/i.test(town)) return "Rottach-Egern";
+        const town = contextual[1].replace(/\s+/g, " ").trim();
+        if (/^bad\s+wiessee$/i.test(town)) return "Bad Wiessee";
+        if (/^rottach[-\s]egern$/i.test(town)) return "Rottach-Egern";
         if (/^gmund/i.test(town)) return "Gmund";
         return town.charAt(0).toUpperCase() + town.slice(1);
       }
