@@ -547,7 +547,15 @@ const notes = "";
         ruhetag: firstValue("ruhetag"),
         notizen: notes.slice(0, 2200),
         reservierung: "",
-        bild: ""
+        bild: "",
+        quellen: sources
+          .filter(source => /^https?:\\/\\//i.test(source.url || ""))
+          .slice(0, 5)
+          .map(source => ({
+            title: String(source.title || "").slice(0, 180),
+            url: source.url,
+            extracted: Boolean(source.extracted)
+          }))
       }];
     }
 
