@@ -3483,7 +3483,9 @@ async function lookupRestaurantInApp(){
             (source.extracted ? " <span>(Webseite ausgelesen)</span>" : "") +
             "</li>"
           ).join("") + "</ul>"
-        : "<p>Keine direkten Quellenlinks gefunden. Bitte Angaben besonders sorgfältig prüfen.</p>";
+        : '<p>Der Worker hat für diesen Treffer keine direkten Quellenlinks mitgeliefert. Als Hilfestellung kannst du die Angaben hier separat prüfen: ' +
+          '<a href="https://www.google.com/search?q=' + encodeURIComponent((name || "") + ' Tegernsee Adresse Telefon Öffnungszeiten offizielle Website Reservierung') +
+          '" target="_blank" rel="noopener noreferrer">Google-Suche in neuem Tab öffnen</a>. Diese Suche ist keine Bestätigung der Angaben.</p>';
       review.innerHTML = "<strong>Bitte Suchergebnisse prüfen – noch nicht gespeichert</strong>" +
         "<p>Die automatisch gefundenen Angaben sind Vorschläge und nicht garantiert aktuell oder korrekt.</p>" +
         missingHtml + sourcesHtml;
