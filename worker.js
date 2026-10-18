@@ -417,19 +417,36 @@ console.log("Tavily usage account:", {
       }
 
       function extractTown(text) {
-        const value = String(text || "").replace(/\bam\s+Tegernsee\b/gi, " ");
-        const towns =
-          "Bad Wiessee|Rottach-Egern|Schliersee|Kreuth|Gmund|Gmund am Tegernsee|Tegernsee";
+        const value = String(text || "")
+          .replace(/<[^>]*>/g, " ")
+          .replace(/&nbsp;|&#160;/gi, " ")
+          .replace(/\bam\s+Tegernsee\b/gi, " ")
+          .replace(/\s+/g, " ");
 
+        // Postal-address evidence has priority over incidental town mentions.
+        // Allow a hyphenated district after the municipality (e.g. Kreuth-Enterbach).
+        const townPattern =
+          "(Bad\\s+Wiessee|Rottach[-\\s]Egern|Schliersee|Kreuth|Gmund(?:\\s+am\\s+Tegernsee)?|Tegernsee)";
         const postal = value.match(
-          new RegExp("\\b\\d{5}\\s+(" + towns + ")\\b", "i")
+          new RegExp("\\b(?:83700|83703|83707|83708|83727)\\s+" + townPattern + "(?=\\b|[-,.;])", "i")
         );
-        if (postal) return postal[1];
+        if (postal) {
+          const town = postal[1].replace(/\\s+/g, " ").trim();
+          if (/^bad\\s+wiessee$/i.test(town)) return "Bad Wiessee";
+          if (/^rottach[-\\s]egern$/i.test(town)) return "Rottach-Egern";
+          if (/^gmund/i.test(town)) return "Gmund";
+          return town.charAt(0).toUpperCase() + town.slice(1);
+        }
 
         const contextual = value.match(
-          new RegExp("\\b(?:in|bei|Ortsteil|OT)\\s+(" + towns + ")\\b", "i")
+          new RegExp("\\b(?:in|bei|Ortsteil|OT)\\s+" + townPattern + "(?=\\b|[-,.;])", "i")
         );
-        return contextual ? contextual[1] : "";
+        if (!contextual) return "";
+        const town = contextual[1].replace(/\\s+/g, " ").trim();
+        if (/^bad\\s+wiessee$/i.test(town)) return "Bad Wiessee";
+        if (/^rottach[-\\s]egern$/i.test(town)) return "Rottach-Egern";
+        if (/^gmund/i.test(town)) return "Gmund";
+        return town.charAt(0).toUpperCase() + town.slice(1);
       }
 
       function extractPhone(text) {
@@ -697,7 +714,12 @@ console.log("Tavily usage account:", {
 
       return [{
         name: cleanName,
-        ort: firstValue("ort"),
+        // Prefer a town extracted from a source that contains a postal address.
+        // This prevents a stray mention of another Tegernsee town from winning.
+        ort: (records.find(record =>
+          record.ort &&
+          /\b(?:83700|83703|83707|83708|83727)\s+/i.test(record.content)
+        ) || {}).ort || firstValue("ort"),
         kategorie: firstValue("kategorie"),
         adresse: firstValue("adresse"),
         telefon: firstValue("telefon"),
