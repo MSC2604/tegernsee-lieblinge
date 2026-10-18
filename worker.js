@@ -574,7 +574,7 @@ console.log("Tavily usage account:", {
         const hoursPattern =
           /\b\d{1,2}(?:[:.]\d{2})?\s*(?:Uhr)?\s*(?:-|–|—|bis|\/)\s*\d{1,2}(?:[:.]\d{2})?\s*(?:Uhr)?/i;
         const dayPattern =
-          /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\bMo\b|\bDi\b|\bMi\b|\bDo\b|\bFr\b|\bSa\b|\bSo\b|\btäglich\b|\ttaeglich\b)/i;
+          /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\bMo\b|\bDi\b|\bMi\b|\bDo\b|\bFr\b|\bSa\b|\bSo\b|\btäglich\b|\btaeglich\b)/i;
         const noisePattern =
           /tripadvisor|bewertung|bewertungen|review|ratings?|out of \s*5|sterne|unhöflich|unhoeflich|unhofflich|rude service|left the place|extremely|food was|service was|image \d+/i;
 
