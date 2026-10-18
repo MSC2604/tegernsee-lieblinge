@@ -168,6 +168,7 @@ console.log("Tavily usage account:", {
 }
     // --------------------------------------------------
     // RESTAURANTSUCHE
+    // Quellenübergabe für die Prüfübersicht: Diese Version muss im Worker aktiv sein.
     // Keine Datenbankänderungen während der Recherche.
     // --------------------------------------------------
 
