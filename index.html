@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#2d6a56">
 <title>Meine Lieblings-Restaurants am Tegernsee</title>
 <link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 
 <style>
 :root{
@@ -679,6 +680,21 @@ a{
 .brandcopy .title{font-size:clamp(22px,3vw,34px);line-height:1.12}
 .brandcopy .sub{font-size:clamp(13px,1.5vw,17px)}
 .menu-mark{border:0;background:transparent;color:#fff;font-size:32px;padding:4px 8px;flex:none}
+.app-menu-overlay{display:none;position:fixed;inset:0;background:rgba(12,32,26,.48);z-index:80}
+.app-menu{position:absolute;top:0;left:0;width:min(86vw,340px);height:100%;overflow:auto;background:#fff;padding:22px 16px;box-shadow:10px 0 35px rgba(0,0,0,.18)}
+.app-menu-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;color:var(--ink);font-weight:850;font-size:18px}
+.app-menu-close{border:0;background:#edf3ef;color:var(--accent);border-radius:50%;width:40px;height:40px;font-size:24px}
+.app-menu-item{width:100%;display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:14px;padding:14px;margin:8px 0;font-weight:750}
+.app-menu-item span:first-child{font-size:22px;width:28px;text-align:center}
+#mapView{display:none;max-width:1100px}
+.map-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.map-head h2{margin:0;font-size:22px}
+.map-back{border:1px solid var(--line);background:#fff;color:var(--accent);border-radius:12px;padding:10px 12px;font-weight:750}
+#restaurantMap{height:min(68vh,680px);min-height:390px;border-radius:18px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);z-index:1}
+.map-status{color:var(--muted);font-size:13px;line-height:1.5;margin:10px 2px}
+.map-popup-title{font-weight:800;color:var(--ink);margin-bottom:3px}
+.map-popup-link{display:inline-block;margin-top:6px;font-weight:750}
+@media(max-width:560px){#restaurantMap{height:62vh;min-height:340px}.app-menu{padding-top:calc(18px + env(safe-area-inset-top))}}
 .secondary-action{background:#fff!important;color:var(--accent)!important;border:1px solid #d8e4df!important;box-shadow:none!important}
 .welcome-hero{position:relative;min-height:260px;margin:22px 0 24px;border-radius:22px;overflow:hidden;background-image:linear-gradient(0deg,rgba(11,48,60,.78),rgba(11,48,60,.02) 75%),var(--welcome-image,url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=85'));background-position:center;background-size:cover;background-repeat:no-repeat;box-shadow:var(--shadow);display:flex;align-items:flex-end}
 .change-hero-image{position:absolute;right:12px;top:12px;border:1px solid rgba(255,255,255,.85);border-radius:999px;background:rgba(255,255,255,.93);color:#1f5747;padding:9px 13px;font-weight:750;font-size:12px;cursor:pointer}
@@ -702,7 +718,7 @@ a{
       <div class="title">Meine Lieblings-Restaurants am Tegernsee</div>
       <div class="sub">Restaurants, Almen & besondere Plätze</div>
     </div>
-    <button class="menu-mark" type="button" aria-label="Menü" onclick="document.getElementById('search').focus()">☰</button>
+    <button class="menu-mark" type="button" aria-label="Menü" onclick="openAppMenu()">☰</button>
   </div>
 
   <div class="search">
@@ -712,6 +728,15 @@ a{
 
 </header>
 
+<div class="app-menu-overlay" id="appMenuOverlay" onclick="if(event.target===this)closeAppMenu()">
+  <nav class="app-menu" aria-label="Hauptmenü">
+    <div class="app-menu-head"><span>Menü</span><button class="app-menu-close" type="button" aria-label="Menü schließen" onclick="closeAppMenu()">×</button></div>
+    <button class="app-menu-item" onclick="closeAppMenu();showHome()"><span>⌂</span><span>Startseite</span></button>
+    <button class="app-menu-item" onclick="openRestaurantMap()"><span>🗺️</span><span>Übersichtskarte</span></button>
+    <button class="app-menu-item" onclick="closeAppMenu();focusSearch()"><span>🔎</span><span>Restaurants suchen</span></button>
+    <button class="app-menu-item" onclick="closeAppMenu();showFavorites()"><span>♥</span><span>Meine Favoriten</span></button>
+  </nav>
+</div>
 
 <main id="home">
 
@@ -792,6 +817,12 @@ a{
 
 </main>
 
+
+<main id="mapView">
+  <div class="map-head"><h2>🗺️ Übersichtskarte</h2><button class="map-back" onclick="showHome()">‹ Zurück</button></div>
+  <div id="restaurantMap" role="application" aria-label="Karte mit Restaurants am Tegernsee"></div>
+  <p class="map-status" id="mapStatus">Die Restaurantstandorte werden vorbereitet …</p>
+</main>
 
 <main
   id="detail"
@@ -2668,6 +2699,8 @@ function openDetail(
   ).style.display =
     "none";
 
+  document.getElementById("mapView").style.display = "none";
+
   document.getElementById(
     "detail"
   ).style.display =
@@ -2833,6 +2866,8 @@ function showHome(){
     "homeHeader"
   ).style.display =
     "block";
+
+  document.getElementById("mapView").style.display = "none";
 
   currentPlace =
     null;
@@ -4035,6 +4070,20 @@ setInterval(
   60000
 );
 
+
+/* KARTENMENÜ UND RESTAURANTSKARTE */
+let restaurantMap = null;
+let mapMarkers = null;
+let mapOpening = false;
+const GEOCODE_CACHE_KEY = 'tegernseeMapCoordinates_v1';
+function openAppMenu(){document.getElementById('appMenuOverlay').style.display='block';}
+function closeAppMenu(){document.getElementById('appMenuOverlay').style.display='none';}
+function loadLeaflet(){if(window.L)return Promise.resolve();if(window.__leafletLoading)return window.__leafletLoading;window.__leafletLoading=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';script.integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';script.crossOrigin='';script.onload=resolve;script.onerror=()=>reject(new Error('Kartenbibliothek konnte nicht geladen werden.'));document.head.appendChild(script);});return window.__leafletLoading;}
+function readMapCache(){try{return JSON.parse(localStorage.getItem(GEOCODE_CACHE_KEY)||'{}')}catch(e){return {}}}
+function writeMapCache(cache){try{localStorage.setItem(GEOCODE_CACHE_KEY,JSON.stringify(cache))}catch(e){}}
+function waitMap(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+async function geocodeRestaurant(place,cache){const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const key=String(place.id||place.name)+'|'+query;if(Object.prototype.hasOwnProperty.call(cache,key))return cache[key];if(!query||!place.ort)return null;try{const response=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(query),{headers:{Accept:'application/json'}});if(!response.ok)return null;const data=await response.json();if(!data.length){cache[key]=null;writeMapCache(cache);return null;}const point={lat:Number(data[0].lat),lon:Number(data[0].lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return null;cache[key]=point;writeMapCache(cache);return point;}catch(e){console.warn('Standort nicht gefunden:',place.name,e);return null;}}
+async function openRestaurantMap(){closeAppMenu();document.getElementById('home').style.display='none';document.getElementById('homeHeader').style.display='none';document.getElementById('detail').style.display='none';document.getElementById('mapView').style.display='block';window.scrollTo({top:0,behavior:'auto'});try{await loadLeaflet();if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.featureGroup().addTo(restaurantMap);}setTimeout(()=>restaurantMap.invalidateSize(),120);if(mapOpening)return;mapOpening=true;const status=document.getElementById('mapStatus');const cache=readMapCache();mapMarkers.clearLayers();const places=restaurants.slice();let found=0,failed=0,requests=0;const points=[];status.textContent='Standorte werden ermittelt. Beim ersten Öffnen kann das etwas dauern …';for(let i=0;i<places.length;i++){const place=places[i];const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const cacheKey=String(place.id||place.name)+'|'+query;if(!Object.prototype.hasOwnProperty.call(cache,cacheKey)&&query&&place.ort){if(requests>0)await waitMap(1100);requests++;}const point=await geocodeRestaurant(place,cache);if(!point){failed++;continue;}found++;points.push(point);const marker=L.marker([point.lat,point.lon]).addTo(mapMarkers);const popup='<div class="map-popup-title">'+escapeHtml(place.name||'Restaurant')+'</div><div>'+escapeHtml(place.ort||'')+'</div><a class="map-popup-link" href="#" onclick="openDetail('+JSON.stringify(String(place.id))+');return false">Restaurant öffnen →</a><br><a class="map-popup-link" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent([place.adresse,place.ort].filter(Boolean).join(', '))+'">Navigation starten ↗</a>';marker.bindPopup(popup);status.textContent='Karte wird aufgebaut: '+found+' von '+places.length+' Restaurants gefunden …';}if(points.length===1)restaurantMap.setView([points[0].lat,points[0].lon],14);else if(points.length>1)restaurantMap.fitBounds(mapMarkers.getBounds().pad(0.12),{maxZoom:13});status.textContent=found+' von '+places.length+' Restaurant-Einträgen auf der Karte.'+(failed?' Für '+failed+' Einträge konnte noch kein genauer Standort gefunden werden.':'')+' Standorte werden auf diesem Gerät zwischengespeichert.';}catch(error){console.error(error);document.getElementById('mapStatus').textContent='Die Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.';}finally{mapOpening=false;}}
 
 /* --------------------------------------------------
    START
