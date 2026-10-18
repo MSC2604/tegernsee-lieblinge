@@ -272,6 +272,29 @@ main{
   box-shadow:0 2px 6px rgba(23,53,45,.05);
 }
 
+.tile-card-links{
+  display:flex;
+  gap:8px;
+  padding:0 18px 12px;
+  flex-wrap:wrap;
+}
+.tile-card-links:empty{display:none}
+.tile-card-links a{
+  flex:1 1 40%;
+  display:block;
+  box-sizing:border-box;
+  text-align:center;
+  text-decoration:none;
+  border:1px solid #cbded5;
+  background:#f0f7f3;
+  color:var(--accent);
+  padding:11px 8px;
+  border-radius:13px;
+  font-size:13px;
+  font-weight:800;
+  box-shadow:0 2px 6px rgba(23,53,45,.05);
+}
+
 .detail{
   display:none;
 }
@@ -904,11 +927,6 @@ a{
     </div>
 
   </div>
-
-  <section class="restaurant-cards" id="restaurantCardActions" aria-label="Speise- und Getränkekarten">
-    <div class="restaurant-card-box"><strong>🍽️ Speisekarte</strong><p id="menuCardStatus">Offizielle Karte wird geladen …</p></div>
-    <div class="restaurant-card-box"><strong>🥤 Getränkekarte</strong><p id="drinkCardStatus">Offizielle Karte wird geladen …</p></div>
-  </section>
 
   <div class="detailtools">
 
@@ -2510,6 +2528,69 @@ function reserveTable(
 
 
 /* --------------------------------------------------
+   KARTENLINKS DIREKT AUF DEN RESTAURANT-KACHELN
+-------------------------------------------------- */
+
+const tileCardCache = new Map();
+const tileCardPending = new Map();
+
+async function loadTileCardLinks(list){
+  const places = list || [];
+  for(let i = 0; i < places.length; i += 5){
+    await Promise.all(places.slice(i, i + 5).map(loadOneTileCardLink));
+  }
+}
+
+async function loadOneTileCardLink(place){
+  const id = String(place.id);
+  const container = document.getElementById("tile-card-links-" + id);
+  if(!container) return;
+
+  const draw = cards => {
+    const current = document.getElementById("tile-card-links-" + id);
+    if(!current) return;
+    const menuUrl = cards && cards.speisekarte && cards.speisekarte.url;
+    const drinkUrl = cards && cards.getraenkekarte && cards.getraenkekarte.url;
+    const safe = url => {
+      const value = String(url || "").trim();
+      return /^https?:\/\//i.test(value) ? value : "";
+    };
+    const menu = safe(menuUrl);
+    const drink = safe(drinkUrl);
+    current.innerHTML =
+      (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarte</a>' : '') +
+      (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarte</a>' : '');
+  };
+
+  if(tileCardCache.has(id)){
+    draw(tileCardCache.get(id));
+    return;
+  }
+  if(tileCardPending.has(id)){
+    await tileCardPending.get(id);
+    draw(tileCardCache.get(id) || {});
+    return;
+  }
+
+  const request = (async()=>{
+    try{
+      const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(id) + "&t=" + Date.now(), {cache:"no-store"});
+      const data = await response.json();
+      if(!response.ok) throw new Error(data.error || "Kartenlinks konnten nicht geladen werden.");
+      const cards = data.cards || {};
+      tileCardCache.set(id, cards);
+      draw(cards);
+    }catch(error){
+      console.warn("Kartenlinks für Restaurant " + id + " konnten nicht geladen werden.", error);
+    }finally{
+      tileCardPending.delete(id);
+    }
+  })();
+  tileCardPending.set(id, request);
+  await request;
+}
+
+/* --------------------------------------------------
    LISTE
 -------------------------------------------------- */
 
@@ -2613,6 +2694,8 @@ function render(){
             </div>
 
 
+            <div class="tile-card-links" id="tile-card-links-${escapeAttr(place.id)}" aria-label="Offizielle Karten"></div>
+
             <div class="cardbottom">
 
               <button
@@ -2666,6 +2749,8 @@ function render(){
 
       }
     ).join("");
+
+  loadTileCardLinks(list);
 
 }
 
@@ -2854,8 +2939,6 @@ function openDetail(
 
   }
 
-
-  loadRestaurantCards(currentPlace.id, currentPlace.website);
 
   const hero =
     document.getElementById(
@@ -3147,6 +3230,8 @@ function showFavorites(){
 
       }
     ).join("");
+
+  loadTileCardLinks(list);
 
 }
 
