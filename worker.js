@@ -576,7 +576,11 @@ const notes = "";
           const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
           if (!restaurantId) return json({ error: "Restaurant-ID fehlt." }, 400);
           const result = await turso(
-            "SELECT kind, url FROM restaurant_cards WHERE restaurant_id = ?",
+            `SELECT c.kind, c.url, q.checked_at, q.changed_at, q.status, q.detail, q.url
+             FROM restaurant_cards c
+             LEFT JOIN restaurant_card_checks q
+               ON q.restaurant_id = c.restaurant_id AND q.kind = c.kind
+             WHERE c.restaurant_id = ?`,
             [textArg(restaurantId)], true
           );
           const rows = result?.results?.[0]?.response?.result?.rows || [];
@@ -584,7 +588,15 @@ const notes = "";
           for (const row of rows) {
             const kind = String(rowValue(row[0]) || "");
             if (!["speisekarte", "getraenkekarte"].includes(kind)) continue;
-            cards[kind] = { url: rowValue(row[1]) || "" };
+            const cardUrl = rowValue(row[1]) || "";
+            const checkedUrl = rowValue(row[6]) || "";
+            cards[kind] = {
+              url: cardUrl,
+              checkedAt: checkedUrl === cardUrl ? (rowValue(row[2]) || "") : "",
+              changedAt: checkedUrl === cardUrl ? (rowValue(row[3]) || "") : "",
+              checkStatus: checkedUrl === cardUrl ? (rowValue(row[4]) || "") : "",
+              checkDetail: checkedUrl === cardUrl ? (rowValue(row[5]) || "") : ""
+            };
           }
           return json({ cards });
         }
