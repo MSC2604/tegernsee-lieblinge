@@ -571,8 +571,10 @@ console.log("Tavily usage account:", {
           .map(line => line.trim())
           .filter(Boolean);
 
+        // Öffnungszeiten stehen oft nicht als Zeitspanne da, sondern z. B.
+        // „Täglich ab 11:30 Uhr“ oder „Warme Küche bis 21:30 Uhr“.
         const hoursPattern =
-          /\b\d{1,2}(?:[:.]\d{2})?\s*(?:Uhr)?\s*(?:-|–|—|bis|\/)\s*\d{1,2}(?:[:.]\d{2})?\s*(?:Uhr)?/i;
+          /(?:\b\d{1,2}(?:[:.]\d{2})?\s*(?:Uhr)?\s*(?:-|–|—|bis|\/)\s*\d{1,2}(?:[:.]\d{2})?\s*(?:Uhr)?|\b(?:ab|bis)\s*\d{1,2}(?:[:.]\d{2})?\s*(?:Uhr)?)/i;
         const dayPattern =
           /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\bMo\b|\bDi\b|\bMi\b|\bDo\b|\bFr\b|\bSa\b|\bSo\b|\btäglich\b|\btaeglich\b)/i;
         const noisePattern =
