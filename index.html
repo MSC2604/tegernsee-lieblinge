@@ -4017,6 +4017,7 @@ async function savePlace(){
 
     let cardWarning = "";
     if(isEditing && savedRestaurant){
+      if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
       try{
         await syncRestaurantCards(savedRestaurant.id,password);
       }catch(cardError){
