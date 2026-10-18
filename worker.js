@@ -757,5 +757,137 @@ const notes = "";
         message: error instanceof Error ? error.message : String(error)
       }, 500);
     }
+  },
+  async scheduled(controller, env, ctx) {
+    if (!env.TURSO_DATABASE_URL || !env.TURSO_AUTH_TOKEN) {
+      console.error("Kartenprüfung: Turso-Konfiguration fehlt.");
+      return;
+    }
+    const dbUrl = env.TURSO_DATABASE_URL.replace(/^libsql:\/\//, "https://") + "/v3/pipeline";
+    async function db(sql, args = [], wantRows = false) {
+      const response = await fetch(dbUrl, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env.TURSO_AUTH_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ baton: null, requests: [
+          { type: "execute", stmt: { sql, args, want_rows: wantRows } },
+          { type: "close" }
+        ] })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(`Turso HTTP ${response.status}`);
+      const first = data?.results?.[0];
+      if (first?.type === "error" || first?.error || first?.response?.error) {
+        throw new Error(first.error?.message || first.response?.error?.message || "Turso-Abfrage fehlgeschlagen");
+      }
+      return data;
+    }
+    const arg = value => ({ type: "text", value: value == null ? "" : String(value) });
+    const cell = value => value == null ? "" : (typeof value === "object" && "value" in value ? value.value : value);
+    await db(`CREATE TABLE IF NOT EXISTS restaurant_card_checks (
+      restaurant_id TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL,
+      checked_at TEXT NOT NULL DEFAULT '', changed_at TEXT NOT NULL DEFAULT '',
+      content_hash TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '',
+      detail TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, kind)
+    )`);
+    const query = await db(
+      "SELECT restaurant_id, kind, url FROM restaurant_cards WHERE url <> '' AND kind IN ('speisekarte','getraenkekarte')",
+      [], true
+    );
+    const rows = query?.results?.[0]?.response?.result?.rows || [];
+    const entries = rows.map(row => ({ restaurantId: String(cell(row[0]) || ""), kind: String(cell(row[1]) || ""), url: String(cell(row[2]) || "") }))
+      .filter(x => x.restaurantId && x.url);
+
+    function safeUrl(raw) {
+      let u;
+      try { u = new URL(raw); } catch { return null; }
+      if (!["http:", "https:"].includes(u.protocol) || u.username || u.password) return null;
+      const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+      if (!h || h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") ||
+          /^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) ||
+          /^172\.(1[6-9]|2\d|3[01])\./.test(h) || h === "::1" || h.startsWith("fc") ||
+          h.startsWith("fd") || h.startsWith("fe80:") || h === "169.254.169.254") return null;
+      return u;
+    }
+
+    async function check(item) {
+      const now = new Date().toISOString();
+      let status = "ok", detail = "", hash = "";
+      try {
+        let current = item.url, response;
+        for (let hop = 0; hop <= 3; hop++) {
+          const parsed = safeUrl(current);
+          if (!parsed) throw new Error("URL aus Sicherheitsgründen nicht geprüft.");
+          const abort = new AbortController();
+          const timer = setTimeout(() => abort.abort(), 8000);
+          try {
+            response = await fetch(parsed.href, {
+              redirect: "manual", signal: abort.signal,
+              headers: { "User-Agent": "TegernseeRestaurantMenuChecker/1.0", "Accept": "text/html,application/pdf,*/*;q=0.5" }
+            });
+          } finally { clearTimeout(timer); }
+          if ([301,302,303,307,308].includes(response.status)) {
+            const loc = response.headers.get("Location");
+            if (!loc || hop === 3) throw new Error("Weiterleitung nicht auflösbar.");
+            current = new URL(loc, parsed.href).href;
+            continue;
+          }
+          break;
+        }
+        if (!response?.ok) {
+          status = "unreachable";
+          detail = response ? `HTTP ${response.status}` : "Keine Antwort";
+        } else {
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error("Antwortinhalt nicht lesbar.");
+          const chunks = []; let total = 0, tooLarge = false;
+          while (true) {
+            const part = await reader.read();
+            if (part.done) break;
+            total += part.value.byteLength;
+            if (total > 1048576) { tooLarge = true; await reader.cancel(); break; }
+            chunks.push(part.value);
+          }
+          if (tooLarge) {
+            status = "too_large"; detail = "Quelle über 1 MB; Inhaltsvergleich übersprungen.";
+          } else {
+            const bytes = new Uint8Array(total); let offset = 0;
+            for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+            const digest = await crypto.subtle.digest("SHA-256", bytes);
+            hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+            detail = "Quelle erreichbar; Inhalt geprüft.";
+          }
+        }
+      } catch (error) {
+        status = "error";
+        detail = error?.name === "AbortError" ? "Zeitüberschreitung." : String(error?.message || error).slice(0, 220);
+      }
+
+      const oldResult = await db(
+        "SELECT url, content_hash, changed_at FROM restaurant_card_checks WHERE restaurant_id = ? AND kind = ?",
+        [arg(item.restaurantId), arg(item.kind)], true
+      );
+      const old = oldResult?.results?.[0]?.response?.result?.rows?.[0];
+      const oldUrl = old ? String(cell(old[0]) || "") : "";
+      const oldHash = old ? String(cell(old[1]) || "") : "";
+      const oldChanged = old ? String(cell(old[2]) || "") : "";
+      const changedAt = hash && oldUrl === item.url && oldHash && oldHash !== hash ? now :
+        (oldUrl === item.url ? oldChanged : (hash ? now : ""));
+      if (hash && oldUrl === item.url && oldHash === hash) status = "unchanged";
+      if (hash && (!oldHash || oldUrl !== item.url)) status = "baseline";
+      await db(`INSERT INTO restaurant_card_checks
+        (restaurant_id, kind, url, checked_at, changed_at, content_hash, status, detail)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(restaurant_id, kind) DO UPDATE SET
+          url=excluded.url, checked_at=excluded.checked_at, changed_at=excluded.changed_at,
+          content_hash=CASE WHEN excluded.content_hash <> '' THEN excluded.content_hash
+            WHEN restaurant_card_checks.url = excluded.url THEN restaurant_card_checks.content_hash ELSE '' END,
+          status=excluded.status, detail=excluded.detail`,
+        [arg(item.restaurantId), arg(item.kind), arg(item.url), arg(now), arg(changedAt), arg(hash), arg(status), arg(detail)]
+      );
+    }
+    for (let i = 0; i < entries.length; i += 5) {
+      await Promise.all(entries.slice(i, i + 5).map(check));
+    }
+    console.log(`Kartenprüfung abgeschlossen: ${entries.length} offizielle Kartenlinks geprüft.`);
   }
 };
