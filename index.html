@@ -3561,6 +3561,18 @@ function searchRestaurantWeb(){
    HINZUFÜGEN
 -------------------------------------------------- */
 
+function scrollRestaurantFormToTop(){
+  const modal = document.getElementById("modal");
+  const modalbox = modal ? modal.querySelector(".modalbox") : null;
+  if(modal){
+    modal.scrollTop = 0;
+    modal.scrollTo({top:0, behavior:"auto"});
+  }
+  if(modalbox){
+    modalbox.scrollTop = 0;
+  }
+}
+
 function openAdd(){
 
   editId =
@@ -3588,6 +3600,8 @@ function openAdd(){
     "modal"
   ).style.display =
     "block";
+
+  scrollRestaurantFormToTop();
 
 }
 
@@ -3708,6 +3722,8 @@ function editPlace(){
     "modal"
   ).style.display =
     "block";
+
+  scrollRestaurantFormToTop();
 
 }
 
