@@ -257,6 +257,38 @@ console.log("Tavily usage account:", {
         console.log("Gezielte Karten-/Reservierungssuche übersprungen:", String(error));
       }
 
+      // Separate gezielte Suche nach tatsächlichen Wochenöffnungszeiten.
+      // Sie sucht ausdrücklich nach einzelnen Wochentagen, nicht nur "täglich ab".
+      try {
+        const hoursResponse = await fetch("https://api.tavily.com/search", {
+          method: "POST",
+          headers: tavilyHeaders,
+          body: JSON.stringify({
+            query: `"${searchName}" (Kreuth OR Tegernsee OR Gmund OR Rottach-Egern OR "Bad Wiessee" OR Schliersee) Öffnungszeiten Montag Dienstag Mittwoch Donnerstag Freitag Samstag Sonntag Ruhetag`,
+            topic: "general",
+            search_depth: "basic",
+            max_results: 6,
+            country: "germany",
+            include_answer: false,
+            include_raw_content: false
+          })
+        });
+        if (hoursResponse.ok) {
+          const hoursData = await hoursResponse.json();
+          const hoursResults = Array.isArray(hoursData.results) ? hoursData.results : [];
+          const seenUrls = new Set(results.map(item => String(item.url || "")));
+          for (const item of hoursResults) {
+            const itemUrl = String(item.url || "");
+            if (itemUrl && !seenUrls.has(itemUrl)) {
+              results.push(item);
+              seenUrls.add(itemUrl);
+            }
+          }
+        }
+      } catch (error) {
+        console.log("Gezielte Öffnungszeiten-Suche übersprungen:", String(error));
+      }
+
       function normalize(value) {
         return String(value || "")
           .toLocaleLowerCase("de")
@@ -657,6 +689,17 @@ console.log("Tavily usage account:", {
       });
 
       function firstValue(field) {
+        // Bei Öffnungszeiten konkrete Wochentagsangaben immer vor pauschalen
+        // Aussagen wie "Täglich ab 11:30 Uhr" bevorzugen.
+        if (field === "oeffnungszeiten") {
+          const specific = records.find(record => {
+            const value = String(record[field] || "").trim();
+            return value &&
+              /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\\bMo\\b|\\bDi\\b|\\bMi\\b|\\bDo\\b|\\bFr\\b|\\bSa\\b|\\bSo\\b)/i.test(value) &&
+              !/\\b(?:täglich|taeglich|jeden\\s+tag)\\b/i.test(value);
+          });
+          if (specific) return String(specific[field]).trim();
+        }
         for (const record of records) {
           const value = String(record[field] || "").trim();
           if (value) return value;
