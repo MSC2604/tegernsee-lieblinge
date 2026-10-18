@@ -580,7 +580,7 @@ console.log("Tavily usage account:", {
         const noisePattern =
           /tripadvisor|bewertung|bewertungen|review|ratings?|out of \s*5|sterne|unhöflich|unhoeflich|unhofflich|rude service|left the place|extremely|food was|service was|image \d+/i;
 
-        let opening = "";
+        const openingLines = [];
         let kitchen = "";
 
         for (const rawLine of lines) {
@@ -593,16 +593,32 @@ console.log("Tavily usage account:", {
           const isKitchen = /küche|kitchen/i.test(line);
           const isOpeningLabel = /^(?:öffnungszeiten|öffnungszeit)\b/i.test(line);
           const hasDay = dayPattern.test(line);
-          if (!isKitchen && !opening && (hasDay || isOpeningLabel) &&
+          if (!isKitchen && (hasDay || isOpeningLabel) &&
               !/speisekarte|reservier|bewertung|review/i.test(line)) {
-            opening = line.replace(/^öffnungszeiten\s*[:：]?\s*/i, "").slice(0, 150);
+            const candidate = line.replace(/^öffnungszeiten\s*[:：]?\s*/i, "").slice(0, 150);
+            // Ein vollständiger Wochenplan hat Vorrang vor pauschalen Angaben wie
+            // „Täglich ab 11:30 Uhr“. Mehrere einzelne Wochentage werden gesammelt.
+            const specificDay = /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\bMo\b|\bDi\b|\bMi\b|\bDo\b|\bFr\b|\bSa\b|\bSo\b)/i.test(candidate);
+            const genericDaily = /\b(?:täglich|taeglich|jeden\s+tag)\b/i.test(candidate);
+            if (specificDay && !genericDaily) openingLines.push(candidate);
+            else if (!openingLines.length) openingLines.push(candidate);
           }
           if (isKitchen && !kitchen) {
             kitchen = line.replace(/^(?:warme\s+)?küche(?:nzeiten)?\s*[:：]?\s*/i, "").slice(0, 150);
           }
         }
 
-        return { opening: opening.slice(0, 150), kitchen: kitchen.slice(0, 150) };
+        // Doppelte Zeilen aus Suchtreffern entfernen. Wenn sowohl konkrete Tage
+        // als auch „täglich ab ...“ vorkommen, nur die konkreten Tage verwenden.
+        const specificOpenings = [...new Set(openingLines)].filter(line =>
+          /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\bMo\b|\bDi\b|\bMi\b|\bDo\b|\bFr\b|\bSa\b|\bSo\b)/i.test(line) &&
+          !/\b(?:täglich|taeglich|jeden\s+tag)\b/i.test(line)
+        );
+        const finalOpenings = specificOpenings.length ? specificOpenings : [...new Set(openingLines)];
+        return {
+          opening: finalOpenings.join("; ").slice(0, 150),
+          kitchen: kitchen.slice(0, 150)
+        };
       }
 
       // Extrahierte Webseiteninhalte mit Suchtexten zusammenführen.
