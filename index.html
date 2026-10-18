@@ -3409,6 +3409,8 @@ async function lookupRestaurantInApp(){
     fillIfBlank("f_ruhetag", selected.ruhetag);
     fillIfBlank("f_notizen", selected.notizen);
     fillIfBlank("f_reservierung", selected.reservierung);
+    fillIfBlank("f_speisekarte_url", selected.speisekarte_url);
+    fillIfBlank("f_getraenkekarte_url", selected.getraenkekarte_url);
 
     const ort = document.getElementById("f_ort");
 
@@ -3455,7 +3457,9 @@ async function lookupRestaurantInApp(){
       ["f_email", "E-Mail"],
       ["f_oeffnungszeiten", "Öffnungszeiten/Küchenzeiten"],
       ["f_ruhetag", "Ruhetag"],
-      ["f_reservierung", "Reservierungslink"]
+      ["f_reservierung", "Reservierungslink"],
+      ["f_speisekarte_url", "Speisekarte"],
+      ["f_getraenkekarte_url", "Getränkekarte"]
     ];
     const missing = reviewFields
       .filter(([id]) => {
