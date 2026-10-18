@@ -573,6 +573,18 @@ const notes = "";
         const action = url.searchParams.get("action");
 
         if (action === "cards") {
+          // Ensure the status table exists before the cards endpoint joins it.
+          await turso(`CREATE TABLE IF NOT EXISTS restaurant_card_checks (
+            restaurant_id TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            url TEXT NOT NULL,
+            checked_at TEXT NOT NULL DEFAULT '',
+            changed_at TEXT NOT NULL DEFAULT '',
+            content_hash TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT '',
+            detail TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY (restaurant_id, kind)
+          )`);
           const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
           if (!restaurantId) return json({ error: "Restaurant-ID fehlt." }, 400);
           const result = await turso(
