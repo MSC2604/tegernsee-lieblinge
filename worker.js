@@ -584,10 +584,7 @@ console.log("Tavily usage account:", {
           }
         }
 
-        const parts = [];
-        if (opening) parts.push("Öffnungszeiten: " + opening);
-        if (kitchen) parts.push("Küchenzeiten: " + kitchen);
-        return parts.join("; ").slice(0, 300);
+        return { opening: opening.slice(0, 150), kitchen: kitchen.slice(0, 150) };
       }
 
       // Extrahierte Webseiteninhalte mit Suchtexten zusammenführen.
@@ -600,6 +597,7 @@ console.log("Tavily usage account:", {
           result.content || ""
         ].filter(Boolean).join("\n").slice(0, 12000);
 
+        const hours = extractHours(content);
         return {
           title: String(result.title || cleanName).slice(0, 180),
           url,
@@ -611,7 +609,8 @@ console.log("Tavily usage account:", {
           kategorie: extractCategory(
             String(result.title || "") + "\n" + content
           ),
-          oeffnungszeiten: extractHours(content),
+          oeffnungszeiten: hours.opening,
+          kuechenzeiten: hours.kitchen,
           ruhetag: extractClosedDay(content),
           website: url && !isDirectory(url) ? url : ""
         };
@@ -742,6 +741,7 @@ console.log("Tavily usage account:", {
       // Offizielle Website-Texte als zusätzliche Fallback-Datensätze anhängen.
       // Bereits gefundene Werte bleiben bevorzugt; nur leere Felder werden ergänzt.
       for (const page of officialPageContents) {
+        const hours = extractHours(page.content);
         records.push({
           title: page.title,
           url: page.url,
@@ -751,7 +751,8 @@ console.log("Tavily usage account:", {
           telefon: extractPhone(page.content),
           email: extractEmail(page.content),
           kategorie: extractCategory(page.title + "\\n" + page.content),
-          oeffnungszeiten: extractHours(page.content),
+          oeffnungszeiten: hours.opening,
+          kuechenzeiten: hours.kitchen,
           ruhetag: extractClosedDay(page.content),
           website: officialWebsite
         });
@@ -779,7 +780,8 @@ console.log("Tavily usage account:", {
       const speisekarte_url = findSpecialUrl("speisekarte");
       const getraenkekarte_url = findSpecialUrl("getraenkekarte");
       const reservierung_url = findSpecialUrl("reservierung");
-      const notes = "";
+      const kitchenHours = firstValue("kuechenzeiten");
+      const notes = kitchenHours ? "Küchenzeiten: " + kitchenHours : "";
 
       return [{
         name: cleanName,
