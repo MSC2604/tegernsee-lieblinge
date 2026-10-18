@@ -710,7 +710,7 @@ a{
 .restaurant-card-box a,.restaurant-card-box button{display:inline-block;border:1px solid var(--line);background:#f4f8f5;color:var(--accent);border-radius:9px;padding:8px 10px;font-weight:750;text-decoration:none;margin:3px 3px 0 0;font-size:13px}
 .card-edit-box{border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;background:#f8fbf9}
 .card-edit-box label{display:block;font-weight:750;margin:8px 0 5px}
-.card-edit-box input[type=url],.card-edit-box input[type=file]{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:9px;background:white}
+.card-edit-box input[type=url]{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:9px;background:white}
 .card-edit-box small{display:block;color:var(--muted);line-height:1.45;margin-top:6px}
 @media(max-width:480px){.restaurant-cards{grid-template-columns:1fr}}
 .leaflet-tooltip.restaurant-map-label{background:#fff;color:#17352d;border:1px solid #c8d8d0;border-radius:7px;box-shadow:0 2px 7px rgba(0,0,0,.18);font-size:11px;font-weight:750;padding:3px 6px;white-space:normal;max-width:150px;line-height:1.25}
@@ -906,8 +906,8 @@ a{
   </div>
 
   <section class="restaurant-cards" id="restaurantCardActions" aria-label="Speise- und Getränkekarten">
-    <div class="restaurant-card-box"><strong>🍽️ Speisekarte</strong><p id="menuCardStatus">Karten werden geladen …</p></div>
-    <div class="restaurant-card-box"><strong>🥤 Getränkekarte</strong><p id="drinkCardStatus">Karten werden geladen …</p></div>
+    <div class="restaurant-card-box"><strong>🍽️ Speisekarte</strong><p id="menuCardStatus">Offizielle Karte wird geladen …</p></div>
+    <div class="restaurant-card-box"><strong>🥤 Getränkekarte</strong><p id="drinkCardStatus">Offizielle Karte wird geladen …</p></div>
   </section>
 
   <div class="detailtools">
@@ -1168,21 +1168,17 @@ a{
 
 
       <div id="cardEditSection" style="display:none">
-        <h3>🍽️ Speise- und Getränkekarten</h3>
-        <p class="localimagehint">Links und Dateien werden zentral gespeichert und sind danach für alle Nutzer sichtbar. Datei-Upload benötigt den einmalig eingerichteten Cloudflare-R2-Speicher.</p>
+        <h3>🍽️ Offizielle Speise- und Getränkekarten</h3>
+        <p class="localimagehint">Bitte nur Links zur offiziellen Restaurantwebsite oder zu einer Menüplattform eintragen, auf die die offizielle Website ausdrücklich verweist. Keine Uploads oder fremden Dateien. Änderungen auf der verlinkten Originalseite werden dort direkt sichtbar.</p>
         <div class="card-edit-box">
-          <label for="f_speisekarte_url">Speisekarte – Website oder PDF-Link</label>
+          <label for="f_speisekarte_url">Offizieller Link zur Speisekarte</label>
           <input id="f_speisekarte_url" type="url" placeholder="https://..." autocomplete="off">
-          <label for="f_speisekarte_file">Speisekarte – Datei vom Handy</label>
-          <input id="f_speisekarte_file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.txt,.doc,.docx,.odt,application/pdf,image/jpeg,image/png,image/webp,image/gif,text/plain">
-          <small id="f_speisekarte_status">Noch keine Datei ausgewählt.</small>
+          <small id="f_speisekarte_status">Noch kein offizieller Kartenlink hinterlegt.</small>
         </div>
         <div class="card-edit-box">
-          <label for="f_getraenkekarte_url">Getränkekarte – Website oder PDF-Link</label>
+          <label for="f_getraenkekarte_url">Offizieller Link zur Getränkekarte</label>
           <input id="f_getraenkekarte_url" type="url" placeholder="https://..." autocomplete="off">
-          <label for="f_getraenkekarte_file">Getränkekarte – Datei vom Handy</label>
-          <input id="f_getraenkekarte_file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.txt,.doc,.docx,.odt,application/pdf,image/jpeg,image/png,image/webp,image/gif,text/plain">
-          <small id="f_getraenkekarte_status">Noch keine Datei ausgewählt.</small>
+          <small id="f_getraenkekarte_status">Noch kein offizieller Kartenlink hinterlegt.</small>
         </div>
       </div>
 
@@ -2859,7 +2855,7 @@ function openDetail(
   }
 
 
-  loadRestaurantCards(currentPlace.id);
+  loadRestaurantCards(currentPlace.id, currentPlace.website);
 
   const hero =
     document.getElementById(
@@ -3571,13 +3567,9 @@ function clearForm(){
     const el = document.getElementById(id);
     if(el) el.value = "";
   });
-  ["f_speisekarte_file","f_getraenkekarte_file"].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.value = "";
-  });
   ["f_speisekarte_status","f_getraenkekarte_status"].forEach(id => {
     const el = document.getElementById(id);
-    if(el) el.textContent = "Noch keine Datei ausgewählt.";
+    if(el) el.textContent = "Noch kein offizieller Kartenlink hinterlegt.";
   });
   document.getElementById("cardEditSection").style.display = "none";
 
@@ -3742,29 +3734,33 @@ function getFormData(){
    SPEISE- UND GETRÄNKEKARTEN (zentral)
 -------------------------------------------------- */
 
-async function loadRestaurantCards(restaurantId){
+async function loadRestaurantCards(restaurantId, officialWebsite){
   const menuStatus = document.getElementById("menuCardStatus");
   const drinkStatus = document.getElementById("drinkCardStatus");
-  if(menuStatus) menuStatus.textContent = "Karten werden geladen …";
-  if(drinkStatus) drinkStatus.textContent = "Karten werden geladen …";
+  if(menuStatus) menuStatus.textContent = "Offizielle Karte wird geladen …";
+  if(drinkStatus) drinkStatus.textContent = "Offizielle Karte wird geladen …";
   try{
     const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(restaurantId) + "&t=" + Date.now(), {cache:"no-store"});
     const data = await response.json();
-    if(!response.ok) throw new Error(data.error || "Karten konnten nicht geladen werden.");
+    if(!response.ok) throw new Error(data.error || "Kartenlinks konnten nicht geladen werden.");
     const cards = data.cards || {};
-    [["speisekarte","menuCardStatus"],["getraenkekarte","drinkCardStatus"]].forEach(([kind,elementId])=>{
+    [["speisekarte","menuCardStatus","Speisekarte öffnen"],["getraenkekarte","drinkCardStatus","Getränkekarte öffnen"]].forEach(([kind,elementId,label])=>{
       const el = document.getElementById(elementId);
       if(!el) return;
       const card = cards[kind] || {};
-      let html = "";
-      if(card.url) html += '<a href="' + escapeAttr(card.url) + '" target="_blank" rel="noopener noreferrer">🌐 Link öffnen</a>';
-      if(card.hasFile && card.fileUrl) html += '<a href="' + escapeAttr(card.fileUrl) + '" target="_blank" rel="noopener noreferrer">📄 ' + escapeHtml(card.filename || "Datei öffnen") + '</a>';
-      el.innerHTML = html || "Noch keine Karte hinterlegt.";
+      const target = card.url || officialWebsite || "";
+      if(target && /^https?:\/\//i.test(target)){
+        const text = card.url ? label : "Offizielle Website öffnen";
+        el.innerHTML = '<a href="' + escapeAttr(target) + '" target="_blank" rel="noopener noreferrer">🌐 ' + text + '</a>' +
+          (card.url ? '<p>Offizieller Kartenlink</p>' : '<p>Keine direkte Karte hinterlegt. Bitte auf der offiziellen Website nachsehen.</p>');
+      }else{
+        el.textContent = "Noch keine offizielle Karte oder Website hinterlegt.";
+      }
     });
   }catch(error){
     console.error(error);
-    if(menuStatus) menuStatus.textContent = "Karten derzeit nicht verfügbar.";
-    if(drinkStatus) drinkStatus.textContent = "Karten derzeit nicht verfügbar.";
+    if(menuStatus) menuStatus.textContent = "Offizielle Kartenlinks derzeit nicht verfügbar.";
+    if(drinkStatus) drinkStatus.textContent = "Offizielle Kartenlinks derzeit nicht verfügbar.";
   }
 }
 
@@ -3773,55 +3769,34 @@ async function loadCardEditor(restaurantId){
   try{
     const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(restaurantId) + "&t=" + Date.now(), {cache:"no-store"});
     const data = await response.json();
-    if(!response.ok) throw new Error(data.error || "Karten konnten nicht geladen werden.");
+    if(!response.ok) throw new Error(data.error || "Kartenlinks konnten nicht geladen werden.");
     for(const kind of ["speisekarte","getraenkekarte"]){
       const card = (data.cards || {})[kind] || {};
       const urlInput = document.getElementById("f_" + kind + "_url");
       const status = document.getElementById(statusIds[kind]);
       if(urlInput) urlInput.value = card.url || "";
-      if(status) status.textContent = card.hasFile ? "Zentral gespeicherte Datei: " + (card.filename || "vorhanden") + ". Eine neue Datei ersetzt diese Datei." : "Noch keine Datei hinterlegt.";
+      if(status) status.textContent = card.url ? "Offizieller Link ist hinterlegt." : "Noch kein offizieller Kartenlink hinterlegt.";
     }
   }catch(error){
     console.error(error);
     for(const id of Object.values(statusIds)){
       const el = document.getElementById(id);
-      if(el) el.textContent = "Kartenstatus konnte nicht geladen werden.";
+      if(el) el.textContent = "Kartenlinks konnten nicht geladen werden.";
     }
   }
 }
 
-function readFileAsDataUrl(file){
-  return new Promise((resolve,reject)=>{
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Die ausgewählte Datei konnte nicht gelesen werden."));
-    reader.readAsDataURL(file);
-  });
-}
-
 async function saveOneRestaurantCard(restaurantId, kind, password){
   const urlInput = document.getElementById("f_" + kind + "_url");
-  const fileInput = document.getElementById("f_" + kind + "_file");
   const cardUrl = (urlInput ? urlInput.value : "").trim();
-  if(cardUrl && !/^https?:\/\//i.test(cardUrl)) throw new Error("Bitte bei " + (kind === "speisekarte" ? "der Speisekarte" : "der Getränkekarte") + " einen vollständigen http(s)-Link eingeben.");
+  if(cardUrl && !/^https?:\/\//i.test(cardUrl)) throw new Error("Bitte einen vollständigen http(s)-Link zur offiziellen Karte eintragen.");
   const headers = {"Content-Type":"application/json","Authorization":"Bearer " + password};
-  const metaResponse = await fetch(API_URL,{
+  const response = await fetch(API_URL,{
     method:"POST",headers,
     body:JSON.stringify({action:"saveCard",restaurantId:String(restaurantId),kind,url:cardUrl})
   });
-  const metaData = await metaResponse.json();
-  if(!metaResponse.ok || metaData.error) throw new Error(metaData.error || "Der Kartenlink konnte nicht gespeichert werden.");
-  const file = fileInput && fileInput.files && fileInput.files[0];
-  if(file){
-    if(file.size > 8 * 1024 * 1024) throw new Error("Die Datei " + file.name + " ist größer als 8 MB.");
-    const dataUrl = await readFileAsDataUrl(file);
-    const uploadResponse = await fetch(API_URL,{
-      method:"POST",headers,
-      body:JSON.stringify({action:"uploadCard",restaurantId:String(restaurantId),kind,filename:file.name,mimeType:file.type || "application/octet-stream",dataUrl})
-    });
-    const uploadData = await uploadResponse.json();
-    if(!uploadResponse.ok || uploadData.error) throw new Error(uploadData.error || "Datei-Upload fehlgeschlagen.");
-  }
+  const data = await response.json();
+  if(!response.ok || data.error) throw new Error(data.error || "Der Kartenlink konnte nicht gespeichert werden.");
 }
 
 async function syncRestaurantCards(restaurantId,password){
