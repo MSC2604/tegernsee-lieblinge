@@ -3442,9 +3442,44 @@ async function lookupRestaurantInApp(){
       toggleCustomCategory();
     }
 
+    const reviewFields = [
+      ["f_ort", "Ort"],
+      ["f_adresse", "Adresse"],
+      ["f_telefon", "Telefon"],
+      ["f_website", "Webseite"],
+      ["f_email", "E-Mail"],
+      ["f_oeffnungszeiten", "Öffnungszeiten/Küchenzeiten"],
+      ["f_ruhetag", "Ruhetag"],
+      ["f_reservierung", "Reservierungslink"]
+    ];
+    const missing = reviewFields
+      .filter(([id]) => {
+        const field = document.getElementById(id);
+        return !field || !String(field.value || "").trim();
+      })
+      .map(([, label]) => label);
+    const categoryValue = category && category.value === "__custom__"
+      ? (customCategory ? customCategory.value.trim() : "")
+      : (category ? category.value.trim() : "");
+    if (!categoryValue) missing.splice(1, 0, "Kategorie");
+
+    const sourceList = Array.isArray(selected.quellen)
+      ? selected.quellen.filter(source => source && /^https?:\/\//i.test(source.url || "")).slice(0, 3)
+      : [];
+    const sourceText = sourceList.length
+      ? "\n\nQuellen zur Kontrolle:\n" + sourceList.map((source, i) =>
+          (i + 1) + ". " + (source.title || "Quelle") + "\n" + source.url
+        ).join("\n")
+      : "\n\nEs wurden keine direkten Quellenlinks zurückgegeben; bitte die Angaben besonders sorgfältig prüfen.";
+
+    const missingText = missing.length
+      ? "\n\nNoch fehlend: " + missing.join(", ") + "."
+      : "\n\nDie wichtigsten Formularfelder sind ausgefüllt; bitte trotzdem alle Angaben prüfen.";
     alert(
       "Suchergebnisse wurden ins Formular übernommen.\n\n" +
-      "Bitte prüfe alle Angaben sorgfältig. Es wurde noch nichts gespeichert."
+      "Wichtig: Die Angaben sind Vorschläge und nicht automatisch verifiziert. Bitte gleiche sie mit den Quellen ab." +
+      missingText + sourceText +
+      "\n\nEs wurde noch nichts gespeichert."
     );
     loadTavilyUsage();
 
