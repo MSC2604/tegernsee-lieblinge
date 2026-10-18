@@ -531,47 +531,48 @@ console.log("Tavily usage account:", {
 
 
       function extractHours(text) {
-        const lines = String(text || "")
+        // HTML-Text in getrennte Textzeilen umwandeln, damit zusammengeklebte
+        // Suchtreffer oder Bewertungsseiten nicht als Öffnungszeiten durchrutschen.
+        const normalized = String(text || "")
+          .replace(/<\s*br\s*\/?>/gi, "\n")
+          .replace(/<\/(?:p|div|li|tr|h[1-6])\s*>/gi, "\n")
+          .replace(/<[^>]*>/g, " ")
+          .replace(/&nbsp;|&#160;/gi, " ")
+          .replace(/&amp;/gi, "&")
+          .replace(/\s+/g, " ");
+
+        const lines = normalized
           .split(/\r?\n/)
+          .flatMap(line => line.split(/(?<=[;|])\s*|\s+(?=(?:Öffnungszeiten|Öffnungszeit|Warme Küche|Küchenzeiten)\s*[:：])/i))
           .map(line => line.trim())
           .filter(Boolean);
 
         const hoursPattern =
           /\b\d{1,2}(?:[:.]\d{2})?\s*(?:Uhr)?\s*(?:-|–|—|bis|\/)\s*\d{1,2}(?:[:.]\d{2})?\s*(?:Uhr)?/i;
+        const dayPattern =
+          /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\bMo\b|\bDi\b|\bMi\b|\bDo\b|\bFr\b|\bSa\b|\bSo\b)/i;
+        const noisePattern =
+          /tripadvisor|bewertung|bewertungen|review|ratings?|out of \s*5|sterne|unhöflich|unhoeflich|unhofflich|rude service|left the place|extremely|food was|service was|image \d+/i;
 
         let opening = "";
         let kitchen = "";
 
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
+        for (const rawLine of lines) {
+          // Nie lange Fließtexte übernehmen: Öffnungszeiten müssen ein kurzer,
+          // plausibler Eintrag sein und dürfen keine Bewertungsbegriffe enthalten.
+          if (rawLine.length > 180 || noisePattern.test(rawLine)) continue;
+          const line = rawLine.replace(/\s+/g, " ").trim();
+          if (!hoursPattern.test(line)) continue;
 
-          // Erfasst auch kompakte Zeilen wie "Mi–So 11:30–23:00 Uhr".
-          if (!opening && hoursPattern.test(line) &&
-              /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\bMo\b|\bDi\b|\bMi\b|\bDo\b|\bFr\b|\bSa\b|\bSo\b)/i.test(line) &&
-              !/küche|speisekarte|reservier/i.test(line)) {
-            opening = line;
+          const isKitchen = /küche|kitchen/i.test(line);
+          const isOpeningLabel = /^(?:öffnungszeiten|öffnungszeit)\b/i.test(line);
+          const hasDay = dayPattern.test(line);
+          if (!isKitchen && !opening && (hasDay || isOpeningLabel) &&
+              !/speisekarte|reservier|bewertung|review/i.test(line)) {
+            opening = line.replace(/^öffnungszeiten\s*[:：]?\s*/i, "").slice(0, 150);
           }
-
-          if (/^öffnungszeiten\b/i.test(line)) {
-            const inline = line.replace(/^öffnungszeiten\s*[:：]?\s*/i, "");
-            if (hoursPattern.test(inline)) {
-              opening = inline;
-            } else {
-              for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
-                if (/^(küche|warme küche)\b/i.test(lines[j])) break;
-                if (hoursPattern.test(lines[j])) {
-                  opening = lines[j];
-                  break;
-                }
-              }
-            }
-          }
-
-          if (/^(warme\s+)?küche\b/i.test(line)) {
-            if (hoursPattern.test(line)) kitchen = line;
-            else if (lines[i + 1] && hoursPattern.test(lines[i + 1])) {
-              kitchen = lines[i + 1];
-            }
+          if (isKitchen && !kitchen) {
+            kitchen = line.replace(/^(?:warme\s+)?küche(?:nzeiten)?\s*[:：]?\s*/i, "").slice(0, 150);
           }
         }
 
