@@ -576,7 +576,7 @@ const notes = "";
           const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
           if (!restaurantId) return json({ error: "Restaurant-ID fehlt." }, 400);
           const result = await turso(
-            "SELECT kind, url, object_key, filename, mime_type FROM restaurant_cards WHERE restaurant_id = ?",
+            "SELECT kind, url FROM restaurant_cards WHERE restaurant_id = ?",
             [textArg(restaurantId)], true
           );
           const rows = result?.results?.[0]?.response?.result?.rows || [];
@@ -584,47 +584,9 @@ const notes = "";
           for (const row of rows) {
             const kind = String(rowValue(row[0]) || "");
             if (!["speisekarte", "getraenkekarte"].includes(kind)) continue;
-            cards[kind] = {
-              url: rowValue(row[1]) || "",
-              hasFile: Boolean(rowValue(row[2])),
-              filename: rowValue(row[3]) || "",
-              mimeType: rowValue(row[4]) || "",
-              fileUrl: rowValue(row[2])
-                ? new URL(request.url).origin + "?action=cardfile&restaurantId=" +
-                  encodeURIComponent(restaurantId) + "&kind=" + encodeURIComponent(kind)
-                : ""
-            };
+            cards[kind] = { url: rowValue(row[1]) || "" };
           }
           return json({ cards });
-        }
-
-        if (action === "cardfile") {
-          const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
-          const kind = (url.searchParams.get("kind") || "").trim();
-          if (!restaurantId || !["speisekarte", "getraenkekarte"].includes(kind)) {
-            return json({ error: "Ungültige Kartenangabe." }, 400);
-          }
-          const result = await turso(
-            "SELECT object_key, filename, mime_type FROM restaurant_cards WHERE restaurant_id = ? AND kind = ?",
-            [textArg(restaurantId), textArg(kind)], true
-          );
-          const row = result?.results?.[0]?.response?.result?.rows?.[0];
-          const key = row ? String(rowValue(row[0]) || "") : "";
-          if (!key) return json({ error: "Für diese Karte wurde keine Datei hinterlegt." }, 404);
-          if (!env.RESTAURANT_CARDS) return json({ error: "Dateispeicher ist noch nicht eingerichtet." }, 503);
-          const object = await env.RESTAURANT_CARDS.get(key);
-          if (!object) return json({ error: "Kartendatei wurde nicht gefunden." }, 404);
-          const mime = String(rowValue(row[2]) || "application/octet-stream");
-          const filename = String(rowValue(row[1]) || "karte").replace(/[\r\n"]/g, "_");
-          return new Response(object.body, {
-            headers: {
-              ...corsHeaders,
-              "Content-Type": mime,
-              "Content-Disposition": (mime === "application/pdf" || mime.startsWith("image/") ? "inline" : "attachment") + '; filename="' + filename + '"',
-              "Cache-Control": "public, max-age=300",
-              "X-Content-Type-Options": "nosniff"
-            }
-          });
         }
 
         if (action === "lookup") {
@@ -719,58 +681,6 @@ const notes = "";
             [textArg(restaurantId), textArg(kind), textArg(cardUrl), textArg(new Date().toISOString())]
           );
           return json({ success: true, action: "saveCard" });
-        }
-
-        if (body.action === "uploadCard") {
-          const restaurantId = String(body.restaurantId || "").trim();
-          const kind = String(body.kind || "").trim();
-          const filename = String(body.filename || "karte").replace(/[^a-zA-Z0-9._() -]/g, "_").slice(0, 120);
-          let mimeType = String(body.mimeType || "application/octet-stream").toLowerCase();
-          const dataUrl = String(body.dataUrl || "");
-          if (mimeType === "application/octet-stream") {
-            const ext = filename.toLowerCase().split(".").pop();
-            const inferred = {
-              pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg",
-              png: "image/png", webp: "image/webp", gif: "image/gif",
-              txt: "text/plain", doc: "application/msword",
-              docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-              odt: "application/vnd.oasis.opendocument.text"
-            };
-            if (inferred[ext]) mimeType = inferred[ext];
-          }
-          if (!restaurantId || !["speisekarte", "getraenkekarte"].includes(kind)) {
-            return json({ error: "Restaurant oder Kartenart ist ungültig." }, 400);
-          }
-          if (!env.RESTAURANT_CARDS) {
-            return json({ error: "Der zentrale Dateispeicher ist noch nicht eingerichtet. Bitte den R2-Bucket RESTAURANT_CARDS in Cloudflare verbinden." }, 503);
-          }
-          const allowed = ["application/pdf", "image/jpeg", "image/png", "image/webp", "image/gif", "text/plain", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.oasis.opendocument.text"];
-          if (!allowed.includes(mimeType)) return json({ error: "Dateityp nicht unterstützt. Erlaubt sind PDF, JPG, PNG, WebP, GIF, TXT, DOC, DOCX und ODT." }, 400);
-          const match = dataUrl.match(/^data:([^;,]+);base64,([A-Za-z0-9+/=]+)$/);
-          if (!match || match[1].toLowerCase() !== mimeType) return json({ error: "Die Datei konnte nicht gelesen werden." }, 400);
-          const encoded = match[2];
-          const approxSize = Math.floor(encoded.length * 3 / 4);
-          if (approxSize > 8 * 1024 * 1024) return json({ error: "Die Datei ist größer als 8 MB. Bitte eine kleinere Datei wählen." }, 413);
-          const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
-          const key = "restaurant-cards/" + restaurantId.replace(/[^a-zA-Z0-9_-]/g, "_") + "/" + kind + "-" + Date.now() + "-" + filename;
-          await env.RESTAURANT_CARDS.put(key, bytes, {
-            httpMetadata: { contentType: mimeType },
-            customMetadata: { restaurantId, kind, filename }
-          });
-          const previous = await turso(
-            "SELECT object_key FROM restaurant_cards WHERE restaurant_id = ? AND kind = ?",
-            [textArg(restaurantId), textArg(kind)], true
-          );
-          const oldKey = previous?.results?.[0]?.response?.result?.rows?.[0]
-            ? String(rowValue(previous.results[0].response.result.rows[0][0]) || "") : "";
-          await turso(
-            `INSERT INTO restaurant_cards (restaurant_id, kind, object_key, filename, mime_type, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?)
-             ON CONFLICT(restaurant_id, kind) DO UPDATE SET object_key = excluded.object_key, filename = excluded.filename, mime_type = excluded.mime_type, updated_at = excluded.updated_at`,
-            [textArg(restaurantId), textArg(kind), textArg(key), textArg(filename), textArg(mimeType), textArg(new Date().toISOString())]
-          );
-          if (oldKey && oldKey !== key) await env.RESTAURANT_CARDS.delete(oldKey);
-          return json({ success: true, action: "uploadCard", filename });
         }
 
         if (body.action === "create") {
