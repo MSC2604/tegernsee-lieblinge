@@ -303,7 +303,7 @@ console.log("Tavily usage account:", {
           result.content || "",
           result.url || ""
         ].join(" "));
-        const postalCode = /\\b(?:83700|83703|83707|83708|83727|83730|83734|83684)\\b/.test(
+        const postalCode = /\b(?:83700|83703|83707|83708|83727|83730|83734|83684)\b/.test(
           String([result.title || "", result.content || "", result.url || ""].join(" "))
         );
         return postalCode || localPlaces.some(place => haystack.includes(place));
@@ -312,12 +312,12 @@ console.log("Tavily usage account:", {
       function hasStrongNameMatch(result) {
         const title = normalize(result.title);
         let host = "";
-        try { host = normalize(new URL(result.url).hostname.replace(/^www\\./i, "")); } catch {}
+        try { host = normalize(new URL(result.url).hostname.replace(/^www\./i, "")); } catch {}
         // Markante Namensbestandteile müssen im Titel oder in der Domain stehen,
         // nicht nur irgendwo im allgemeinen Suchtext.
         return nameTokens.some(token =>
-          title.split(/\\s+/).includes(token) ||
-          host.split(/\\s+/).some(part => part === token || part.startsWith(token))
+          title.split(/\s+/).includes(token) ||
+          host.split(/\s+/).some(part => part === token || part.startsWith(token))
         );
       }
 
