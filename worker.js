@@ -591,33 +591,101 @@ console.log("Tavily usage account:", {
         extracted: extractedByUrl.has(record.url)
       }));
 
-      // Nur konkrete Karten- bzw. Buchungsseiten übernehmen, keine geratenen URLs.
-      function findSpecialUrl(kind) {
-        const scored = records.map(record => {
-          let parsed;
-          try { parsed = new URL(record.url); } catch { return { url: "", score: 0 }; }
-          if (!["http:", "https:"].includes(parsed.protocol)) return { url: "", score: 0 };
-          const path = normalize(parsed.pathname + " " + parsed.search);
-          const title = normalize(record.title);
-          const host = parsed.hostname.toLowerCase();
-          let score = 0;
-          if (kind === "speisekarte") {
-            if (/speisekarte|speise karte|menu|menue|mittagstisch|tageskarte/.test(path)) score += 12;
-            if (/speisekarte|speise karte|menu|menue|tageskarte/.test(title)) score += 8;
-          } else if (kind === "getraenkekarte") {
-            if (/getrankekarte|getranke karte|getraenkekarte|drink.?menu|beverage.?menu/.test(path)) score += 15;
-            if (/getrankekarte|getranke karte|getraenkekarte|drink.?menu|beverage.?menu/.test(title)) score += 10;
-          } else if (kind === "reservierung") {
-            if (/reservierung|reservieren|booking|book.?a.?table|table.?reservation/.test(path)) score += 15;
-            if (/reservierung|reservieren|book.?a.?table|table.?reservation/.test(title)) score += 10;
-            if (/thefork\.|opentable\.|quandoo\.|resmio\./.test(host)) score += 12;
+      // Kartenlinks nur übernehmen, wenn sie von der offiziellen Website stammen
+      // oder von dieser ausdrücklich verlinkt werden. Suchtreffer allein reichen nicht.
+      function hostKey(value) {
+        try { return new URL(value).hostname.toLowerCase().replace(/^www\./, ""); }
+        catch { return ""; }
+      }
+
+      function specialScore(url, title, kind) {
+        let parsed;
+        try { parsed = new URL(url); } catch { return 0; }
+        if (!["http:", "https:"].includes(parsed.protocol) || parsed.username || parsed.password) return 0;
+        const path = normalize(parsed.pathname + " " + parsed.search);
+        const label = normalize(title || "");
+        let score = 0;
+        if (kind === "speisekarte") {
+          if (/speisekarte|speise karte|menu|menue|mittagstisch|tageskarte/.test(path)) score += 12;
+          if (/speisekarte|speise karte|menu|menue|tageskarte/.test(label)) score += 8;
+        } else if (kind === "getraenkekarte") {
+          if (/getrankekarte|getranke karte|getraenkekarte|drink.?menu|beverage.?menu/.test(path)) score += 15;
+          if (/getrankekarte|getranke karte|getraenkekarte|drink.?menu|beverage.?menu/.test(label)) score += 10;
+        } else if (kind === "reservierung") {
+          if (/reservierung|reservieren|booking|book.?a.?table|table.?reservation/.test(path)) score += 15;
+          if (/reservierung|reservieren|book.?a.?table|table.?reservation/.test(label)) score += 10;
+          if (/thefork\.|opentable\.|quandoo\.|resmio\./.test(parsed.hostname.toLowerCase())) score += 12;
+        }
+        if (isDirectory(url)) score -= 4;
+        else score += 2;
+        return score;
+      }
+
+      const officialWebsite = firstValue("website");
+      const officialHost = hostKey(officialWebsite);
+      const officiallyLinked = new Map();
+      const crawledPages = new Set();
+      const pageQueue = [];
+      if (officialWebsite && officialHost) pageQueue.push(officialWebsite);
+
+      // Fetch only the selected public website and its same-host HTML pages.
+      // Third-party URLs are eligible only if the official site links to them.
+      for (let pageNo = 0; pageNo < 5 && pageQueue.length; pageNo++) {
+        const pageUrl = pageQueue.shift();
+        let parsedPage;
+        try { parsedPage = new URL(pageUrl); } catch { continue; }
+        if (hostKey(pageUrl) !== officialHost || !["http:", "https:"].includes(parsedPage.protocol)) continue;
+        const pageKey = parsedPage.href.split("#")[0];
+        if (crawledPages.has(pageKey)) continue;
+        crawledPages.add(pageKey);
+        try {
+          const response = await fetch(pageKey, {
+            redirect: "manual",
+            headers: { "Accept": "text/html" },
+            signal: AbortSignal.timeout(5000)
+          });
+          if (!response.ok || !/^text\/html\b/i.test(response.headers.get("content-type") || "")) continue;
+          const html = (await response.text()).slice(0, 800000);
+          const baseTag = html.match(/<base\s+[^>]*href\s*=\s*["']([^"']+)["']/i);
+          let baseUrl = pageKey;
+          if (baseTag) {
+            try { const b = new URL(baseTag[1], pageKey); if (hostKey(b.href) === officialHost) baseUrl = b.href; } catch {}
           }
-          if (isDirectory(record.url)) score -= 4;
-          else score += 2;
-          return { url: record.url, score };
-        }).filter(item => item.url && item.score >= 10)
-          .sort((a, b) => b.score - a.score);
-        return scored.length ? scored[0].url : "";
+          const anchorRe = /<a\b([^>]*?)href\s*=\s*["']([^"']+)["']([^>]*)>([\s\S]*?)<\/a\s*>/gi;
+          let match;
+          while ((match = anchorRe.exec(html)) !== null) {
+            const attrs = match[1] + " " + match[3];
+            const rawHref = match[2].replace(/&amp;/gi, "&").replace(/&#39;|&apos;/gi, "'").replace(/&quot;/gi, '"');
+            const attrLabel = (attrs.match(/(?:title|aria-label)\s*=\s*["']([^"']*)["']/i) || [,""])[1];
+            const label = (match[4].replace(/<[^>]*>/g, " ") + " " + attrLabel).replace(/\s+/g, " ").trim().slice(0, 240);
+            let target;
+            try { target = new URL(rawHref, baseUrl); } catch { continue; }
+            if (!["http:", "https:"].includes(target.protocol) || target.username || target.password) continue;
+            const normalizedUrl = target.href.split("#")[0];
+            officiallyLinked.set(normalizedUrl, label);
+            if (hostKey(normalizedUrl) === officialHost &&
+                /speisekarte|speise.?karte|menu|menue|getränke|getraenke|drink|reservier|booking/i.test(label + " " + target.pathname) &&
+                !crawledPages.has(normalizedUrl) && pageQueue.length < 4) pageQueue.push(normalizedUrl);
+          }
+        } catch { /* Unavailable official sites produce no unverified menu link. */ }
+      }
+
+      function findSpecialUrl(kind) {
+        const candidates = [];
+        for (const record of records) {
+          const host = hostKey(record.url);
+          const officialProof = Boolean(host && host === officialHost);
+          const explicitLink = officiallyLinked.has(record.url);
+          if (!officialProof && !explicitLink) continue;
+          const score = specialScore(record.url, (officiallyLinked.get(record.url) || "") + " " + record.title, kind);
+          if (score >= 10) candidates.push({ url: record.url, score: score + (officialProof ? 4 : 0) });
+        }
+        for (const [url, label] of officiallyLinked) {
+          const score = specialScore(url, label, kind);
+          if (score >= 10) candidates.push({ url, score: score + 8 });
+        }
+        candidates.sort((a, b) => b.score - a.score);
+        return candidates.length ? candidates[0].url : "";
       }
 
       const speisekarte_url = findSpecialUrl("speisekarte");
