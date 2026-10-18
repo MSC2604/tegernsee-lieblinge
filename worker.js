@@ -193,8 +193,8 @@ console.log("Tavily usage account:", {
         headers: tavilyHeaders,
         body: JSON.stringify({
           query:
-            `"${cleanName}" Tegernseer Tal Restaurant Adresse Telefon ` +
-            "offizielle Website Öffnungszeiten Ruhetag Speisekarte",
+            `"${cleanName}" Tegernseer Tal Restaurant Adresse Telefon E-Mail ` +
+            "offizielle Website Öffnungszeiten Küchenzeiten Ruhetag Speisekarte Getränkekarte Reservierung Tisch reservieren",
           topic: "general",
           search_depth: "basic",
           max_results: 10,
