@@ -550,7 +550,7 @@ const notes = "";
         reservierung: "",
         bild: "",
         quellen: sources
-          .filter(source => /^https?:\\/\\//i.test(source.url || ""))
+          .filter(source => /^https?:\/\//i.test(source.url || ""))
           .slice(0, 5)
           .map(source => ({
             title: String(source.title || "").slice(0, 180),
