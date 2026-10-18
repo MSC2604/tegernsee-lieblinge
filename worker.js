@@ -533,19 +533,25 @@ console.log("Tavily usage account:", {
       }
 
       function extractClosedDay(text) {
-        const value = String(text || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+        const value = String(text || "")
+          .replace(/<[^>]*>/g, " ")
+          .replace(/&nbsp;|&#160;/gi, " ")
+          .replace(/&amp;/gi, "&")
+          .replace(/\s+/g, " ");
         const days = "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag";
         const shortDays = "Mo(?:ntag)?|Di(?:enstag)?|Mi(?:ttwoch)?|Do(?:nnerstag)?|Fr(?:eitag)?|Sa(?:mstag)?|So(?:nntag)?";
-        const first = value.match(new RegExp("\\b(" + days + ")\\b.{0,35}\\bRuhetag\\b", "i"));
-        if (first) return first[1];
-        const second = value.match(new RegExp("\\bRuhetag(?:e)?\\s*[:：]?\\s*(" + days + ")\\b", "i"));
-        if (second) return second[1];
+        const pair = "(?:" + days + ")(?:\\s*(?:,|und|&|/)\\s*(?:" + days + "))?";
+        const beforeRuhetag = value.match(new RegExp("\\b(" + days + ")(?:\\s*(?:,|und|&|/)\\s*(" + days + "))?\\b.{0,35}\\bRuhetag(?:e)?\\b", "i"));
+        if (beforeRuhetag) return [beforeRuhetag[1], beforeRuhetag[2]].filter(Boolean).join(" und ");
+
+        const afterRuhetag = value.match(new RegExp("\\bRuhetag(?:e)?\\s*[:：]?\\s*(" + days + ")(?:\\s*(?:,|und|&|/)\\s*(" + days + "))?\\b", "i"));
+        if (afterRuhetag) return [afterRuhetag[1], afterRuhetag[2]].filter(Boolean).join(" und ");
 
         // Viele Restaurantseiten nennen Schließtage ohne das Wort "Ruhetag".
-        const closed = value.match(new RegExp("\\b(" + days + ")\\b(?:\\s*(?:,|und|&|/)\\s*(" + days + "))?\\s*(?:ist|sind)?\\s*(?:Ruhetag|geschlossen|Betriebsferien)\\b", "i"));
+        const closed = value.match(new RegExp("\\b(" + days + ")(?:\\s*(?:,|und|&|/)\\s*(" + days + "))?\\s*(?:ist|sind)?\\s*(?:geschlossen|Betriebsferien)\\b", "i"));
         if (closed) return [closed[1], closed[2]].filter(Boolean).join(" und ");
 
-        const shortClosed = value.match(new RegExp("\\b(" + shortDays + ")\\s*(?:,|/|&|und)\\s*(" + shortDays + ")\\s*(?:Ruhetag|geschlossen)\\b", "i"));
+        const shortClosed = value.match(new RegExp("\\b(" + shortDays + ")\\s*(?:,|/|&|und)\\s*(" + shortDays + ")\\s*(?:Ruhetag(?:e)?|geschlossen)\\b", "i"));
         if (shortClosed) {
           const expand = day => ({mo:"Montag",di:"Dienstag",mi:"Mittwoch",do:"Donnerstag",fr:"Freitag",sa:"Samstag",so:"Sonntag"})[day.slice(0,2).toLowerCase()];
           return [expand(shortClosed[1]), expand(shortClosed[2])].join(" und ");
