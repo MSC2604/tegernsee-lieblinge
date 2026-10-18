@@ -687,6 +687,15 @@ a{
 .app-menu-item{width:100%;display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:14px;padding:14px;margin:8px 0;font-weight:750}
 .app-menu-item span:first-child{font-size:22px;width:28px;text-align:center}
 #mapView{display:none;max-width:1100px}
+#incompleteView{display:none;max-width:1000px;margin:0 auto;padding:18px}
+.incomplete-summary{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0 16px;color:var(--muted)}
+.incomplete-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px;margin:10px 0;box-shadow:var(--shadow)}
+.incomplete-name{font-size:17px;font-weight:800;margin-bottom:4px}
+.incomplete-meta{color:var(--muted);font-size:13px;margin-bottom:10px}
+.missing-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.missing-chip{background:#fff2d9;color:#805716;border:1px solid #f0d7a6;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}
+.incomplete-actions{display:flex;gap:8px;flex-wrap:wrap}
+.incomplete-actions button{border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:#f7faf8;color:var(--accent);font-weight:750}
 .map-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .map-head h2{margin:0;font-size:22px}
 .map-back{border:1px solid var(--line);background:#fff;color:var(--accent);border-radius:12px;padding:10px 12px;font-weight:750}
@@ -735,6 +744,7 @@ a{
     <div class="app-menu-head"><span>Menü</span><button class="app-menu-close" type="button" aria-label="Menü schließen" onclick="closeAppMenu()">×</button></div>
     <button class="app-menu-item" onclick="closeAppMenu();showHome()"><span>⌂</span><span>Startseite</span></button>
     <button class="app-menu-item" onclick="openRestaurantMap()"><span>🗺️</span><span>Übersichtskarte</span></button>
+    <button class="app-menu-item" onclick="showIncompleteEntries()"><span>📋</span><span>Unvollständige Einträge <span id="incompleteMenuCount" style="font-size:12px;color:#805716;width:auto">…</span></span></button>
     <button class="app-menu-item" onclick="closeAppMenu();focusSearch()"><span>🔎</span><span>Restaurants suchen</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();showFavorites()"><span>♥</span><span>Meine Favoriten</span></button>
   </nav>
@@ -824,6 +834,12 @@ a{
   <div class="map-head"><h2>🗺️ Übersichtskarte</h2><button class="map-back" onclick="showHome()">‹ Zurück</button></div>
   <div id="restaurantMap" role="application" aria-label="Karte mit Restaurants am Tegernsee"></div>
   <p class="map-status" id="mapStatus">Die Restaurantstandorte werden vorbereitet …</p>
+</main>
+
+<main id="incompleteView">
+  <div class="map-head"><h2>📋 Unvollständige Einträge</h2><button class="map-back" onclick="showHome()">‹ Zurück</button></div>
+  <p class="incomplete-summary" id="incompleteSummary">Die Daten werden geprüft …</p>
+  <div id="incompleteList"></div>
 </main>
 
 <main
@@ -2470,6 +2486,9 @@ function reserveTable(
 
 function render(){
 
+  const menuCount = document.getElementById("incompleteMenuCount");
+  if(menuCount) menuCount.textContent = restaurants.filter(r => getMissingRestaurantFields(r).length).length;
+
   const list =
     filteredRestaurants();
 
@@ -2681,6 +2700,8 @@ function openDetail(
   id
 ){
 
+  document.getElementById("incompleteView").style.display = "none";
+
   currentPlace =
     restaurants.find(
       r =>
@@ -2854,6 +2875,8 @@ function openDetail(
 
 function showHome(){
 
+  document.getElementById("incompleteView").style.display = "none";
+
   document.getElementById(
     "detail"
   ).style.display =
@@ -2878,6 +2901,61 @@ function showHome(){
 
 }
 
+
+function isFieldMissing(value){
+  const v = cleanValue(value).trim();
+  if(!v) return true;
+  return /^(noch ergänzen|noch ergänzen\.|nicht hinterlegt|keine angabe|unbekannt|bitte ergänzen|bitte prüfen|öffnungszeiten bitte prüfen)$/i.test(v);
+}
+
+function getMissingRestaurantFields(place){
+  const fields = [
+    ["ort","Ort"],
+    ["kategorie","Kategorie"],
+    ["adresse","Adresse"],
+    ["telefon","Telefon"],
+    ["website","Webseite"],
+    ["email","E-Mail"],
+    ["oeffnungszeiten","Öffnungszeiten"],
+    ["ruhetag","Ruhetag"],
+    ["reservierung","Reservierungslink"]
+  ];
+  return fields.filter(([key]) => isFieldMissing(place[key])).map(([,label]) => label);
+}
+
+function showIncompleteEntries(){
+  closeAppMenu();
+  document.getElementById("home").style.display = "none";
+  document.getElementById("homeHeader").style.display = "none";
+  document.getElementById("detail").style.display = "none";
+  document.getElementById("mapView").style.display = "none";
+  document.getElementById("incompleteView").style.display = "block";
+  window.scrollTo({top:0,behavior:"auto"});
+  const incomplete = restaurants.map(place => ({place,missing:getMissingRestaurantFields(place)})).filter(item => item.missing.length);
+  const count = document.getElementById("incompleteMenuCount");
+  if(count) count.textContent = incomplete.length;
+  document.getElementById("incompleteSummary").textContent = incomplete.length
+    ? incomplete.length + " von " + restaurants.length + " Restaurant-Einträgen haben noch fehlende Angaben. Angezeigt werden leere oder als „Noch ergänzen“ markierte Felder. Bild und Notizen gelten als optional."
+    : "Alle Restaurant-Einträge enthalten die geprüften Angaben. Bild und Notizen sind optional.";
+  const list = document.getElementById("incompleteList");
+  if(!incomplete.length){
+    list.innerHTML = '<div class="incomplete-card">🎉 Keine unvollständigen Einträge gefunden.</div>';
+    return;
+  }
+  list.innerHTML = incomplete.map(({place,missing}) => '<section class="incomplete-card">'
+    + '<div class="incomplete-name">'+escapeHtml(place.name||"Restaurant ohne Namen")+'</div>'
+    + '<div class="incomplete-meta">'+escapeHtml([place.ort,place.kategorie].filter(Boolean).join(" · ")||"Ort/Kategorie fehlen")+'</div>'
+    + '<div><strong>Fehlende Angaben:</strong></div><div class="missing-list">'+missing.map(label=>'<span class="missing-chip">'+escapeHtml(label)+'</span>').join("")+'</div>'
+    + '<div class="incomplete-actions"><button type="button" onclick="openDetail(\''+escapeAttr(String(place.id))+'\')">Eintrag öffnen</button><button type="button" onclick="editRestaurantById(\''+escapeAttr(String(place.id))+'\')">Bearbeiten</button></div>'
+    + '</section>').join("");
+}
+
+function editRestaurantById(id){
+  const place = restaurants.find(r => String(r.id) === String(id));
+  if(!place) return;
+  openDetail(id);
+  if(typeof editPlace === "function") editPlace();
+}
 
 function focusSearch(){
 
@@ -4085,7 +4163,7 @@ function readMapCache(){try{return JSON.parse(localStorage.getItem(GEOCODE_CACHE
 function writeMapCache(cache){try{localStorage.setItem(GEOCODE_CACHE_KEY,JSON.stringify(cache))}catch(e){}}
 function waitMap(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 async function geocodeRestaurant(place,cache){const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const key=String(place.id||place.name)+'|'+query;if(Object.prototype.hasOwnProperty.call(cache,key))return cache[key];if(!query||!place.ort)return null;try{const response=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(query),{headers:{Accept:'application/json'}});if(!response.ok)return null;const data=await response.json();if(!data.length){cache[key]=null;writeMapCache(cache);return null;}const point={lat:Number(data[0].lat),lon:Number(data[0].lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return null;cache[key]=point;writeMapCache(cache);return point;}catch(e){console.warn('Standort nicht gefunden:',place.name,e);return null;}}
-async function openRestaurantMap(){closeAppMenu();document.getElementById('home').style.display='none';document.getElementById('homeHeader').style.display='none';document.getElementById('detail').style.display='none';document.getElementById('mapView').style.display='block';window.scrollTo({top:0,behavior:'auto'});try{await loadLeaflet();if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.featureGroup().addTo(restaurantMap);}setTimeout(()=>restaurantMap.invalidateSize(),120);if(mapOpening)return;mapOpening=true;const status=document.getElementById('mapStatus');const cache=readMapCache();mapMarkers.clearLayers();const places=restaurants.slice();let found=0,failed=0,requests=0;const points=[];status.textContent='Standorte werden ermittelt. Beim ersten Öffnen kann das etwas dauern …';for(let i=0;i<places.length;i++){const place=places[i];const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const cacheKey=String(place.id||place.name)+'|'+query;if(!Object.prototype.hasOwnProperty.call(cache,cacheKey)&&query&&place.ort){if(requests>0)await waitMap(1100);requests++;}const point=await geocodeRestaurant(place,cache);if(!point){failed++;continue;}found++;points.push(point);const marker=L.marker([point.lat,point.lon]).addTo(mapMarkers);const popup='<div class="map-popup-title">'+escapeHtml(place.name||'Restaurant')+'</div><div>'+escapeHtml(place.ort||'')+'</div><a class="map-popup-link" href="#" onclick="openDetail(decodeURIComponent(this.dataset.id));return false" data-id="' + encodeURIComponent(String(place.id)) + '">Restaurant öffnen →</a><br><a class="map-popup-link" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent([place.adresse,place.ort].filter(Boolean).join(', '))+'">Navigation starten ↗</a>';marker.bindPopup(popup);marker.bindTooltip(escapeHtml(place.name||'Restaurant'),{permanent:true,direction:'right',offset:[8,0],className:'restaurant-map-label'});status.textContent='Karte wird aufgebaut: '+found+' von '+places.length+' Restaurants gefunden …';}if(points.length===1)restaurantMap.setView([points[0].lat,points[0].lon],14);else if(points.length>1)restaurantMap.fitBounds(mapMarkers.getBounds().pad(0.12),{maxZoom:13});status.textContent=found+' von '+places.length+' Restaurant-Einträgen auf der Karte.'+(failed?' Für '+failed+' Einträge konnte noch kein genauer Standort gefunden werden.':'')+' Standorte werden auf diesem Gerät zwischengespeichert.';}catch(error){console.error(error);document.getElementById('mapStatus').textContent='Die Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.';}finally{mapOpening=false;}}
+async function openRestaurantMap(){closeAppMenu();document.getElementById('home').style.display='none';document.getElementById('homeHeader').style.display='none';document.getElementById('detail').style.display='none';document.getElementById('incompleteView').style.display='none';document.getElementById('mapView').style.display='block';window.scrollTo({top:0,behavior:'auto'});try{await loadLeaflet();if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.featureGroup().addTo(restaurantMap);}setTimeout(()=>restaurantMap.invalidateSize(),120);if(mapOpening)return;mapOpening=true;const status=document.getElementById('mapStatus');const cache=readMapCache();mapMarkers.clearLayers();const places=restaurants.slice();let found=0,failed=0,requests=0;const points=[];status.textContent='Standorte werden ermittelt. Beim ersten Öffnen kann das etwas dauern …';for(let i=0;i<places.length;i++){const place=places[i];const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const cacheKey=String(place.id||place.name)+'|'+query;if(!Object.prototype.hasOwnProperty.call(cache,cacheKey)&&query&&place.ort){if(requests>0)await waitMap(1100);requests++;}const point=await geocodeRestaurant(place,cache);if(!point){failed++;continue;}found++;points.push(point);const marker=L.marker([point.lat,point.lon]).addTo(mapMarkers);const popup='<div class="map-popup-title">'+escapeHtml(place.name||'Restaurant')+'</div><div>'+escapeHtml(place.ort||'')+'</div><a class="map-popup-link" href="#" onclick="openDetail(decodeURIComponent(this.dataset.id));return false" data-id="' + encodeURIComponent(String(place.id)) + '">Restaurant öffnen →</a><br><a class="map-popup-link" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent([place.adresse,place.ort].filter(Boolean).join(', '))+'">Navigation starten ↗</a>';marker.bindPopup(popup);marker.bindTooltip(escapeHtml(place.name||'Restaurant'),{permanent:true,direction:'right',offset:[8,0],className:'restaurant-map-label'});status.textContent='Karte wird aufgebaut: '+found+' von '+places.length+' Restaurants gefunden …';}if(points.length===1)restaurantMap.setView([points[0].lat,points[0].lon],14);else if(points.length>1)restaurantMap.fitBounds(mapMarkers.getBounds().pad(0.12),{maxZoom:13});status.textContent=found+' von '+places.length+' Restaurant-Einträgen auf der Karte.'+(failed?' Für '+failed+' Einträge konnte noch kein genauer Standort gefunden werden.':'')+' Standorte werden auf diesem Gerät zwischengespeichert.';}catch(error){console.error(error);document.getElementById('mapStatus').textContent='Die Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.';}finally{mapOpening=false;}}
 
 /* --------------------------------------------------
    START
