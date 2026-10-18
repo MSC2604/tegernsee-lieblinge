@@ -399,9 +399,16 @@ console.log("Tavily usage account:", {
       );
 
       function extractAddress(text) {
-        const value = String(text || "").replace(/<[^>]*>/g, " ");
+        const value = String(text || "")
+          .replace(/<\s*br\s*\/?>/gi, "\n")
+          .replace(/<\/(?:p|div|li|tr|h[1-6])\s*>/gi, "\n")
+          .replace(/<[^>]*>/g, " ")
+          .replace(/&nbsp;|&#160;/gi, " ")
+          .replace(/&amp;/gi, "&");
+
+        // Support house-number ranges such as "17–19" and common street types.
         const streetPattern =
-          /\b[A-ZÄÖÜ][\p{L}.'-]*(?:[ \t]+[\p{L}.'-]+){0,3}[ \t]+(?:straße|strasse|str\.|weg|platz|gasse|allee|ufer|ring)[ \t]+\d+[a-z]?\b/iu;
+          /\b[A-ZÄÖÜ][\p{L}.'-]*(?:[ \t]+[\p{L}.'-]+){0,4}[ \t]+(?:straße|strasse|str\.|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b/iu;
 
         const match = value.match(streetPattern);
         if (!match) return "";
@@ -412,8 +419,9 @@ console.log("Tavily usage account:", {
         );
 
         return (
-          match[0] + (postal ? ", " + postal[1] : "")
-        ).trim().slice(0, 180);
+          match[0].replace(/\s*[-–—/]\s*/g, "–") +
+          (postal ? ", " + postal[1] : "")
+        ).replace(/\s+/g, " ").trim().slice(0, 180);
       }
 
       function extractTown(text) {
