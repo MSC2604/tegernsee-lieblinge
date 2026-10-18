@@ -666,6 +666,7 @@ console.log("Tavily usage account:", {
       const officiallyLinked = new Map();
       const crawledPages = new Set();
       const pageQueue = [];
+      const officialPageContents = [];
       if (officialWebsite && officialHost) pageQueue.push(officialWebsite);
 
       // Fetch only the selected public website and its same-host HTML pages.
@@ -688,6 +689,32 @@ console.log("Tavily usage account:", {
           if (!response.ok || hostKey(response.url || pageKey) !== officialHost ||
               !/^text\/html\b/i.test(response.headers.get("content-type") || "")) continue;
           const html = (await response.text()).slice(0, 800000);
+
+          // Die offizielle Seite auch als Fallback für fehlende Formularfelder nutzen.
+          const plainText = html
+            .replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script\\s*>/gi, " ")
+            .replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style\\s*>/gi, " ")
+            .replace(/<\\s*br\\s*\\/?>/gi, "\\n")
+            .replace(/<\\/(?:p|div|li|tr|h[1-6]|section|article)\\s*>/gi, "\\n")
+            .replace(/<[^>]*>/g, " ")
+            .replace(/&nbsp;|&#160;/gi, " ")
+            .replace(/&amp;/gi, "&")
+            .replace(/&quot;|&#34;/gi, '"')
+            .replace(/&#39;|&apos;/gi, "'")
+            .replace(/&uuml;/gi, "ü").replace(/&ouml;/gi, "ö").replace(/&auml;/gi, "ä")
+            .replace(/&Uuml;/g, "Ü").replace(/&Ouml;/g, "Ö").replace(/&Auml;/g, "Ä")
+            .replace(/&szlig;/gi, "ß")
+            .replace(/[ \\t]+/g, " ")
+            .replace(/\\n[ \\t]+/g, "\\n")
+            .slice(0, 100000);
+
+          if (plainText.trim()) {
+            officialPageContents.push({
+              url: response.url || pageKey,
+              title: "Offizielle Website – ausgelesen",
+              content: plainText
+            });
+          }
           const baseTag = html.match(/<base\s+[^>]*href\s*=\s*["']([^"']+)["']/i);
           let baseUrl = response.url || pageKey;
           if (baseTag) {
@@ -710,6 +737,25 @@ console.log("Tavily usage account:", {
                 !crawledPages.has(normalizedUrl) && pageQueue.length < 4) pageQueue.push(normalizedUrl);
           }
         } catch { /* Unavailable official sites produce no unverified menu link. */ }
+      }
+
+      // Offizielle Website-Texte als zusätzliche Fallback-Datensätze anhängen.
+      // Bereits gefundene Werte bleiben bevorzugt; nur leere Felder werden ergänzt.
+      for (const page of officialPageContents) {
+        records.push({
+          title: page.title,
+          url: page.url,
+          content: page.content,
+          adresse: extractAddress(page.content),
+          ort: extractTown(page.content),
+          telefon: extractPhone(page.content),
+          email: extractEmail(page.content),
+          kategorie: extractCategory(page.title + "\\n" + page.content),
+          oeffnungszeiten: extractHours(page.content),
+          ruhetag: extractClosedDay(page.content),
+          website: officialWebsite
+        });
+        sources.push({ title: page.title, url: page.url, extracted: true });
       }
 
       function findSpecialUrl(kind) {
