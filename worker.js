@@ -692,10 +692,10 @@ console.log("Tavily usage account:", {
 
           // Die offizielle Seite auch als Fallback für fehlende Formularfelder nutzen.
           const plainText = html
-            .replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script\\s*>/gi, " ")
-            .replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style\\s*>/gi, " ")
-            .replace(/<\\s*br\\s*\\/?>/gi, "\\n")
-            .replace(/<\\/(?:p|div|li|tr|h[1-6]|section|article)\\s*>/gi, "\\n")
+            .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ")
+            .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ")
+            .replace(/<\s*br\s*\/?>/gi, "\n")
+            .replace(/<\/(?:p|div|li|tr|h[1-6]|section|article)\s*>/gi, "\n")
             .replace(/<[^>]*>/g, " ")
             .replace(/&nbsp;|&#160;/gi, " ")
             .replace(/&amp;/gi, "&")
@@ -704,8 +704,8 @@ console.log("Tavily usage account:", {
             .replace(/&uuml;/gi, "ü").replace(/&ouml;/gi, "ö").replace(/&auml;/gi, "ä")
             .replace(/&Uuml;/g, "Ü").replace(/&Ouml;/g, "Ö").replace(/&Auml;/g, "Ä")
             .replace(/&szlig;/gi, "ß")
-            .replace(/[ \\t]+/g, " ")
-            .replace(/\\n[ \\t]+/g, "\\n")
+            .replace(/[ \t]+/g, " ")
+            .replace(/\n[ \t]+/g, "\n")
             .slice(0, 100000);
 
           if (plainText.trim()) {
