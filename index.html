@@ -3412,6 +3412,20 @@ async function lookupRestaurantInApp(){
     fillIfBlank("f_speisekarte_url", selected.speisekarte_url);
     fillIfBlank("f_getraenkekarte_url", selected.getraenkekarte_url);
 
+    // Bei der automatischen Suche die Kartenfelder sichtbar machen,
+    // damit gefundene Links vor dem Speichern geprüft werden können.
+    const cardEditSection = document.getElementById("cardEditSection");
+    if (cardEditSection) cardEditSection.style.display = "block";
+    for (const kind of ["speisekarte", "getraenkekarte"]) {
+      const field = document.getElementById("f_" + kind + "_url");
+      const status = document.getElementById("f_" + kind + "_status");
+      if (status && field) {
+        status.textContent = field.value.trim()
+          ? "Link gefunden – bitte vor dem Speichern prüfen."
+          : "Kein Link gefunden. Du kannst ihn hier ergänzen.";
+      }
+    }
+
     const ort = document.getElementById("f_ort");
 
     if (ort && selected.ort) {
@@ -4070,9 +4084,10 @@ async function savePlace(){
         );
 
     let cardWarning = "";
-    if(isEditing && savedRestaurant){
+    if(savedRestaurant){
       if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
       try{
+        // Kartenlinks auch bei neu angelegten Restaurants zentral speichern.
         await syncRestaurantCards(savedRestaurant.id,password);
       }catch(cardError){
         console.error(cardError);
