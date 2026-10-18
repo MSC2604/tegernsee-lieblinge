@@ -700,6 +700,21 @@ console.log("Tavily usage account:", {
           });
           if (specific) return String(specific[field]).trim();
         }
+        // Küchenzeiten können in einer Quelle verkürzt und in einer anderen
+        // vollständig stehen. Nicht blind den ersten Treffer übernehmen:
+        // Angaben mit einer Sonntags-Ausnahme haben Vorrang, danach die
+        // ausführlichste gefundene Küchenzeit.
+        if (field === "kuechenzeiten") {
+          const kitchenValues = [...new Set(records
+            .map(record => String(record[field] || "").trim())
+            .filter(Boolean))];
+          kitchenValues.sort((a, b) => {
+            const aSunday = /sonntags?|sonntag/i.test(a) ? 1 : 0;
+            const bSunday = /sonntags?|sonntag/i.test(b) ? 1 : 0;
+            return bSunday - aSunday || b.length - a.length;
+          });
+          if (kitchenValues.length) return kitchenValues[0];
+        }
         for (const record of records) {
           const value = String(record[field] || "").trim();
           if (value) return value;
