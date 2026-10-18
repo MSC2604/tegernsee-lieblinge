@@ -2985,6 +2985,11 @@ function openDetail(
     currentPlace.notizen ||
     "";
 
+  // Detailansicht immer am Seitenanfang öffnen.
+  window.scrollTo({top:0, behavior:"auto"});
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+
 }
 
 
