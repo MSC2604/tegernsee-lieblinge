@@ -4035,14 +4035,16 @@ function setupCardPdfInput(kind){
 }
 setupCardPdfInput("speisekarte"); setupCardPdfInput("getraenkekarte");
 function fileToBase64(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error("PDF konnte nicht gelesen werden."));reader.onload=()=>{const bytes=new Uint8Array(reader.result);let binary="";for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+0x8000,bytes.length)));resolve(btoa(binary));};reader.readAsArrayBuffer(file);});}
-async function uploadPendingCardFiles(restaurantId,password){
+async function uploadPendingCardFiles(restaurantId,password,selectedFiles){
  for(const kind of ["speisekarte","getraenkekarte"]){
-  const input=document.getElementById("f_"+kind+"_pdf"),status=document.getElementById("f_"+kind+"_pdf_status"),file=input&&input.files&&input.files[0];
+  const input=document.getElementById("f_"+kind+"_pdf"),status=document.getElementById("f_"+kind+"_pdf_status");
+  const file=selectedFiles ? selectedFiles[kind] : (input&&input.files&&input.files[0]);
   if(!file)continue;if(file.size>MAX_CARD_PDF_BYTES)throw new Error(file.name+" ist größer als 5 MB.");
   const base64=await fileToBase64(file);
   const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"uploadCardFile",restaurantId:String(restaurantId),kind,filename:file.name,base64})});
-  const data=await response.json();if(!response.ok||data.error)throw new Error(data.error||"PDF-Upload fehlgeschlagen.");
-  input.value="";if(status)status.textContent="PDF zentral gespeichert: "+file.name;
+  let data={};try{data=await response.json();}catch(_){throw new Error("Der Server hat keine gültige Antwort zum PDF-Upload geliefert (HTTP "+response.status+").");}
+  if(!response.ok||data.error||data.success!==true)throw new Error(data.error||"PDF-Upload fehlgeschlagen (HTTP "+response.status+").");
+  if(input)input.value="";if(status)status.textContent="PDF zentral gespeichert: "+file.name;
  }
 }
 
@@ -4072,6 +4074,12 @@ async function syncRestaurantCards(restaurantId,password){
 async function savePlace(){
 
   const restaurant = getFormData();
+
+  // Dateiauswahl sichern, bevor Speichern/Neuladen die Formularansicht verändert.
+  const selectedCardFiles = {
+    speisekarte: document.getElementById("f_speisekarte_pdf")?.files?.[0] || null,
+    getraenkekarte: document.getElementById("f_getraenkekarte_pdf")?.files?.[0] || null
+  };
 
   if(restaurant.ort === "Anderer Ort"){
     const otherOrt = prompt("Bitte den Ortsnamen eingeben:");
@@ -4185,7 +4193,7 @@ async function savePlace(){
         cardWarning = "\n\nDie Restaurantdaten wurden gespeichert. Die vorhandenen Kartenlinks wurden vorsichtshalber nicht verändert, weil sie vorher nicht zuverlässig geladen werden konnten.";
         // Eine neu ausgewählte PDF trotzdem unabhängig davon hochladen.
         try{
-          await uploadPendingCardFiles(savedRestaurant.id,password);
+          await uploadPendingCardFiles(savedRestaurant.id,password,selectedCardFiles);
           if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
         }catch(cardError){
           console.error(cardError);
@@ -4194,7 +4202,7 @@ async function savePlace(){
       }else{
         try{
           await syncRestaurantCards(savedRestaurant.id,password);
-          await uploadPendingCardFiles(savedRestaurant.id,password);
+          await uploadPendingCardFiles(savedRestaurant.id,password,selectedCardFiles);
           if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
         }catch(cardError){
           console.error(cardError);
