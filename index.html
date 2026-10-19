@@ -1327,9 +1327,12 @@ a{
 // Vorschauen verwenden den Worker der Test-Branch, die Hauptversion den
 // produktiven Worker. So testen wir die neue Suche wirklich isoliert.
 const IS_PREVIEW = /\.pages\.dev$/i.test(window.location.hostname);
-const API_URL = IS_PREVIEW
+// Restaurantdaten und gespeicherte Einträge immer aus der zentralen Datenbank lesen.
+// Nur die automatische Suche wird in der Vorschau gegen den Test-Worker ausgeführt.
+const API_URL = "https://tegernsee-restaurants-api.msc4021.workers.dev";
+const SEARCH_API_URL = IS_PREVIEW
   ? "https://fix-restaurant-search-quality-tegernsee-restaurants-api.msc4021.workers.dev"
-  : "https://tegernsee-restaurants-api.msc4021.workers.dev";
+  : API_URL;
 
 // Vorschau-Schutz: Schreibzugriffe bleiben gesperrt; Lesezugriffe und Suche
 // laufen gegen den Worker der Vorschau.
@@ -3377,7 +3380,7 @@ async function lookupRestaurantInApp(){
   }
 
   try {
-    const url = API_URL + "?action=lookup&name=" + encodeURIComponent(name);
+    const url = SEARCH_API_URL + "?action=lookup&name=" + encodeURIComponent(name);
     const response = await safeFetch(url, {
       method: "GET",
       cache: "no-store",
