@@ -1324,13 +1324,16 @@ a{
 
 <script>
 
-const API_URL =
-  "https://tegernsee-restaurants-api.msc4021.workers.dev";
-
-// Vorschau-Schutz: Auf Cloudflare-Pages-Vorschauen dürfen keine Änderungen
-// an der produktiven Restaurantdatenbank vorgenommen werden. Lesezugriffe
-// (z. B. Restaurantsuche) bleiben möglich.
+// Vorschauen verwenden den Worker der Test-Branch, die Hauptversion den
+// produktiven Worker. So testen wir die neue Suche wirklich isoliert.
 const IS_PREVIEW = /\.pages\.dev$/i.test(window.location.hostname);
+const API_URL = IS_PREVIEW
+  ? "https://fix-restaurant-search-quality-tegernsee-restaurants-api.msc4021.workers.dev"
+  : "https://tegernsee-restaurants-api.msc4021.workers.dev";
+
+// Vorschau-Schutz: Schreibzugriffe bleiben gesperrt; Lesezugriffe und Suche
+// laufen gegen den Worker der Vorschau.
+
 async function safeFetch(input, init = {}) {
   const targetUrl = typeof input === "string"
     ? input
