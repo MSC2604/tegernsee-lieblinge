@@ -4181,13 +4181,18 @@ async function savePlace(){
         (cardEditorState.status === "loaded" &&
          String(cardEditorState.restaurantId) === String(savedRestaurant.id));
       if(!cardEditorReady){
-        // Niemals leere Formularfelder in die zentrale Karten-Tabelle schreiben,
-        // wenn die vorhandenen Links beim Bearbeiten nicht sicher geladen wurden.
-        cardWarning = "\n\nDie Restaurantdaten wurden gespeichert. Die Speise- und Getränkekarten-Links wurden vorsichtshalber nicht verändert, weil sie vorher nicht zuverlässig geladen werden konnten. Bitte öffne das Formular erneut und prüfe die Kartenlinks.";
+        // Bestehende Kartenlinks nicht überschreiben, wenn sie nicht sicher geladen wurden.
+        cardWarning = "\n\nDie Restaurantdaten wurden gespeichert. Die vorhandenen Kartenlinks wurden vorsichtshalber nicht verändert, weil sie vorher nicht zuverlässig geladen werden konnten.";
+        // Eine neu ausgewählte PDF trotzdem unabhängig davon hochladen.
+        try{
+          await uploadPendingCardFiles(savedRestaurant.id,password);
+          if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
+        }catch(cardError){
+          console.error(cardError);
+          cardWarning += "\nDie ausgewählte PDF konnte nicht gespeichert werden: " + (cardError.message || "");
+        }
       }else{
         try{
-          // Bei Bearbeitung nur speichern, wenn der Kartenbestand erfolgreich geladen wurde.
-          // Bei neuen Restaurants dürfen zunächst leere Kartenlinks gespeichert werden.
           await syncRestaurantCards(savedRestaurant.id,password);
           await uploadPendingCardFiles(savedRestaurant.id,password);
           if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
