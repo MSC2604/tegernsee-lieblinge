@@ -1008,13 +1008,21 @@ console.log("Tavily usage account:", {
             if (!["speisekarte", "getraenkekarte"].includes(kind)) continue;
             const cardUrl = rowValue(row[1]) || "";
             const checkedUrl = rowValue(row[6]) || "";
+            // A LEFT JOIN can return a wrapped NULL for the file columns in some
+            // LibSQL/Turso response formats. Never treat that wrapper as a real file.
+            const rawFilename = rowValue(row[7]);
+            const filename = typeof rawFilename === "string" ? rawFilename.trim() : "";
+            const mimeTypeValue = rowValue(row[8]);
+            const mimeType = typeof mimeTypeValue === "string" ? mimeTypeValue.trim() : "";
             cards[kind] = {
               url: cardUrl,
               checkedAt: checkedUrl === cardUrl ? (rowValue(row[2]) || "") : "",
               changedAt: checkedUrl === cardUrl ? (rowValue(row[3]) || "") : "",
               checkStatus: checkedUrl === cardUrl ? (rowValue(row[4]) || "") : "",
               checkDetail: checkedUrl === cardUrl ? (rowValue(row[5]) || "") : "",
-              fileAvailable: Boolean(rowValue(row[7])), filename: rowValue(row[7]) || "", mimeType: rowValue(row[8]) || ""
+              fileAvailable: filename.length > 0 && mimeType === "application/pdf",
+              filename,
+              mimeType
             };
           }
           return json({ cards });
