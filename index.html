@@ -3399,6 +3399,54 @@ async function lookupRestaurantInApp(){
       selected = candidates[index - 1];
     }
 
+    // Ort und Kategorie haben Standardwerte in den Auswahlfeldern.
+    // Deshalb diese Felder separat prüfen: Nur nach ausdrücklicher Zustimmung
+    // darf die Suche einen bereits gesetzten Standardwert ändern.
+    const ortSelect = document.getElementById("f_ort");
+    const categorySelect = document.getElementById("f_kategorie");
+    const customCategoryInput = document.getElementById("f_kategorie_custom");
+    const proposedOrt = String(selected.ort || "").trim();
+    const proposedCategory = String(selected.kategorie || "").trim();
+    const categoryCurrent = categorySelect
+      ? (categorySelect.value === "__custom__"
+          ? (customCategoryInput ? customCategoryInput.value.trim() : "")
+          : categorySelect.value.trim())
+      : "";
+    const ortDiffers = Boolean(ortSelect && proposedOrt &&
+      proposedOrt.toLocaleLowerCase("de") !== ortSelect.value.trim().toLocaleLowerCase("de"));
+    const categoryDiffers = Boolean(categorySelect && proposedCategory &&
+      proposedCategory.toLocaleLowerCase("de") !== categoryCurrent.toLocaleLowerCase("de"));
+    if (ortDiffers || categoryDiffers) {
+      const changes = [];
+      if (ortDiffers) changes.push("Ort: " + ortSelect.value + " → " + proposedOrt);
+      if (categoryDiffers) changes.push("Kategorie: " + (categoryCurrent || "nicht ausgewählt") + " → " + proposedCategory);
+      if (confirm(
+        "Die Suche hat abweichende Angaben gefunden:\n\n" +
+        changes.join("\n") +
+        "\n\nMöchtest du Ort und/oder Kategorie auf diese Suchwerte ändern?\n" +
+        "Bei Nein bleiben deine bisherigen Auswahlwerte erhalten."
+      )) {
+        if (ortDiffers) {
+          const matchingOrt = Array.from(ortSelect.options).find(
+            option => option.value.toLocaleLowerCase("de") === proposedOrt.toLocaleLowerCase("de")
+          );
+          ortSelect.value = matchingOrt ? matchingOrt.value : "Anderer Ort";
+        }
+        if (categoryDiffers) {
+          const matchingCategory = Array.from(categorySelect.options).find(
+            option => option.value.toLocaleLowerCase("de") === proposedCategory.toLocaleLowerCase("de")
+          );
+          if (matchingCategory) {
+            categorySelect.value = matchingCategory.value;
+            if (customCategoryInput) customCategoryInput.value = "";
+          } else if (Array.from(categorySelect.options).some(option => option.value === "__custom__")) {
+            categorySelect.value = "__custom__";
+            if (customCategoryInput) customCategoryInput.value = proposedCategory;
+          }
+        }
+      }
+    }
+
     // Vor dem Ergänzen ausdrücklich fragen. Vorhandene Werte bleiben geschützt.
     const proposedFields = [
       ["f_adresse", "Adresse", selected.adresse],
