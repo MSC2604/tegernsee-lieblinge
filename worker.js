@@ -328,6 +328,15 @@ console.log("Tavily usage account:", {
         }
       }
 
+      function isTrustedRegionalSource(url) {
+        try {
+          const host = new URL(url).hostname.toLowerCase().replace(/^www\\./i, "");
+          return host === "tegernsee.com" || host.endsWith(".tegernsee.com");
+        } catch {
+          return false;
+        }
+      }
+
       function isDirectory(url) {
         try {
           const host = new URL(url).hostname.toLowerCase();
@@ -419,7 +428,7 @@ console.log("Tavily usage account:", {
           const parsed = new URL(result.url);
           if (
             !["http:", "https:"].includes(parsed.protocol) ||
-            isDirectory(result.url) ||
+            (isDirectory(result.url) && !isTrustedRegionalSource(result.url)) ||
             urls.includes(parsed.href)
           ) {
             continue;
@@ -702,7 +711,9 @@ console.log("Tavily usage account:", {
           adresse: extractAddress(content),
           ort: extractTown(content),
           telefon: extractPhone(content),
-          email: hasRestaurantNameInHost(url) ? extractEmail(extracted) : "",
+          email: (hasRestaurantNameInHost(url) || isTrustedRegionalSource(url))
+            ? extractEmail(extracted)
+            : "",
           kategorie: extractCategory(
             String(result.title || "") + "\n" + content
           ),
@@ -872,7 +883,9 @@ console.log("Tavily usage account:", {
           adresse: extractAddress(page.content),
           ort: extractTown(page.content),
           telefon: extractPhone(page.content),
-          email: hasRestaurantNameInHost(page.url) ? extractEmail(page.content) : "",
+          email: (hasRestaurantNameInHost(page.url) || isTrustedRegionalSource(page.url))
+            ? extractEmail(page.content)
+            : "",
           kategorie: extractCategory(page.title + "\\n" + page.content),
           oeffnungszeiten: hours.opening,
           kuechenzeiten: hours.kitchen,
