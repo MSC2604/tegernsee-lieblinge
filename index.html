@@ -4166,6 +4166,35 @@ async function savePlace(){
       );
     }
 
+    // PDFs sofort hochladen, solange das Bearbeitungsformular noch geöffnet ist.
+    // So werden Dateiauswahl und Status nicht durch Schließen/Neuladen des Formulars verloren.
+    const selectedPdfNamesBeforeUpload = Object.entries(selectedCardFiles)
+      .filter(([, file]) => Boolean(file))
+      .map(([, file]) => file.name);
+    const pdfSelectionIndicators = ["f_speisekarte_pdf_status","f_getraenkekarte_pdf_status"]
+      .map(id => document.getElementById(id)?.textContent || "");
+    const pdfWasMarkedSelected = pdfSelectionIndicators.some(text => /wird beim Speichern hochgeladen/i.test(text));
+    let earlyCardWarning = "";
+    if(pdfWasMarkedSelected && selectedPdfNamesBeforeUpload.length === 0){
+      earlyCardWarning = "\n\nDie PDF wird im Auswahlfeld angezeigt, ist beim Speichern aber nicht mehr verfügbar. Bitte die PDF erneut auswählen und direkt danach speichern.";
+    } else if(selectedPdfNamesBeforeUpload.length > 0) {
+      try {
+        // Bei Bearbeiten nur die PDF-Datei hochladen; Kartenlinks werden separat synchronisiert.
+        // Die Restaurant-ID ist editId bzw. die vom Server neu zurückgegebene ID.
+        let uploadRestaurantId = isEditing ? savedEditId : (result && (result.id || result.restaurantId));
+        if(!uploadRestaurantId && result && result.restaurant) uploadRestaurantId = result.restaurant.id;
+        if(uploadRestaurantId){
+          await uploadPendingCardFiles(uploadRestaurantId, password, selectedCardFiles);
+        } else {
+          // Bei neuen Einträgen wird die ID nach dem Neuladen ermittelt.
+          earlyCardWarning = "\n\nDie Restaurantdaten wurden gespeichert. Die PDF wird nach dem Ermitteln der Restaurant-ID hochgeladen.";
+        }
+      } catch(cardError) {
+        console.error(cardError);
+        earlyCardWarning = "\n\nDie Restaurantdaten wurden gespeichert, aber der PDF-Upload ist fehlgeschlagen: " + (cardError.message || "Unbekannter Fehler");
+      }
+    }
+
     closeModal();
 
     await loadData();
@@ -4181,17 +4210,7 @@ async function savePlace(){
             String(restaurant.name || "").trim().toLowerCase()
         );
 
-    let cardWarning = "";
-    const selectedPdfNames = Object.entries(selectedCardFiles)
-      .filter(([, file]) => Boolean(file))
-      .map(([, file]) => file.name);
-    if(!selectedPdfNames.length){
-      const pdfStatuses = ["f_speisekarte_pdf_status","f_getraenkekarte_pdf_status"]
-        .map(id => document.getElementById(id)?.textContent || "");
-      if(pdfStatuses.some(text => /wird beim Speichern hochgeladen/i.test(text))){
-        cardWarning = "\n\nDie PDF-Auswahl wurde vor dem Upload verloren. Bitte die PDF erneut auswählen.";
-      }
-    }
+    let cardWarning = earlyCardWarning;
     if(savedRestaurant){
       if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
       const cardEditorReady = !isEditing ||
