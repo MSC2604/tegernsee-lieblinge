@@ -280,8 +280,10 @@ main{
 }
 .tile-card-links:empty{display:none}
 .tile-card-links a{
-  flex:1 1 40%;
+  flex:1 1 100%;
   display:block;
+  position:relative;
+  z-index:2;
   box-sizing:border-box;
   text-align:center;
   text-decoration:none;
@@ -293,6 +295,7 @@ main{
   font-size:13px;
   font-weight:800;
   box-shadow:0 2px 6px rgba(23,53,45,.05);
+  pointer-events:auto;
 }
 
 .detail{
