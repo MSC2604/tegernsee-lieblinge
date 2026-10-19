@@ -1327,6 +1327,31 @@ a{
 const API_URL =
   "https://tegernsee-restaurants-api.msc4021.workers.dev";
 
+// Vorschau-Schutz: Auf Cloudflare-Pages-Vorschauen dürfen keine Änderungen
+// an der produktiven Restaurantdatenbank vorgenommen werden. Lesezugriffe
+// (z. B. Restaurantsuche) bleiben möglich.
+const IS_PREVIEW = /\\.pages\\.dev$/i.test(window.location.hostname);
+async function safeFetch(input, init = {}) {
+  const targetUrl = typeof input === "string"
+    ? input
+    : (input && input.url) || String(input || "");
+  const method = String(
+    (init && init.method) || (input && input.method) || "GET"
+  ).toUpperCase();
+
+  if (
+    IS_PREVIEW &&
+    targetUrl.startsWith(API_URL) &&
+    method === "POST"
+  ) {
+    throw new Error(
+      "Schreibzugriffe sind in der Vorschau gesperrt. Die zentrale Restaurantdatenbank bleibt unverändert."
+    );
+  }
+
+  return window.fetch(input, init);
+}
+
 
 /* --------------------------------------------------
    TAVILY-KONTINGENT LADEN
@@ -1343,7 +1368,7 @@ async function loadTavilyUsage(){
   if(!usedEl || !remainingEl || !limitEl || !percentEl || !progressEl || !noteEl) return;
 
   try{
-    const response = await fetch(API_URL + "?action=usage&_=" + Date.now(), {
+    const response = await safeFetch(API_URL + "?action=usage&_=" + Date.now(), {
       method:"GET",
       cache:"no-store",
       headers:{"Accept":"application/json"}
@@ -1681,7 +1706,7 @@ async function loadData(){
       "Zentrale Daten werden geladen …";
 
     const response =
-      await fetch(
+      await safeFetch(
         API_URL +
         "?t=" +
         Date.now(),
@@ -2579,7 +2604,7 @@ async function loadOneTileCardLink(place){
 
   const request = (async()=>{
     try{
-      const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(id) + "&t=" + Date.now(), {cache:"no-store"});
+      const response = await safeFetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(id) + "&t=" + Date.now(), {cache:"no-store"});
       const data = await response.json();
       if(!response.ok) throw new Error(data.error || "Kartenlinks konnten nicht geladen werden.");
       const cards = data.cards || {};
@@ -3350,7 +3375,7 @@ async function lookupRestaurantInApp(){
 
   try {
     const url = API_URL + "?action=lookup&name=" + encodeURIComponent(name);
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       method: "GET",
       cache: "no-store",
       headers: { "Accept": "application/json" }
@@ -4011,7 +4036,7 @@ async function loadRestaurantCards(restaurantId, officialWebsite){
   if(menuStatus) menuStatus.textContent = "Offizielle Karte wird geladen …";
   if(drinkStatus) drinkStatus.textContent = "Offizielle Karte wird geladen …";
   try{
-    const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(restaurantId) + "&t=" + Date.now(), {cache:"no-store"});
+    const response = await safeFetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(restaurantId) + "&t=" + Date.now(), {cache:"no-store"});
     const data = await response.json();
     if(!response.ok) throw new Error(data.error || "Kartenlinks konnten nicht geladen werden.");
     const cards = data.cards || {};
@@ -4052,7 +4077,7 @@ async function loadRestaurantCards(restaurantId, officialWebsite){
 async function loadCardEditor(restaurantId){
   const statusIds = {speisekarte:"f_speisekarte_status",getraenkekarte:"f_getraenkekarte_status"};
   try{
-    const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(restaurantId) + "&t=" + Date.now(), {cache:"no-store"});
+    const response = await safeFetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(restaurantId) + "&t=" + Date.now(), {cache:"no-store"});
     const data = await response.json();
     if(!response.ok) throw new Error(data.error || "Kartenlinks konnten nicht geladen werden.");
     for(const kind of ["speisekarte","getraenkekarte"]){
@@ -4076,7 +4101,7 @@ async function saveOneRestaurantCard(restaurantId, kind, password){
   const cardUrl = (urlInput ? urlInput.value : "").trim();
   if(cardUrl && !/^https?:\/\//i.test(cardUrl)) throw new Error("Bitte einen vollständigen http(s)-Link zur offiziellen Karte eintragen.");
   const headers = {"Content-Type":"application/json","Authorization":"Bearer " + password};
-  const response = await fetch(API_URL,{
+  const response = await safeFetch(API_URL,{
     method:"POST",headers,
     body:JSON.stringify({action:"saveCard",restaurantId:String(restaurantId),kind,url:cardUrl})
   });
@@ -4142,7 +4167,7 @@ async function savePlace(){
           restaurant
         };
 
-    const response = await fetch(API_URL, {
+    const response = await safeFetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -4291,7 +4316,7 @@ async function deletePlace(){
   try{
 
     const response =
-      await fetch(
+      await safeFetch(
         API_URL,
         {
 
@@ -4403,7 +4428,7 @@ document.getElementById(
           try{
 
             const response =
-              await fetch(
+              await safeFetch(
                 API_URL,
                 {
 
@@ -4577,7 +4602,7 @@ function loadLeaflet(){if(window.L)return Promise.resolve();if(window.__leafletL
 function readMapCache(){try{return JSON.parse(localStorage.getItem(GEOCODE_CACHE_KEY)||'{}')}catch(e){return {}}}
 function writeMapCache(cache){try{localStorage.setItem(GEOCODE_CACHE_KEY,JSON.stringify(cache))}catch(e){}}
 function waitMap(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
-async function geocodeRestaurant(place,cache){const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const key=String(place.id||place.name)+'|'+query;if(Object.prototype.hasOwnProperty.call(cache,key))return cache[key];if(!query||!place.ort)return null;try{const response=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(query),{headers:{Accept:'application/json'}});if(!response.ok)return null;const data=await response.json();if(!data.length){cache[key]=null;writeMapCache(cache);return null;}const point={lat:Number(data[0].lat),lon:Number(data[0].lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return null;cache[key]=point;writeMapCache(cache);return point;}catch(e){console.warn('Standort nicht gefunden:',place.name,e);return null;}}
+async function geocodeRestaurant(place,cache){const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const key=String(place.id||place.name)+'|'+query;if(Object.prototype.hasOwnProperty.call(cache,key))return cache[key];if(!query||!place.ort)return null;try{const response=await safeFetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(query),{headers:{Accept:'application/json'}});if(!response.ok)return null;const data=await response.json();if(!data.length){cache[key]=null;writeMapCache(cache);return null;}const point={lat:Number(data[0].lat),lon:Number(data[0].lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return null;cache[key]=point;writeMapCache(cache);return point;}catch(e){console.warn('Standort nicht gefunden:',place.name,e);return null;}}
 async function openRestaurantMap(){closeAppMenu();document.getElementById('home').style.display='none';document.getElementById('homeHeader').style.display='none';document.getElementById('detail').style.display='none';document.getElementById('incompleteView').style.display='none';document.getElementById('mapView').style.display='block';window.scrollTo({top:0,behavior:'auto'});try{await loadLeaflet();if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.featureGroup().addTo(restaurantMap);}setTimeout(()=>restaurantMap.invalidateSize(),120);if(mapOpening)return;mapOpening=true;const status=document.getElementById('mapStatus');const cache=readMapCache();mapMarkers.clearLayers();const places=restaurants.slice();let found=0,failed=0,requests=0;const points=[];status.textContent='Standorte werden ermittelt. Beim ersten Öffnen kann das etwas dauern …';for(let i=0;i<places.length;i++){const place=places[i];const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const cacheKey=String(place.id||place.name)+'|'+query;if(!Object.prototype.hasOwnProperty.call(cache,cacheKey)&&query&&place.ort){if(requests>0)await waitMap(1100);requests++;}const point=await geocodeRestaurant(place,cache);if(!point){failed++;continue;}found++;points.push(point);const marker=L.marker([point.lat,point.lon]).addTo(mapMarkers);const popup='<div class="map-popup-title">'+escapeHtml(place.name||'Restaurant')+'</div><div>'+escapeHtml(place.ort||'')+'</div><a class="map-popup-link" href="#" onclick="openDetail(decodeURIComponent(this.dataset.id));return false" data-id="' + encodeURIComponent(String(place.id)) + '">Restaurant öffnen →</a><br><a class="map-popup-link" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent([place.adresse,place.ort].filter(Boolean).join(', '))+'">Navigation starten ↗</a>';marker.bindPopup(popup);marker.bindTooltip(escapeHtml(place.name||'Restaurant'),{permanent:true,direction:'right',offset:[8,0],className:'restaurant-map-label'});status.textContent='Karte wird aufgebaut: '+found+' von '+places.length+' Restaurants gefunden …';}if(points.length===1)restaurantMap.setView([points[0].lat,points[0].lon],14);else if(points.length>1)restaurantMap.fitBounds(mapMarkers.getBounds().pad(0.12),{maxZoom:13});status.textContent=found+' von '+places.length+' Restaurant-Einträgen auf der Karte.'+(failed?' Für '+failed+' Einträge konnte noch kein genauer Standort gefunden werden.':'')+' Standorte werden auf diesem Gerät zwischengespeichert.';}catch(error){console.error(error);document.getElementById('mapStatus').textContent='Die Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.';}finally{mapOpening=false;}}
 
 /* --------------------------------------------------
