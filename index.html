@@ -1745,6 +1745,17 @@ async function loadData(){
 
     console.error(error);
 
+    // Bei einem Aktualisierungsfehler bereits geladene Daten behalten.
+    // Die zentrale Datenbank wird dabei weder verändert noch beschrieben.
+    if(Array.isArray(restaurants) && restaurants.length > 0){
+      status.textContent =
+        "⚠️ Aktualisierung fehlgeschlagen · zuletzt geladene " +
+        restaurants.length +
+        " Restaurants werden weiterhin angezeigt.";
+      render();
+      return;
+    }
+
     status.textContent =
       "⚠️ Die zentralen Restaurantdaten konnten nicht geladen werden.";
 
@@ -1763,7 +1774,7 @@ async function loadData(){
 
         Bitte auf
         „↻ Daten aktualisieren“
-        tippen.
+        tippen. Bereits geladene Restaurantdaten bleiben erhalten.
 
       </div>
 
