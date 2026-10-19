@@ -2556,15 +2556,22 @@ async function loadOneTileCardLink(place){
     if(!current) return;
     const menuUrl = cards && cards.speisekarte && cards.speisekarte.url;
     const drinkUrl = cards && cards.getraenkekarte && cards.getraenkekarte.url;
-    const safe = url => {
+    const safePdf = url => {
       const value = String(url || "").trim();
-      return /^https?:\/\//i.test(value) ? value : "";
+      if (!/^https?:\/\//i.test(value)) return "";
+      try {
+        // Auf der Kachel nur direkte PDF-Dateien anzeigen, keine allgemeinen Webseiten.
+        const parsed = new URL(value);
+        return parsed.pathname.toLowerCase().endsWith(".pdf") ? value : "";
+      } catch (_) {
+        return "";
+      }
     };
-    const menu = safe(menuUrl);
-    const drink = safe(drinkUrl);
+    const menu = safePdf(menuUrl);
+    const drink = safePdf(drinkUrl);
     current.innerHTML =
-      (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarte</a>' : '') +
-      (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarte</a>' : '');
+      (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarte PDF</a>' : '') +
+      (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarte PDF</a>' : '');
   };
 
   if(tileCardCache.has(id)){
