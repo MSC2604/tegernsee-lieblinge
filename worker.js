@@ -52,11 +52,16 @@ export default {
         })
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try { data = JSON.parse(responseText); }
+      catch { data = null; }
 
       if (!response.ok) {
-        throw new Error(`Turso HTTP-Fehler (${response.status})`);
+        const detail = String(data?.error || data?.message || responseText || "").slice(0, 240);
+        throw new Error(`Turso HTTP-Fehler (${response.status})${detail ? ": " + detail : ""}`);
       }
+      if (!data) throw new Error("Turso hat keine gültige JSON-Antwort geliefert.");
 
       const first = data?.results?.[0];
 
@@ -1090,7 +1095,7 @@ console.log("Tavily usage account:", {
           if(binary.length>5*1024*1024) return json({error:"Die PDF-Datei darf höchstens 5 MB groß sein."},413);
           if(binary.length<5||binary.slice(0,5)!=="%PDF-") return json({error:"Die Datei scheint keine gültige PDF-Datei zu sein."},400);
           try {
-            await turso(`INSERT INTO restaurant_card_files (restaurant_id,kind,filename,mime_type,file_data,updated_at) VALUES (?, ?, ?, 'application/pdf', ?, ?) ON CONFLICT(restaurant_id,kind) DO UPDATE SET filename=excluded.filename,mime_type=excluded.mime_type,file_data=excluded.file_data,updated_at=excluded.updated_at`,[textArg(restaurantId),textArg(kind),textArg(filename),{type:"blob",value:base64},textArg(new Date().toISOString())]);
+            await turso(`INSERT INTO restaurant_card_files (restaurant_id,kind,filename,mime_type,file_data,updated_at) VALUES (?, ?, ?, 'application/pdf', ?, ?) ON CONFLICT(restaurant_id,kind) DO UPDATE SET filename=excluded.filename,mime_type=excluded.mime_type,file_data=excluded.file_data,updated_at=excluded.updated_at`,[textArg(restaurantId),textArg(kind),textArg(filename),{type:"blob",base64:base64},textArg(new Date().toISOString())]);
             const verify = await turso("SELECT filename, length(file_data) FROM restaurant_card_files WHERE restaurant_id = ? AND kind = ?",[textArg(restaurantId),textArg(kind)],true);
             const row = verify?.results?.[0]?.response?.result?.rows?.[0];
             const savedName = row ? String(rowValue(row[0]) || "") : "";
