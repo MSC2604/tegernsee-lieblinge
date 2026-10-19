@@ -1198,7 +1198,7 @@ a{
 
       <div id="cardEditSection" style="display:block">
         <h3>🍽️ Offizielle Speise- und Getränkekarten</h3>
-        <p class="localimagehint">Bitte nur Links zur offiziellen Restaurantwebsite oder zu einer Menüplattform eintragen, auf die die offizielle Website ausdrücklich verweist. Keine Uploads oder fremden Dateien. Änderungen auf der verlinkten Originalseite werden dort direkt sichtbar.</p>
+        <p class="localimagehint">Offizielle Kartenlinks oder PDF-Dateien zentral für alle Geräte. Maximal 5 MB je PDF. Hochladen erfolgt beim Speichern des Restaurants.</p>
         <div class="card-edit-box">
           <label for="f_speisekarte_url">Offizieller Link zur Speisekarte</label>
           <input id="f_speisekarte_url" type="url" placeholder="https://..." autocomplete="off">
@@ -1209,6 +1209,8 @@ a{
           <input id="f_getraenkekarte_url" type="url" placeholder="https://..." autocomplete="off">
           <small id="f_getraenkekarte_status">Noch kein offizieller Kartenlink hinterlegt.</small>
         </div>
+        <div class="card-edit-box"><label for="f_speisekarte_pdf">Speisekarte als PDF (max. 5 MB)</label><input id="f_speisekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_speisekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
+        <div class="card-edit-box"><label for="f_getraenkekarte_pdf">Getränkekarte als PDF (max. 5 MB)</label><input id="f_getraenkekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_getraenkekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
       </div>
 
       <!-- Bild nur beim Bearbeiten -->
@@ -2573,6 +2575,9 @@ async function loadOneTileCardLink(place){
     if(!current) return;
     const menuUrl = cards && cards.speisekarte && cards.speisekarte.url;
     const drinkUrl = cards && cards.getraenkekarte && cards.getraenkekarte.url;
+    const menuPdf = Boolean(cards && cards.speisekarte && cards.speisekarte.fileAvailable);
+    const drinkPdf = Boolean(cards && cards.getraenkekarte && cards.getraenkekarte.fileAvailable);
+    const pdfUrl = kind => API_URL + "?action=cardFile&restaurantId=" + encodeURIComponent(id) + "&kind=" + encodeURIComponent(kind);
     const safe = url => {
       const value = String(url || "").trim();
       return /^https?:\/\//i.test(value) ? value : "";
@@ -2580,8 +2585,8 @@ async function loadOneTileCardLink(place){
     const menu = safe(menuUrl);
     const drink = safe(drinkUrl);
     current.innerHTML =
-      (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarte</a>' : '') +
-      (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarte</a>' : '');
+      (menuPdf ? '<a href="' + escapeAttr(pdfUrl("speisekarte")) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarte (PDF)</a>' : (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarte</a>' : '')) +
+      (drinkPdf ? '<a href="' + escapeAttr(pdfUrl("getraenkekarte")) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarte (PDF)</a>' : (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarte</a>' : ''));
   };
 
   if(tileCardCache.has(id)){
@@ -3809,6 +3814,8 @@ function editPlace(){
 function clearForm(){
 
   cardEditorState = {restaurantId:null,status:"idle"};
+  ["f_speisekarte_pdf","f_getraenkekarte_pdf"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  ["f_speisekarte_pdf_status","f_getraenkekarte_pdf_status"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent="Keine neue PDF ausgewählt.";});
   ["f_speisekarte_url","f_getraenkekarte_url"].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.value = "";
@@ -3994,7 +4001,11 @@ async function loadCardEditor(restaurantId){
       const urlInput = document.getElementById("f_" + kind + "_url");
       const status = document.getElementById(statusIds[kind]);
       if(urlInput) urlInput.value = card.url || "";
-      if(status) status.textContent = card.url ? "Offizieller Link ist hinterlegt." : "Noch kein offizieller Kartenlink hinterlegt.";
+      if(status) status.textContent = card.fileAvailable ? "PDF zentral gespeichert: " + (card.filename || "Datei vorhanden") : (card.url ? "Offizieller Link ist hinterlegt." : "Noch kein offizieller Kartenlink hinterlegt.");
+      const pdfInput = document.getElementById("f_" + kind + "_pdf");
+      const pdfStatus = document.getElementById("f_" + kind + "_pdf_status");
+      if(pdfInput) pdfInput.value = "";
+      if(pdfStatus) pdfStatus.textContent = card.fileAvailable ? "Vorhandene PDF bleibt erhalten, wenn keine neue Datei ausgewählt wird." : "Keine neue PDF ausgewählt.";
     }
     cardEditorState = {restaurantId:String(restaurantId),status:"loaded"};
   }catch(error){
@@ -4005,6 +4016,30 @@ async function loadCardEditor(restaurantId){
       if(el) el.textContent = "Kartenlinks konnten nicht geladen werden.";
     }
   }
+}
+
+const MAX_CARD_PDF_BYTES = 5 * 1024 * 1024;
+function setupCardPdfInput(kind){
+ const input=document.getElementById("f_"+kind+"_pdf"), status=document.getElementById("f_"+kind+"_pdf_status");
+ if(!input||!status)return;
+ input.addEventListener("change",()=>{
+  const file=input.files&&input.files[0]; if(!file){status.textContent="Keine neue PDF ausgewählt.";return;}
+  if(!(file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf"))){input.value="";alert("Bitte wähle eine PDF-Datei aus.");return;}
+  if(file.size>MAX_CARD_PDF_BYTES){input.value="";status.textContent="Datei zu groß – maximal 5 MB.";alert("Die PDF-Datei ist größer als 5 MB.");return;}
+  status.textContent=file.name+" ("+(file.size/1048576).toFixed(2)+" MB) – wird beim Speichern hochgeladen.";
+ });
+}
+setupCardPdfInput("speisekarte"); setupCardPdfInput("getraenkekarte");
+function fileToBase64(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error("PDF konnte nicht gelesen werden."));reader.onload=()=>{const bytes=new Uint8Array(reader.result);let binary="";for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+0x8000,bytes.length)));resolve(btoa(binary));};reader.readAsArrayBuffer(file);});}
+async function uploadPendingCardFiles(restaurantId,password){
+ for(const kind of ["speisekarte","getraenkekarte"]){
+  const input=document.getElementById("f_"+kind+"_pdf"),status=document.getElementById("f_"+kind+"_pdf_status"),file=input&&input.files&&input.files[0];
+  if(!file)continue;if(file.size>MAX_CARD_PDF_BYTES)throw new Error(file.name+" ist größer als 5 MB.");
+  const base64=await fileToBase64(file);
+  const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"uploadCardFile",restaurantId:String(restaurantId),kind,filename:file.name,base64})});
+  const data=await response.json();if(!response.ok||data.error)throw new Error(data.error||"PDF-Upload fehlgeschlagen.");
+  input.value="";if(status)status.textContent="PDF zentral gespeichert: "+file.name;
+ }
 }
 
 async function saveOneRestaurantCard(restaurantId, kind, password){
@@ -4150,6 +4185,8 @@ async function savePlace(){
           // Bei Bearbeitung nur speichern, wenn der Kartenbestand erfolgreich geladen wurde.
           // Bei neuen Restaurants dürfen zunächst leere Kartenlinks gespeichert werden.
           await syncRestaurantCards(savedRestaurant.id,password);
+          await uploadPendingCardFiles(savedRestaurant.id,password);
+          if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
         }catch(cardError){
           console.error(cardError);
           cardWarning = "\n\nDie Restaurantdaten wurden gespeichert, aber die Speise-/Getränkekarten konnten nicht vollständig gespeichert werden: " + (cardError.message || "");
