@@ -1,0 +1,4603 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2d6a56">
+<title>Meine Lieblings-Restaurants am Tegernsee</title>
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+<style>
+:root{
+  --bg:#f4f2ec;
+  --card:#fff;
+  --ink:#17352d;
+  --muted:#6f7d77;
+  --accent:#2d6a56;
+  --accent2:#1f5747;
+  --line:#e4e2da;
+  --gold:#c69a3b;
+  --danger:#b94b45;
+  --shadow:0 8px 24px rgba(23,53,45,.08);
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+
+button,input,textarea,select{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+}
+
+header{
+  background:
+    linear-gradient(145deg,rgba(20,78,63,.96),rgba(31,106,86,.92)),
+    linear-gradient(180deg,#2d6a56,#174b3d);
+  color:white;
+  padding:32px 18px 24px;
+  border-radius:0 0 30px 30px;
+  box-shadow:0 10px 28px rgba(23,53,45,.18);
+  position:relative;
+  overflow:hidden;
+}
+
+.eyebrow{
+  font-size:13px;
+  opacity:.82;
+  margin-bottom:5px;
+}
+
+.title{
+  font-size:29px;
+  font-weight:800;
+  line-height:1.12;
+  letter-spacing:-.4px;
+  text-shadow:0 2px 8px rgba(0,0,0,.12);
+}
+
+.sub{
+  margin-top:6px;
+  font-size:14px;
+  opacity:.88;
+}
+
+.search{
+  margin-top:20px;
+  background:rgba(255,255,255,.97);
+  color:#60716b;
+  border-radius:18px;
+  padding:13px 15px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  box-shadow:0 6px 18px rgba(0,0,0,.12);
+  border:1px solid rgba(255,255,255,.7);
+}
+
+.search input{
+  border:0;
+  outline:0;
+  width:100%;
+  background:transparent;
+  color:var(--ink);
+}
+
+main{
+  max-width:760px;
+  margin:0 auto;
+  padding:18px 14px 100px;
+}
+
+.sectionhead{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:2px 2px 12px;
+}
+
+.sectionhead h2{
+  font-size:18px;
+  margin:0;
+}
+
+.count{
+  color:var(--muted);
+  font-size:14px;
+  font-weight:700;
+}
+
+.home-actions{display:grid;gap:9px;margin:4px 0 12px}
+.primary-actions,.secondary-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.secondary-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+.addbtn,.sync button,.secondary-action{
+  width:100%;min-width:0;min-height:44px;
+  border:1px solid var(--accent);background:var(--accent);color:#fff;
+  padding:11px 8px;border-radius:13px;font-weight:750;font-size:13px;
+  box-shadow:var(--shadow);line-height:1.25;
+}
+.sync{display:contents}
+.sync button{border-color:var(--accent);background:var(--accent);color:#fff}
+.secondary-action{border:1px solid var(--accent);background:#fff;color:var(--accent);margin:0!important}
+@media(max-width:420px){.primary-actions,.secondary-actions{gap:6px}.addbtn,.sync button,.secondary-action{font-size:12px;padding:10px 5px}}
+
+.small{
+  text-align:center;
+  color:var(--muted);
+  font-size:12px;
+  margin:8px 0 12px;
+}
+
+.filters{
+  display:flex;
+  gap:7px;
+  overflow-x:auto;
+  padding:2px 1px 10px;
+  scrollbar-width:none;
+}
+
+.filters::-webkit-scrollbar{
+  display:none;
+}
+
+.chip{
+  white-space:nowrap;
+  border:1px solid var(--line);
+  background:white;
+  color:var(--ink);
+  border-radius:999px;
+  padding:8px 13px;
+  font-size:13px;
+}
+
+.chip.active{
+  background:var(--accent);
+  color:white;
+  border-color:var(--accent);
+}
+
+.grid{
+  display:grid;
+  gap:12px;
+}
+
+.card{
+  background:#ffffff;
+  border-radius:24px;
+  padding:0;
+  overflow:hidden;
+  box-shadow:0 8px 24px rgba(23,53,45,.10);
+  border:1px solid rgba(45,106,86,.10);
+}
+
+.cardtop{
+  display:block;
+  padding:0;
+  position:relative;
+}
+
+.icon{
+  width:100%;
+  height:220px;
+  flex:none;
+  border-radius:20px;
+  background:linear-gradient(145deg,#e5eee9,#cbded6);
+  display:grid;
+  place-items:center;
+  font-size:42px;
+  overflow:hidden;
+  box-shadow:0 4px 12px rgba(23,53,45,.12);
+}
+
+.icon img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.cardmain{
+  min-width:0;
+  padding:16px 18px 4px;
+}
+
+.cardname{
+  font-size:21px;
+  font-weight:800;
+  line-height:1.2;
+  letter-spacing:-.2px;
+  color:var(--ink);
+}
+
+.place{
+  color:var(--muted);
+  font-size:13px;
+  margin-top:5px;
+}
+
+.fav{
+  border:0;
+  background:rgba(255,255,255,.92);
+  border-radius:50%;
+  font-size:21px;
+  padding:0;
+  width:40px;
+  height:40px;
+  flex:none;
+  position:absolute;
+  top:14px;
+  right:14px;
+  z-index:2;
+  box-shadow:0 3px 10px rgba(0,0,0,.15);
+}
+
+.status{
+  display:inline-block;
+  margin-top:9px;
+  font-size:12px;
+  font-weight:750;
+}
+
+.status.open{color:#278253}
+.status.closed{color:#b94b45}
+.status.unknown{color:#7c837f}
+
+.cardbottom{
+  display:flex;
+  gap:8px;
+  padding:12px 18px 16px;
+  border-top:1px solid #edf0ed;
+  background:#fafcfb;
+  flex-wrap:wrap;
+}
+
+.cardbottom button{
+  flex:1 1 30%;
+  border:1px solid #e1e8e4;
+  background:white;
+  color:var(--ink);
+  padding:10px 6px;
+  border-radius:13px;
+  font-size:12px;
+  font-weight:700;
+  box-shadow:0 2px 6px rgba(23,53,45,.05);
+}
+
+.tile-card-links{
+  display:flex;
+  gap:8px;
+  padding:0 18px 12px;
+  flex-wrap:wrap;
+}
+.tile-card-links:empty{display:none}
+.tile-card-links a{
+  flex:1 1 40%;
+  display:block;
+  box-sizing:border-box;
+  text-align:center;
+  text-decoration:none;
+  border:1px solid #cbded5;
+  background:#f0f7f3;
+  color:var(--accent);
+  padding:11px 8px;
+  border-radius:13px;
+  font-size:13px;
+  font-weight:800;
+  box-shadow:0 2px 6px rgba(23,53,45,.05);
+}
+
+.detail{
+  display:none;
+}
+
+.back{
+  border:0;
+  background:transparent;
+  color:var(--accent);
+  font-weight:700;
+  padding:2px 0 14px;
+}
+
+.hero{
+  height:230px;
+  border-radius:22px;
+  background:linear-gradient(145deg,#dceae4,#aac8bb);
+  display:grid;
+  place-items:center;
+  font-size:55px;
+  margin-bottom:15px;
+  overflow:hidden;
+}
+
+.hero img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.detail h1{
+  margin:0;
+  font-size:27px;
+}
+
+.detail .place{
+  font-size:15px;
+  margin:5px 0 14px;
+}
+
+.actions{
+  display:flex;
+  gap:9px;
+  flex-wrap:wrap;
+}
+
+.action{
+  flex:1 1 30%;
+  background:white;
+  border-radius:14px;
+  padding:12px;
+  text-align:center;
+  font-weight:700;
+  box-shadow:var(--shadow);
+  cursor:pointer;
+}
+
+.detailtools{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+  flex-wrap:wrap;
+}
+
+.detailtools button{
+  flex:1;
+  border:1px solid var(--line);
+  background:white;
+  border-radius:12px;
+  padding:10px;
+}
+
+.detailtools .danger{
+  color:var(--danger);
+}
+
+.info{
+  background:white;
+  border-radius:18px;
+  margin-top:12px;
+  padding:4px 15px;
+  box-shadow:var(--shadow);
+}
+
+.info>div{
+  padding:13px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.info>div:last-child{
+  border-bottom:0;
+}
+
+.label{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  margin-bottom:3px;
+}
+
+.note{
+  margin-top:12px;
+  background:white;
+  padding:15px;
+  border-radius:18px;
+  box-shadow:var(--shadow);
+}
+
+.note b{
+  display:block;
+  margin-bottom:8px;
+}
+
+.note textarea{
+  width:100%;
+  min-height:90px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+  resize:vertical;
+  outline:none;
+}
+
+.bottomnav{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:10px;
+  width:min(92%,500px);
+  background:rgba(255,255,255,.96);
+  backdrop-filter:blur(12px);
+  border:1px solid var(--line);
+  border-radius:20px;
+  display:flex;
+  justify-content:space-around;
+  padding:7px;
+  box-shadow:0 10px 30px rgba(0,0,0,.12);
+  z-index:20;
+}
+
+.bottomnav button{
+  flex:1;
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  padding:7px;
+  font-size:12px;
+}
+
+.bottomnav button.active{
+  color:var(--accent);
+  font-weight:800;
+}
+
+.modal{
+
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  z-index:50;
+  padding:15px;
+  overflow:auto;
+}
+
+.modalbox{
+  max-width:600px;
+  margin:25px auto;
+  background:white;
+  border-radius:22px;
+  padding:18px;
+}
+
+.modalbox h2{
+  margin-top:0;
+}
+
+.formgrid{
+  display:grid;
+  gap:10px;
+}
+
+.formgrid label{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+}
+
+.formgrid input,
+.formgrid textarea,
+.formgrid select{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:11px;
+  outline:none;
+  background:white;
+}
+
+.formgrid textarea{
+  min-height:75px;
+}
+
+.imagepreview{
+  width:100%;
+  height:160px;
+  border-radius:16px;
+  background:#eef2ef;
+  display:none;
+  place-items:center;
+  overflow:hidden;
+  margin-top:4px;
+}
+
+.imagepreview img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.localimagehint{
+  color:var(--accent);
+  background:#edf6f2;
+  border-radius:12px;
+  padding:10px;
+  font-size:12px;
+  line-height:1.45;
+}
+
+.gallerybutton{
+  width:100%;
+  border:1px solid #d5e7df;
+  background:#edf6f2;
+  color:var(--accent);
+  border-radius:13px;
+  padding:12px;
+  font-weight:750;
+}
+
+.removeimage{
+  border:1px solid var(--line);
+  background:#f7f5f0;
+  color:var(--danger);
+  border-radius:11px;
+  padding:9px;
+  font-size:12px;
+  display:none;
+}
+
+.modalbuttons{
+  display:flex;
+  gap:8px;
+  margin-top:15px;
+}
+
+.modalbuttons button{
+  flex:1;
+  border:0;
+  border-radius:13px;
+  padding:12px;
+  font-weight:700;
+}
+
+.save{
+  background:var(--accent);
+  color:white;
+}
+
+.cancel{
+  background:#eef0ed;
+  color:var(--ink);
+}
+
+.empty{
+  text-align:center;
+  color:var(--muted);
+  padding:35px 15px;
+  background:white;
+  border-radius:18px;
+}
+
+a{
+  color:var(--accent);
+  word-break:break-word;
+}
+
+/* Passwortfenster */
+
+.passwordmodal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  z-index:100;
+  padding:20px;
+  align-items:center;
+  justify-content:center;
+}
+
+.passwordbox{
+  width:min(100%,420px);
+  background:white;
+  border-radius:22px;
+  padding:20px;
+  box-shadow:0 15px 45px rgba(0,0,0,.22);
+}
+
+.passwordbox h2{
+  margin:0 0 7px;
+  font-size:21px;
+}
+
+.passwordbox p{
+  margin:0 0 15px;
+  color:var(--muted);
+  font-size:13px;
+}
+
+.passwordbox input{
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:13px;
+  padding:13px;
+  outline:none;
+}
+
+.passwordbuttons{
+  display:flex;
+  gap:8px;
+  margin-top:13px;
+}
+
+.passwordbuttons button{
+  flex:1;
+  border:0;
+  border-radius:13px;
+  padding:12px;
+  font-weight:700;
+}
+
+.passwordok{
+  background:var(--accent);
+  color:white;
+}
+
+.passwordcancel{
+  background:#eef0ed;
+  color:var(--ink);
+}
+
+.local-file-input{
+  display:none;
+}
+
+@media(min-width:700px){
+  .grid{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+
+/* Tavily-Credit-Anzeige */
+.tavily-usage{
+  margin:12px 0 16px;
+  padding:13px 14px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:#fff;
+  color:var(--ink);
+  box-shadow:0 4px 14px rgba(23,53,45,.05);
+}
+.tavily-usage-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:9px;
+  font-size:13px;
+  font-weight:800;
+}
+.tavily-usage-values{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px 14px;
+  margin-bottom:10px;
+  color:var(--muted);
+  font-size:12px;
+}
+.tavily-usage-values strong{color:var(--ink)}
+.tavily-usage progress{
+  display:block;
+  width:100%;
+  height:9px;
+  accent-color:var(--accent);
+}
+.tavily-usage-note{
+  margin-top:7px;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.4;
+}
+
+
+.brandrow{display:flex;align-items:center;gap:16px;max-width:1120px;margin:0 auto}
+.app-logo{width:72px;height:72px;object-fit:contain;background:#fff;border-radius:18px;padding:4px;flex:none}
+.brandcopy{min-width:0;flex:1}
+.brandcopy .title{font-size:clamp(22px,3vw,34px);line-height:1.12}
+.brandcopy .sub{font-size:clamp(13px,1.5vw,17px)}
+.menu-mark{border:0;background:transparent;color:#fff;font-size:32px;padding:4px 8px;flex:none}
+.app-menu-overlay{display:none;position:fixed;inset:0;background:rgba(12,32,26,.48);z-index:80}
+.app-menu{position:absolute;top:0;left:0;width:min(86vw,340px);height:100%;overflow:auto;background:#fff;padding:22px 16px;box-shadow:10px 0 35px rgba(0,0,0,.18)}
+.app-menu-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;color:var(--ink);font-weight:850;font-size:18px}
+.app-menu-close{border:0;background:#edf3ef;color:var(--accent);border-radius:50%;width:40px;height:40px;font-size:24px}
+.app-menu-item{width:100%;display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:14px;padding:14px;margin:8px 0;font-weight:750}
+.app-menu-item span:first-child{font-size:22px;width:28px;text-align:center}
+#mapView{display:none;max-width:1100px}
+.lookup-review{grid-column:1/-1;border:1px solid #b7d8cc;background:#f3faf6;color:#244d3c;border-radius:12px;padding:12px;margin:4px 0 10px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.lookup-review strong{display:block;margin:0 0 6px}
+.lookup-review ul{margin:6px 0 10px;padding-left:20px}
+.lookup-review a{color:#245846;text-decoration:underline;overflow-wrap:anywhere}
+#incompleteView{display:none;max-width:1000px;margin:0 auto;padding:18px}
+.incomplete-summary{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0 16px;color:var(--muted)}
+.incomplete-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px;margin:10px 0;box-shadow:var(--shadow)}
+.incomplete-name{font-size:17px;font-weight:800;margin-bottom:4px}
+.incomplete-meta{color:var(--muted);font-size:13px;margin-bottom:10px}
+.missing-list{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.missing-chip{background:#fff2d9;color:#805716;border:1px solid #f0d7a6;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}
+.incomplete-actions{display:flex;gap:8px;flex-wrap:wrap}
+.incomplete-actions button{border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:#f7faf8;color:var(--accent);font-weight:750}
+.map-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.map-head h2{margin:0;font-size:22px}
+.map-back{border:1px solid var(--line);background:#fff;color:var(--accent);border-radius:12px;padding:10px 12px;font-weight:750}
+#restaurantMap{height:min(68vh,680px);min-height:390px;border-radius:18px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);z-index:1}
+.map-status{color:var(--muted);font-size:13px;line-height:1.5;margin:10px 2px}
+.map-popup-title{font-weight:800;color:var(--ink);margin-bottom:3px}
+.map-popup-link{display:inline-block;margin-top:6px;font-weight:750}
+.restaurant-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}
+.restaurant-card-box{border:1px solid var(--line);background:#fff;border-radius:14px;padding:13px;min-width:0}
+.restaurant-card-box strong{display:block;margin-bottom:8px;color:var(--ink)}
+.restaurant-card-box p{font-size:13px;color:var(--muted);margin:0 0 8px;overflow-wrap:anywhere}
+.restaurant-card-box a,.restaurant-card-box button{display:inline-block;border:1px solid var(--line);background:#f4f8f5;color:var(--accent);border-radius:9px;padding:8px 10px;font-weight:750;text-decoration:none;margin:3px 3px 0 0;font-size:13px}
+.card-edit-box{border:1px solid var(--line);border-radius:12px;padding:12px;margin:12px 0;background:#f8fbf9}
+.card-edit-box label{display:block;font-weight:750;margin:8px 0 5px}
+.card-edit-box input[type=url]{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:9px;background:white}
+.card-edit-box small{display:block;color:var(--muted);line-height:1.45;margin-top:6px}
+@media(max-width:480px){.restaurant-cards{grid-template-columns:1fr}}
+.leaflet-tooltip.restaurant-map-label{background:#fff;color:#17352d;border:1px solid #c8d8d0;border-radius:7px;box-shadow:0 2px 7px rgba(0,0,0,.18);font-size:11px;font-weight:750;padding:3px 6px;white-space:normal;max-width:150px;line-height:1.25}
+.leaflet-tooltip.restaurant-map-label:before{border-right-color:#fff}
+@media(max-width:560px){#restaurantMap{height:62vh;min-height:340px}.app-menu{padding-top:calc(18px + env(safe-area-inset-top))}}
+.secondary-action{background:#fff!important;color:var(--accent)!important;border:1px solid #d8e4df!important;box-shadow:none!important}
+.welcome-hero{position:relative;min-height:260px;margin:22px 0 24px;border-radius:22px;overflow:hidden;background-image:linear-gradient(0deg,rgba(11,48,60,.78),rgba(11,48,60,.02) 75%),var(--welcome-image,url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=85'));background-position:center;background-size:cover;background-repeat:no-repeat;box-shadow:var(--shadow);display:flex;align-items:flex-end}
+.change-hero-image{position:absolute;right:12px;top:12px;border:1px solid rgba(255,255,255,.85);border-radius:999px;background:rgba(255,255,255,.93);color:#1f5747;padding:9px 13px;font-weight:750;font-size:12px;cursor:pointer}
+.welcome-copy h2{letter-spacing:.02em}
+.welcome-copy{padding:24px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.25)}
+.welcome-copy h2{margin:0 0 6px;font-size:clamp(25px,4vw,36px);font-weight:850}
+.welcome-copy p{margin:0;font-size:clamp(16px,2vw,22px);font-style:italic}
+#home .sectionhead{margin-top:24px}
+@media(max-width:560px){header{padding:20px 14px 18px;border-radius:0 0 24px 24px}.brandrow{gap:10px}.app-logo{width:54px;height:54px;border-radius:14px}.brandcopy .title{font-size:20px}.brandcopy .sub{font-size:12px}.menu-mark{font-size:27px;padding:2px}.welcome-hero{min-height:210px;margin:18px 0}.welcome-copy{padding:18px}main{padding-top:14px}}
+
+</style>
+</head>
+
+<body>
+
+<header id="homeHeader">
+
+  <div class="brandrow">
+    <img class="app-logo" src="icon.svg" alt="Berg und See Logo">
+    <div class="brandcopy">
+      <div class="title">Meine Lieblings-Restaurants am Tegernsee</div>
+      <div class="sub">Restaurants, Almen & besondere Plätze</div>
+    </div>
+    <button class="menu-mark" type="button" aria-label="Menü" onclick="openAppMenu()">☰</button>
+  </div>
+
+  <div class="search">
+    🔎
+    <input id="search" placeholder="Restaurant suchen …" autocomplete="off">
+  </div>
+
+</header>
+
+<div class="app-menu-overlay" id="appMenuOverlay" onclick="if(event.target===this)closeAppMenu()">
+  <nav class="app-menu" aria-label="Hauptmenü">
+    <div class="app-menu-head"><span>Menü</span><button class="app-menu-close" type="button" aria-label="Menü schließen" onclick="closeAppMenu()">×</button></div>
+    <button class="app-menu-item" onclick="closeAppMenu();showHome()"><span>⌂</span><span>Startseite</span></button>
+    <button class="app-menu-item" onclick="openRestaurantMap()"><span>🗺️</span><span>Übersichtskarte</span></button>
+    <button class="app-menu-item" onclick="showIncompleteEntries()"><span>📋</span><span>Unvollständige Einträge <span id="incompleteMenuCount" style="font-size:12px;color:#805716;width:auto">…</span></span></button>
+    <button class="app-menu-item" onclick="closeAppMenu();focusSearch()"><span>🔎</span><span>Restaurants suchen</span></button>
+    <button class="app-menu-item" onclick="closeAppMenu();showFavorites()"><span>♥</span><span>Meine Favoriten</span></button>
+  </nav>
+</div>
+
+<main id="home">
+
+  <div class="sectionhead">
+    <h2>❤️ Meine Favoriten</h2>
+    <span class="count" id="count">0</span>
+  </div>
+
+  <div class="home-actions" aria-label="App-Aktionen">
+    <div class="primary-actions">
+      <button class="addbtn" onclick="openAdd()">＋ Restaurant hinzufügen</button>
+      <div class="sync"><button onclick="refreshData()">↻ Daten aktualisieren</button></div>
+      <div class="sync"><button onclick="showSyncInfo()">◷ Auto-Update</button></div>
+    </div>
+    <div class="secondary-actions">
+      <button class="secondary-action contactbtn" onclick="window.location.href='mailto:msc4021@arcor.de?subject=Vorschlag%20f%C3%BCr%20Meine%20Lieblings-Restaurants%20am%20Tegernsee'">✉️ Kontakt für Vorschläge</button>
+      <button type="button" id="toggleTavilyUsage" aria-expanded="false" aria-controls="tavilyUsageCard" class="secondary-action">▥ Suchkontingent anzeigen</button>
+    </div>
+  </div>
+
+  <section class="tavily-usage" id="tavilyUsageCard" aria-live="polite" hidden>
+    <div class="tavily-usage-head">
+      <span>🔎 Kontingent der automatischen Suche</span>
+      <span id="tavilyUsagePercent">Lade …</span>
+    </div>
+    <div class="tavily-usage-values">
+      <span>Verbraucht: <strong id="tavilyUsageUsed">–</strong></span>
+      <span>Verbleibend: <strong id="tavilyUsageRemaining">–</strong></span>
+      <span>Gesamtlimit: <strong id="tavilyUsageLimit">–</strong></span>
+    </div>
+    <progress id="tavilyUsageProgress" max="100" value="0" aria-label="Verbrauchte Tavily-Credits"></progress>
+    <div class="tavily-usage-note" id="tavilyUsageNote">Kontingent wird abgerufen …</div>
+  </section>
+
+  <div
+    class="small"
+    id="syncStatus"
+  >
+    Daten werden geladen …
+  </div>
+
+  <section class="welcome-hero" id="welcomeHero" aria-label="Willkommen am Tegernsee">
+    <div class="welcome-copy">
+      <h2>Tegernsee</h2>
+      <p>Entdecken. Genießen. Wohlfühlen.</p>
+    </div>
+    <button class="change-hero-image" type="button" id="changeHeroImage">Titelbild ändern</button>
+    <input type="file" id="heroImagePicker" accept="image/*" hidden>
+  </section>
+
+  <div class="sectionhead">
+    <h2>Restaurants entdecken</h2>
+    <span class="count" id="count">0</span>
+  </div>
+
+  <div class="filters">
+
+    <button
+      class="chip active"
+      data-filter="Alle"
+    >
+      Alle
+    </button>
+
+    <button class="chip" data-filter="Tegernsee">Tegernsee</button>
+    <button class="chip" data-filter="Gmund">Gmund</button>
+    <button class="chip" data-filter="Rottach-Egern">Rottach-Egern</button>
+    <button class="chip" data-filter="Kreuth">Kreuth</button>
+    <button class="chip" data-filter="Bad Wiessee">Bad Wiessee</button>
+    <button class="chip" data-filter="Schliersee">Schliersee</button>
+
+  </div>
+
+  <div
+    class="grid"
+    id="cards"
+  ></div>
+
+</main>
+
+
+<main id="mapView">
+  <div class="map-head"><h2>🗺️ Übersichtskarte</h2><button class="map-back" onclick="showHome()">‹ Zurück</button></div>
+  <div id="restaurantMap" role="application" aria-label="Karte mit Restaurants am Tegernsee"></div>
+  <p class="map-status" id="mapStatus">Die Restaurantstandorte werden vorbereitet …</p>
+</main>
+
+<main id="incompleteView">
+  <div class="map-head"><h2>📋 Unvollständige Einträge</h2><button class="map-back" onclick="showHome()">‹ Zurück</button></div>
+  <p class="incomplete-summary" id="incompleteSummary">Die Daten werden geprüft …</p>
+  <div id="incompleteList"></div>
+</main>
+
+<main
+  id="detail"
+  class="detail"
+>
+
+  <button
+    class="back"
+    onclick="showHome()"
+  >
+    ‹ Zurück zu meinen Favoriten
+  </button>
+
+  <div
+    class="hero"
+    id="hero"
+  >
+    🍽️
+  </div>
+
+  <h1 id="dname"></h1>
+
+  <div
+    class="place"
+    id="dplace"
+  ></div>
+
+  <div class="actions">
+
+    <div
+      class="action"
+      onclick="openRoute()"
+    >
+      📍 Route
+    </div>
+
+    <div
+      class="action"
+      onclick="callPlace()"
+    >
+      ☎️ Anrufen
+    </div>
+
+    <div
+      class="action"
+      id="reservationAction"
+      onclick="reserveTable(currentPlace.reservierung)"
+      style="display:none"
+    >
+      🍽️ Tisch reservieren
+    </div>
+
+  </div>
+
+  <div class="detailtools">
+
+    <button onclick="editPlace()">
+      ✏️ Bearbeiten
+    </button>
+
+    <button
+      class="danger"
+      onclick="deletePlace()"
+    >
+      🗑️ Löschen
+    </button>
+
+  </div>
+
+
+  <div class="info">
+
+    <div>
+      <span class="label">
+        📍 Adresse
+      </span>
+
+      <span id="daddress">
+        Noch ergänzen
+      </span>
+    </div>
+
+
+    <div>
+      <span class="label">
+        🕐 Öffnungszeiten
+      </span>
+
+      <span id="dhours">
+        Noch ergänzen
+      </span>
+    </div>
+
+
+    <div>
+      <span class="label">
+        🚫 Ruhetag
+      </span>
+
+      <span id="dclosed">
+        Noch ergänzen
+      </span>
+    </div>
+
+
+    <div>
+      <span class="label">
+        ☎️ Telefon
+      </span>
+
+      <span id="dphone">
+        Noch ergänzen
+      </span>
+    </div>
+
+
+    <div>
+      <span class="label">
+        ⭐ Meine Bewertung
+      </span>
+
+      <span id="drating">
+        ☆☆☆☆☆
+      </span>
+    </div>
+
+
+    <div>
+      <span class="label">
+        🌐 Webseite
+      </span>
+
+      <span id="dweb">
+        Noch ergänzen
+      </span>
+    </div>
+
+
+    <div>
+
+      <span class="label">
+        ✉️ E-Mail
+      </span>
+
+      <span id="demail">
+        Noch ergänzen
+      </span>
+    </div>
+
+  </div>
+
+
+  <div class="note">
+
+    <b>
+      📝 Meine Notizen
+    </b>
+
+    <textarea
+      id="note"
+      placeholder="Was möchtest du dir merken?"
+    ></textarea>
+
+  </div>
+
+</main>
+
+
+<div class="bottomnav">
+
+  <button
+    class="active"
+    onclick="showHome()"
+  >
+    🏠<br>Start
+  </button>
+
+  <button
+    onclick="focusSearch()"
+  >
+    🔎<br>Suchen
+  </button>
+
+  <button
+    onclick="showFavorites()"
+  >
+    ❤️<br>Favoriten
+  </button>
+
+</div>
+
+
+<!-- Unsichtbare Bildauswahl vom Handy -->
+
+<input
+  id="localImageInput"
+  class="local-file-input"
+  type="file"
+  accept="image/*"
+  onchange="handleLocalImageFile(this)"
+>
+
+
+<!-- Restaurant-Dialog -->
+
+<div
+  class="modal"
+  id="modal"
+>
+
+  <div class="modalbox">
+
+    <h2 id="modalTitle">
+      Restaurant hinzufügen
+    </h2>
+
+    <div class="formgrid">
+
+      
+<label>Name</label>
+
+<input id="f_name" autocomplete="off">
+
+<button type="button" onclick="searchRestaurantWeb()" style="grid-column:1/-1; width:100%; padding:11px 14px; border:1px solid #b7d8cc; border-radius:10px; background:#edf7f2; color:#245846; font-weight:600; cursor:pointer;">
+  🔎 Restaurant im Web suchen
+</button>
+
+<button type="button" onclick="lookupRestaurantInApp()" style="grid-column:1/-1; width:100%; padding:11px 14px; border:1px solid #b7d8cc; border-radius:10px; background:#edf7f2; color:#245846; font-weight:600; cursor:pointer;">
+  ✨ Restaurantdaten automatisch suchen
+</button>
+<div id="lookupReview" class="lookup-review" hidden></div>
+
+<label>Ort</label>
+<select id="f_ort" autocomplete="off">
+
+        <option value="Tegernsee">Tegernsee</option>
+        <option value="Gmund">Gmund</option>
+        <option value="Rottach-Egern">Rottach-Egern</option>
+        <option value="Kreuth">Kreuth</option>
+        <option value="Bad Wiessee">Bad Wiessee</option>
+        <option value="Schliersee">Schliersee</option>
+        <option value="Anderer Ort">Anderer Ort</option>
+      </select>
+
+      <label>Kategorie</label>
+      <select id="f_kategorie" autocomplete="off" onchange="toggleCustomCategory()">
+        <option value="Restaurant">Restaurant</option>
+        <option value="Almwirtschaft">Almwirtschaft</option>
+        <option value="Bäckerei &amp; Café">Bäckerei &amp; Café</option>
+        <option value="Ausflugsziel">Ausflugsziel</option>
+        <option value="Café">Café</option>
+        <option value="Gasthof">Gasthof</option>
+        <option value="Wirtshaus">Wirtshaus</option>
+        <option value="Biergarten">Biergarten</option>
+        <option value="Pizzeria">Pizzeria</option>
+        <option value="Eisdiele">Eisdiele</option>
+        <option value="Hotelrestaurant">Hotelrestaurant</option>
+        <option value="Konditorei">Konditorei</option>
+        <option value="Brauerei">Brauerei</option>
+        <option value="Imbiss">Imbiss</option>
+        <option value="__custom__">Eigene Kategorie …</option>
+
+      </select>
+      <input id="f_kategorie_custom" autocomplete="off" placeholder="Eigene Kategorie eingeben" style="display:none" aria-label="Eigene Kategorie eingeben">
+
+
+      <label>Adresse</label>
+
+      <input id="f_adresse" autocomplete="off">
+
+
+      <label>Telefon</label>
+
+      <input id="f_telefon" autocomplete="off">
+
+
+      <label>Website</label>
+
+      <input id="f_website" autocomplete="off">
+
+
+      <label>
+        🍽️ Tisch reservieren – Link
+      </label>
+
+      <input
+        id="f_reservierung"
+        type="url"
+        placeholder="https://..."
+      >
+
+
+      <label>E-Mail</label>
+
+      <input id="f_email" autocomplete="off">
+
+
+      <label>Öffnungszeiten</label>
+
+      <textarea id="f_oeffnungszeiten"></textarea>
+
+
+      <label>Ruhetag</label>
+
+      <input id="f_ruhetag" autocomplete="off">
+
+
+      <label>Notizen</label>
+
+      <textarea id="f_notizen"></textarea>
+
+
+      <div id="cardEditSection" style="display:none">
+        <h3>🍽️ Offizielle Speise- und Getränkekarten</h3>
+        <p class="localimagehint">Bitte nur Links zur offiziellen Restaurantwebsite oder zu einer Menüplattform eintragen, auf die die offizielle Website ausdrücklich verweist. Keine Uploads oder fremden Dateien. Änderungen auf der verlinkten Originalseite werden dort direkt sichtbar.</p>
+        <div class="card-edit-box">
+          <label for="f_speisekarte_url">Offizieller Link zur Speisekarte</label>
+          <input id="f_speisekarte_url" type="url" placeholder="https://..." autocomplete="off">
+          <small id="f_speisekarte_status">Noch kein offizieller Kartenlink hinterlegt.</small>
+        </div>
+        <div class="card-edit-box">
+          <label for="f_getraenkekarte_url">Offizieller Link zur Getränkekarte</label>
+          <input id="f_getraenkekarte_url" type="url" placeholder="https://..." autocomplete="off">
+          <small id="f_getraenkekarte_status">Noch kein offizieller Kartenlink hinterlegt.</small>
+        </div>
+      </div>
+
+      <!-- Bild nur beim Bearbeiten -->
+
+      <div
+        id="editImageSection"
+        style="display:none"
+      >
+
+        <label>
+          📷 Restaurantbild
+        </label>
+
+        <button
+          type="button"
+          class="gallerybutton"
+          onclick="chooseGalleryImage()"
+        >
+          📷 Bild aus Galerie wählen
+        </button>
+
+        <div class="localimagehint">
+          Das Bild wird auf diesem Handy für dieses Restaurant gespeichert.
+        </div>
+
+        <div
+          class="imagepreview"
+          id="imagepreview"
+        >
+          <img
+            id="previewimg"
+            alt="Bildvorschau"
+          >
+        </div>
+
+        <button
+          type="button"
+          class="removeimage"
+          id="removeimage"
+          onclick="removeImage()"
+        >
+          🗑️ Bild entfernen
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div class="modalbuttons">
+
+      <button
+        class="cancel"
+        onclick="closeModal()"
+      >
+        Abbrechen
+      </button>
+
+      <button
+        class="save"
+        onclick="savePlace()"
+      >
+        Speichern
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- Passwort-Dialog -->
+
+<div
+  class="passwordmodal"
+  id="passwordModal"
+>
+
+  <div class="passwordbox">
+
+    <h2>
+      🔒 Admin-Passwort
+    </h2>
+
+    <p id="passwordText">
+      Bitte Admin-Passwort eingeben.
+    </p>
+
+    <input
+      id="passwordInput"
+      type="password"
+      autocomplete="off"
+      placeholder="Passwort"
+    >
+
+    <div class="passwordbuttons">
+
+      <button
+        class="passwordcancel"
+        onclick="cancelPassword()"
+      >
+        Abbrechen
+      </button>
+
+      <button
+        class="passwordok"
+        onclick="confirmPassword()"
+      >
+        Weiter
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+const API_URL =
+  "https://tegernsee-restaurants-api.msc4021.workers.dev";
+
+
+/* --------------------------------------------------
+   TAVILY-KONTINGENT LADEN
+-------------------------------------------------- */
+
+async function loadTavilyUsage(){
+  const usedEl = document.getElementById("tavilyUsageUsed");
+  const remainingEl = document.getElementById("tavilyUsageRemaining");
+  const limitEl = document.getElementById("tavilyUsageLimit");
+  const percentEl = document.getElementById("tavilyUsagePercent");
+  const progressEl = document.getElementById("tavilyUsageProgress");
+  const noteEl = document.getElementById("tavilyUsageNote");
+
+  if(!usedEl || !remainingEl || !limitEl || !percentEl || !progressEl || !noteEl) return;
+
+  try{
+    const response = await fetch(API_URL + "?action=usage&_=" + Date.now(), {
+      method:"GET",
+      cache:"no-store",
+      headers:{"Accept":"application/json"}
+    });
+
+    let data = {};
+    try{
+      data = await response.json();
+    }catch(_){
+      throw new Error("Der Server hat keine gültigen Daten geliefert.");
+    }
+
+    if(!response.ok){
+      throw new Error(data.message || data.error || ("HTTP " + response.status));
+    }
+
+    const used = Number(data.used);
+    const remaining = Number(data.remaining);
+    const limit = Number(data.limit);
+
+    if(!Number.isFinite(used) || !Number.isFinite(remaining) ||
+       !Number.isFinite(limit) || limit <= 0){
+      throw new Error("Die Antwort enthält keine gültigen Kontingentwerte.");
+    }
+
+    const percent = Math.max(0, Math.min(100, Math.round((used / limit) * 100)));
+    usedEl.textContent = used.toLocaleString("de-DE");
+    remainingEl.textContent = remaining.toLocaleString("de-DE");
+    limitEl.textContent = limit.toLocaleString("de-DE");
+    percentEl.textContent = percent + " % verbraucht";
+    progressEl.max = 100;
+    progressEl.value = percent;
+    noteEl.textContent = "Zuletzt erfolgreich abgerufen. Nach einer automatischen Suche wird die Anzeige erneut aktualisiert.";
+  }catch(error){
+    usedEl.textContent = "–";
+    remainingEl.textContent = "–";
+    limitEl.textContent = "–";
+    percentEl.textContent = "Nicht verfügbar";
+    progressEl.value = 0;
+    noteEl.textContent = "Kontingent momentan nicht abrufbar. Restaurantdaten und gespeicherte Einträge werden dadurch nicht verändert.";
+    console.warn("Tavily-Kontingent konnte nicht geladen werden:", error);
+  }
+}
+
+
+let restaurants = [];
+
+let currentFilter =
+  "Alle";
+
+let currentPlace =
+  null;
+
+let editId =
+  null;
+
+
+/* --------------------------------------------------
+   FAVORITEN
+-------------------------------------------------- */
+
+const favorites =
+  JSON.parse(
+    localStorage.getItem(
+      "tegernseeFavorites"
+    ) || "[]"
+  );
+
+
+/* --------------------------------------------------
+   LOKALE BILDER
+-------------------------------------------------- */
+
+const LOCAL_IMAGES_KEY =
+  "tegernseeLocalImages";
+
+
+let localImages = {};
+
+try{
+
+  localImages =
+    JSON.parse(
+      localStorage.getItem(
+        LOCAL_IMAGES_KEY
+      ) || "{}"
+    );
+
+}catch(error){
+
+  localImages = {};
+
+}
+
+
+/*
+   Dieses Bild ist während des Bearbeitens
+   nur vorgemerkt und wird erst nach erfolgreichem
+   Speichern dauerhaft übernommen.
+*/
+
+let pendingLocalImage =
+  null;
+
+let pendingRemoveLocalImage =
+  false;
+
+
+/* --------------------------------------------------
+   PASSWORT
+-------------------------------------------------- */
+
+let passwordResolver =
+  null;
+
+
+function askAdminPassword(message){
+
+  return new Promise(resolve => {
+
+    passwordResolver =
+      resolve;
+
+    document.getElementById(
+      "passwordText"
+    ).textContent =
+      message ||
+      "Bitte Admin-Passwort eingeben.";
+
+    const input =
+      document.getElementById(
+        "passwordInput"
+      );
+
+    input.value = "";
+
+    document.getElementById(
+      "passwordModal"
+    ).style.display =
+      "flex";
+
+    setTimeout(
+      () => input.focus(),
+      100
+    );
+
+  });
+
+}
+
+
+function confirmPassword(){
+
+  const input =
+    document.getElementById(
+      "passwordInput"
+    );
+
+  const password =
+    input.value;
+
+  document.getElementById(
+    "passwordModal"
+  ).style.display =
+    "none";
+
+  if(passwordResolver){
+
+    const resolve =
+      passwordResolver;
+
+    passwordResolver =
+      null;
+
+    resolve(password);
+
+  }
+
+}
+
+
+function cancelPassword(){
+
+  document.getElementById(
+    "passwordModal"
+  ).style.display =
+    "none";
+
+  if(passwordResolver){
+
+    const resolve =
+      passwordResolver;
+
+    passwordResolver =
+      null;
+
+    resolve(null);
+
+  }
+
+}
+
+
+document.getElementById(
+  "passwordInput"
+).addEventListener(
+  "keydown",
+  function(event){
+
+    if(event.key === "Enter"){
+      confirmPassword();
+    }
+
+    if(event.key === "Escape"){
+      cancelPassword();
+    }
+
+  }
+);
+
+
+/* --------------------------------------------------
+   HILFSFUNKTIONEN
+-------------------------------------------------- */
+
+function cleanValue(value){
+
+  if(
+    value === null ||
+    value === undefined
+  ){
+    return "";
+
+  }
+
+  if(
+    typeof value === "object"
+  ){
+
+    if(
+      value.type === "null"
+    ){
+      return "";
+    }
+
+    if(
+      value.value !== undefined
+    ){
+      return cleanValue(
+        value.value
+      );
+    }
+
+    return "";
+
+  }
+
+  return String(value);
+
+}
+
+
+function normalizeRestaurant(r){
+
+  return {
+
+    id:
+      cleanValue(r.id),
+
+    name:
+      cleanValue(r.name),
+
+    ort:
+      cleanValue(r.ort),
+
+    kategorie:
+      cleanValue(r.kategorie) === "Alm"
+        ? "Almwirtschaft"
+        : cleanValue(r.kategorie),
+
+    adresse:
+      cleanValue(r.adresse),
+
+    telefon:
+      cleanValue(r.telefon),
+
+    website:
+      cleanValue(r.website),
+
+    reservierung:
+      cleanValue(r.reservierung),
+
+    email:
+      cleanValue(r.email),
+
+    oeffnungszeiten:
+      cleanValue(
+        r.oeffnungszeiten
+      ),
+
+    ruhetag:
+      cleanValue(
+        r.ruhetag
+      ),
+
+    notizen:
+      cleanValue(
+        r.notizen
+      ),
+
+    bild:
+      cleanValue(
+        r.bild
+      )
+
+  };
+
+}
+
+
+/* --------------------------------------------------
+   DATEN LADEN
+-------------------------------------------------- */
+
+async function loadData(){
+
+  const status =
+    document.getElementById(
+      "syncStatus"
+    );
+
+  try{
+
+    status.textContent =
+      "Zentrale Daten werden geladen …";
+
+    const response =
+      await fetch(
+        API_URL +
+        "?t=" +
+        Date.now(),
+        {
+          method:"GET",
+          cache:"no-store",
+          headers:{
+            "Accept":
+              "application/json"
+          }
+        }
+      );
+
+    if(!response.ok){
+
+      throw new Error(
+        "HTTP " +
+        response.status
+      );
+
+    }
+
+    const data =
+      await response.json();
+
+    if(!Array.isArray(data)){
+
+      throw new Error(
+        "API liefert keine Restaurantliste"
+      );
+
+    }
+
+    restaurants =
+      data
+        .map(
+          normalizeRestaurant
+        )
+        .filter(
+          r => r.name
+        )
+        .sort(
+          (a,b) =>
+            a.name.localeCompare(
+              b.name,
+              "de",
+              {
+                sensitivity:"base"
+              }
+            )
+        );
+
+    status.textContent =
+      "✓ Zentrale Daten geladen · " +
+      restaurants.length +
+      " Restaurants";
+
+    render();
+
+  }catch(error){
+
+    console.error(error);
+
+    status.textContent =
+      "⚠️ Die zentralen Restaurantdaten konnten nicht geladen werden.";
+
+    document.getElementById(
+      "cards"
+    ).innerHTML = `
+
+      <div class="empty">
+
+        <b>
+          Die Restaurantliste konnte gerade
+          nicht geladen werden.
+        </b>
+
+        <br><br>
+
+        Bitte auf
+        „↻ Daten aktualisieren“
+        tippen.
+
+      </div>
+
+    `;
+
+  }
+
+}
+
+
+/* --------------------------------------------------
+   ÖFFNUNGSSTATUS
+-------------------------------------------------- */
+
+function getDayName(){
+
+  return [
+
+    "Sonntag",
+    "Montag",
+    "Dienstag",
+    "Mittwoch",
+    "Donnerstag",
+    "Freitag",
+    "Samstag"
+
+  ][
+    new Date().getDay()
+  ];
+
+}
+
+
+function parseTimes(text) {
+  if (!text) return [];
+
+  const matches = [];
+
+  // Unterstützt z. B.:
+  // 10–23 Uhr
+  // 10:00–23:00 Uhr
+  // 09:00-17:00 Uhr
+  // 10 bis 23 Uhr
+  // 10:30–14:00 und 17:00–22:00 Uhr
+
+  const regex =
+    /\b(\d{1,2})(?::(\d{2}))?\s*(?:Uhr\s*)?(?:–|—|-|bis)\s*(\d{1,2})(?::(\d{2}))?\s*(?:Uhr)?\b/gi;
+
+  let m;
+
+  while ((m = regex.exec(String(text))) !== null) {
+    const startHour = Number(m[1]);
+    const startMinute = m[2] === undefined ? 0 : Number(m[2]);
+    const endHour = Number(m[3]);
+    const endMinute = m[4] === undefined ? 0 : Number(m[4]);
+
+    // Ungültige Uhrzeiten überspringen
+    if (
+      startHour > 23 ||
+      startMinute > 59 ||
+      endHour > 23 ||
+      endMinute > 59
+    ) {
+      continue;
+    }
+
+    matches.push({
+      start: startHour * 60 + startMinute,
+      end: endHour * 60 + endMinute
+    });
+  }
+
+  return matches;
+}
+
+function dayIsMentioned(text, day) {
+  const lower = (text || "").toLowerCase();
+
+  const weekdays = [
+    "montag",
+    "dienstag",
+    "mittwoch",
+    "donnerstag",
+    "freitag",
+    "samstag",
+    "sonntag"
+  ];
+
+  const targetIndex = weekdays.indexOf(
+    String(day || "").toLowerCase()
+  );
+
+  if (targetIndex < 0) return false;
+
+  // Einzelne Wochentage erkennen.
+  if (lower.includes(weekdays[targetIndex])) {
+    return true;
+  }
+
+  // Bereiche wie „Donnerstag - Sonntag“ erkennen.
+  const rangeRegex =
+    /(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag)\s*(?:-|–|—|bis)\s*(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag)/g;
+
+  let match;
+
+  while ((match = rangeRegex.exec(lower)) !== null) {
+    const startIndex = weekdays.indexOf(match[1]);
+    const endIndex = weekdays.indexOf(match[2]);
+
+    if (
+      startIndex <= endIndex &&
+      targetIndex >= startIndex &&
+      targetIndex <= endIndex
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function getOpeningStatus(place)
+{
+
+  const hours =
+    cleanValue(
+      place.oeffnungszeiten
+    );
+
+  const closed =
+    cleanValue(
+      place.ruhetag
+    );
+
+  const today =
+    getDayName();
+
+  if(!hours){
+
+    return {
+      type:"unknown",
+      text:"⚪ Öffnungszeit nicht hinterlegt"
+    };
+
+  }
+
+  const closedLower =
+    closed.toLowerCase();
+
+  if(
+    closedLower.includes(
+      today.toLowerCase()
+    ) &&
+    !closedLower.includes(
+      "kein ruhetag"
+    )
+  ){
+
+    return {
+      type:"closed",
+      text:"🔴 Heute geschlossen"
+    };
+
+  }
+
+  if(
+    /aktuelle öffnungszeiten bitte/i.test(
+      hours
+    ) ||
+    /vorab telefonisch/i.test(
+      hours
+    )
+  ){
+
+    return {
+      type:"unknown",
+      text:"⚪ Öffnungszeiten prüfen"
+    };
+
+  }
+
+
+let relevantText = hours;
+
+const parts = hours
+  .split(/[;,\n\r]+/)
+  .map(part => part.trim())
+  .filter(Boolean);
+
+const weekdays = [
+  "Montag", "Dienstag", "Mittwoch",
+  "Donnerstag", "Freitag", "Samstag", "Sonntag"
+];
+
+const hasWeekdayInfo = weekdays.some(
+  day => parts.some(part => dayIsMentioned(part, day))
+);
+
+const todayParts = parts.filter(
+  part => dayIsMentioned(part, today)
+);
+
+if (todayParts.some(
+  part => /\bgeschlossen\b|\bruhetag\b/i.test(part)
+)) {
+  return {
+    type: "closed",
+    text: "🔴 Heute geschlossen"
+  };
+}
+
+if (todayParts.length) {
+  relevantText = todayParts.join(" ");
+} else if (hasWeekdayInfo) {
+  return {
+    type: "unknown",
+    text: "⚪ Öffnungszeiten prüfen"
+  };
+} else if (
+  /\b(heute\s+)?geschlossen\b/i.test(hours) &&
+  !parseTimes(hours).length
+) {
+  return {
+    type: "closed",
+    text: "🔴 Heute geschlossen"
+  };
+}
+
+  const times =
+    parseTimes(
+      relevantText
+    );
+
+  if(!times.length){
+
+    return {
+      type:"unknown",
+      text:"⚪ Öffnungszeit prüfen"
+    };
+
+  }
+
+  const now =
+    new Date();
+
+  const minutes =
+    now.getHours() *
+    60 +
+    now.getMinutes();
+
+  const open =
+    times.some(
+      t =>
+        minutes >= t.start &&
+        minutes < t.end
+    );
+
+  return open
+
+    ? {
+        type:"open",
+        text:"🟢 Jetzt geöffnet"
+      }
+
+    : {
+        type:"closed",
+        text:"🔴 Jetzt geschlossen"
+      };
+
+}
+
+
+/* --------------------------------------------------
+   LOKALE BILDER
+-------------------------------------------------- */
+
+function getRestaurantImage(
+  place
+){
+  if(!place) return "";
+  // Bilder werden zentral im Feld "bild" gespeichert,
+  // damit alle Nutzer dasselbe Bild sehen.
+  return cleanValue(place.bild);
+}
+
+
+function saveLocalImages(){
+
+  try{
+
+    localStorage.setItem(
+      LOCAL_IMAGES_KEY,
+      JSON.stringify(
+        localImages
+      )
+    );
+
+    return true;
+
+  }catch(error){
+
+    console.error(error);
+
+    return false;
+
+  }
+
+}
+
+
+/*
+   Galerie öffnen.
+   Das funktioniert ausschließlich aus dem
+   Bearbeiten-Fenster.
+*/
+
+function chooseGalleryImage(){
+
+  if(!editId){
+
+    alert(
+      "Ein Bild kann nur beim Bearbeiten eines Restaurants ausgewählt werden."
+    );
+
+    return;
+
+  }
+
+  const input =
+    document.getElementById(
+      "localImageInput"
+    );
+
+  input.value = "";
+
+  input.click();
+
+}
+
+
+function handleLocalImageFile(
+  input
+){
+
+  const file =
+    input.files &&
+    input.files[0];
+
+  if(!file) return;
+
+  if(!editId){
+
+    alert(
+      "Ein Bild kann nur beim Bearbeiten ausgewählt werden."
+    );
+
+    return;
+
+  }
+
+  if(
+    !file.type.startsWith(
+      "image/"
+    )
+  ){
+
+    alert(
+      "Bitte ein Bild auswählen."
+    );
+
+    return;
+
+  }
+
+  const reader =
+    new FileReader();
+
+  reader.onload = function(){
+
+    const image =
+      new Image();
+
+    image.onload =
+      function(){
+
+        const maxSize =
+          800;
+
+        let width =
+          image.width;
+
+        let height =
+          image.height;
+
+        if(
+          width > maxSize ||
+          height > maxSize
+        ){
+
+          if(width >= height){
+
+            height =
+              Math.round(
+                height *
+                maxSize /
+                width
+              );
+
+            width =
+              maxSize;
+
+          }else{
+
+            width =
+              Math.round(
+                width *
+                maxSize /
+                height
+              );
+
+            height =
+              maxSize;
+
+          }
+
+        }
+
+        const canvas =
+          document.createElement(
+            "canvas"
+          );
+
+        canvas.width =
+          width;
+
+        canvas.height =
+          height;
+
+        const ctx =
+          canvas.getContext(
+            "2d"
+          );
+
+        ctx.drawImage(
+          image,
+          0,
+          0,
+          width,
+          height
+        );
+
+        const dataUrl =
+
+          canvas.toDataURL(
+            "image/jpeg",
+            0.78
+          );
+
+        /*
+          Noch nicht dauerhaft speichern.
+          Erst wenn der Benutzer auf
+          „Speichern“ tippt.
+        */
+
+        pendingLocalImage =
+          dataUrl;
+
+        pendingRemoveLocalImage =
+          false;
+
+        showPendingImage(
+          dataUrl
+        );
+
+      };
+
+    image.onerror =
+      function(){
+
+        alert(
+          "Das Bild konnte nicht verarbeitet werden."
+        );
+
+      };
+
+    image.src =
+      reader.result;
+
+  };
+
+  reader.readAsDataURL(
+    file
+  );
+
+}
+
+
+function showPendingImage(
+  dataUrl
+){
+
+  const box =
+    document.getElementById(
+      "imagepreview"
+    );
+
+  const img =
+    document.getElementById(
+      "previewimg"
+    );
+
+  const remove =
+    document.getElementById(
+      "removeimage"
+    );
+
+  img.src =
+    dataUrl;
+
+  box.style.display =
+    "grid";
+
+  remove.style.display =
+    "block";
+
+}
+
+
+function prepareExistingImage(){
+
+  if(!editId){
+
+    document.getElementById(
+      "imagepreview"
+    ).style.display =
+      "none";
+
+    document.getElementById(
+      "removeimage"
+    ).style.display =
+      "none";
+
+    return;
+
+  }
+
+  const existingPlace = restaurants.find(
+    place => String(place.id) === String(editId)
+  );
+  const image = existingPlace ? cleanValue(existingPlace.bild) : "";
+
+  if(image){
+
+    pendingLocalImage =
+      image;
+
+    pendingRemoveLocalImage =
+      false;
+
+    showPendingImage(
+      image
+    );
+
+  }else{
+
+    pendingLocalImage =
+      null;
+
+    pendingRemoveLocalImage =
+      false;
+
+    document.getElementById(
+      "imagepreview"
+
+    ).style.display =
+      "none";
+
+    document.getElementById(
+      "removeimage"
+    ).style.display =
+      "none";
+
+  }
+
+}
+
+
+function removeImage(){
+
+  if(!editId)
+    return;
+
+  pendingLocalImage =
+    null;
+
+  pendingRemoveLocalImage =
+    true;
+
+  document.getElementById(
+    "imagepreview"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "previewimg"
+  ).src =
+    "";
+
+  document.getElementById(
+    "removeimage"
+  ).style.display =
+    "none";
+
+}
+
+
+function applyPendingLocalImage(){
+  // Bilder werden jetzt zusammen mit den Restaurantdaten zentral gespeichert.
+  return true;
+}
+
+function imageHtml(
+  place
+){
+
+  const image =
+    getRestaurantImage(
+      place
+    );
+
+  if(!image){
+
+    return iconFor(
+      place
+    );
+
+  }
+
+  return `
+    <img
+      src="${escapeAttr(image)}"
+      alt=""
+      loading="lazy"
+      onerror="this.style.display='none'"
+    >
+  `;
+
+}
+
+
+/* --------------------------------------------------
+   FAVORITEN
+-------------------------------------------------- */
+
+function iconFor(
+  place
+){
+
+  if(
+    place.kategorie === "Alm" ||
+    place.kategorie === "Almwirtschaft"
+  ){
+    return "🏔️";
+  }
+
+  if(
+    place.kategorie ===
+    "Ausflugsziel"
+  ){
+    return "🌲";
+  }
+
+  return "🍽️";
+
+}
+
+
+function isFavorite(
+  id
+){
+
+  return favorites.includes(
+    String(id)
+  );
+
+}
+
+
+function toggleFavorite(
+  id
+){
+
+  id =
+    String(id);
+
+  const index =
+    favorites.indexOf(
+      id
+    );
+
+  if(index >= 0){
+
+    favorites.splice(
+      index,
+      1
+    );
+
+  }else{
+
+    favorites.push(
+      id
+    );
+
+  }
+
+  localStorage.setItem(
+    "tegernseeFavorites",
+    JSON.stringify(
+      favorites
+    )
+  );
+
+  render();
+
+}
+
+
+/* --------------------------------------------------
+   FILTER
+-------------------------------------------------- */
+
+function filteredRestaurants(){
+  const search = document.getElementById("search").value.trim().toLowerCase();
+  return restaurants.filter(r => {
+    const matchesSearch = !search || [r.name, r.ort, r.kategorie, r.adresse].join(" ").toLowerCase().includes(search);
+    let matchesFilter = true;
+    if (currentFilter !== "Alle") {
+      const locationFilters = ["Tegernsee", "Gmund", "Rottach-Egern", "Kreuth", "Bad Wiessee", "Schliersee"];
+      if (locationFilters.includes(currentFilter)) {
+        matchesFilter = String(r.ort || "").toLowerCase().includes(currentFilter.toLowerCase());
+      } else {
+        matchesFilter = String(r.kategorie || "").toLowerCase() === currentFilter.toLowerCase();
+      }
+    }
+    return matchesSearch && matchesFilter;
+  });
+}
+
+
+/* --------------------------------------------------
+   RESERVIERUNG
+-------------------------------------------------- */
+
+function reserveTable(
+  url
+){
+
+  if(!url) return;
+
+  window.open(
+    url,
+    "_blank",
+    "noopener"
+  );
+
+}
+
+
+/* --------------------------------------------------
+   KARTENLINKS DIREKT AUF DEN RESTAURANT-KACHELN
+-------------------------------------------------- */
+
+const tileCardCache = new Map();
+const tileCardPending = new Map();
+
+async function loadTileCardLinks(list){
+  const places = list || [];
+  for(let i = 0; i < places.length; i += 5){
+    await Promise.all(places.slice(i, i + 5).map(loadOneTileCardLink));
+  }
+}
+
+async function loadOneTileCardLink(place){
+  const id = String(place.id);
+  const container = document.getElementById("tile-card-links-" + id);
+  if(!container) return;
+
+  const draw = cards => {
+    const current = document.getElementById("tile-card-links-" + id);
+    if(!current) return;
+    const menuUrl = cards && cards.speisekarte && cards.speisekarte.url;
+    const drinkUrl = cards && cards.getraenkekarte && cards.getraenkekarte.url;
+    const safe = url => {
+      const value = String(url || "").trim();
+      return /^https?:\/\//i.test(value) ? value : "";
+    };
+    const menu = safe(menuUrl);
+    const drink = safe(drinkUrl);
+    current.innerHTML =
+      (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarte</a>' : '') +
+      (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarte</a>' : '');
+  };
+
+  if(tileCardCache.has(id)){
+    draw(tileCardCache.get(id));
+    return;
+  }
+  if(tileCardPending.has(id)){
+    await tileCardPending.get(id);
+    draw(tileCardCache.get(id) || {});
+    return;
+  }
+
+  const request = (async()=>{
+    try{
+      const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(id) + "&t=" + Date.now(), {cache:"no-store"});
+      const data = await response.json();
+      if(!response.ok) throw new Error(data.error || "Kartenlinks konnten nicht geladen werden.");
+      const cards = data.cards || {};
+      tileCardCache.set(id, cards);
+      draw(cards);
+    }catch(error){
+      console.warn("Kartenlinks für Restaurant " + id + " konnten nicht geladen werden.", error);
+    }finally{
+      tileCardPending.delete(id);
+    }
+  })();
+  tileCardPending.set(id, request);
+  await request;
+}
+
+/* --------------------------------------------------
+   LISTE
+-------------------------------------------------- */
+
+function render(){
+
+  const menuCount = document.getElementById("incompleteMenuCount");
+  if(menuCount) menuCount.textContent = restaurants.filter(r => getMissingRestaurantFields(r).length).length;
+
+  const list =
+    filteredRestaurants();
+
+  const cards =
+    document.getElementById(
+      "cards"
+    );
+
+  document.getElementById(
+    "count"
+  ).textContent =
+    list.length;
+
+  if(!list.length){
+
+    cards.innerHTML =
+      `<div class="empty">
+        Keine passenden Restaurants gefunden.
+      </div>`;
+
+    return;
+
+  }
+
+  cards.innerHTML =
+    list.map(
+      place => {
+
+        const status =
+          getOpeningStatus(
+            place
+          );
+
+        const fav =
+          isFavorite(
+            place.id
+          );
+
+        return `
+
+          <div class="card">
+
+            <div class="cardtop">
+
+              <div class="icon">
+                ${imageHtml(place)}
+              </div>
+
+              <div class="cardmain">
+
+                <div class="cardname">
+                  ${escapeHtml(
+                    place.name
+                  )}
+                </div>
+
+                <div class="place">
+
+                  ${escapeHtml(
+                    place.ort
+                  )}
+
+                  ${
+                    place.kategorie
+                    ? " · " +
+                      escapeHtml(
+                        place.kategorie
+                      )
+                    : ""
+                  }
+
+                </div>
+
+                <div
+                  class="status ${status.type}"
+                >
+                  ${status.text}
+                </div>
+
+              </div>
+
+              <button
+                class="fav"
+                onclick="toggleFavorite('${escapeAttr(place.id)}')"
+              >
+                ${
+                  fav
+                  ? "❤️"
+                  : "♡"
+                }
+              </button>
+
+            </div>
+
+
+            <div class="tile-card-links" id="tile-card-links-${escapeAttr(place.id)}" aria-label="Offizielle Karten"></div>
+
+            <div class="cardbottom">
+
+              <button
+                onclick="openDetail('${escapeAttr(place.id)}')"
+              >
+                Details
+              </button>
+
+
+              <button
+                onclick="routeTo('${escapeAttr(place.id)}')"
+              >
+                📍 Route
+              </button>
+
+
+              ${
+                place.telefon
+
+                ? `
+                  <button
+                    onclick="callPhone('${escapeAttr(place.telefon)}')"
+                  >
+                    ☎️ Anrufen
+                  </button>
+                `
+
+                : ""
+              }
+
+
+              ${
+                place.reservierung
+
+                ? `
+                  <button
+                    onclick="reserveTable('${escapeAttr(place.reservierung)}')"
+                  >
+                    🍽️ Tisch reservieren
+                  </button>
+                `
+
+                : ""
+              }
+
+            </div>
+
+          </div>
+
+        `;
+
+      }
+    ).join("");
+
+  loadTileCardLinks(list);
+
+}
+
+
+/* --------------------------------------------------
+   SICHERHEIT HTML
+-------------------------------------------------- */
+
+function escapeHtml(
+  value
+){
+
+  return cleanValue(
+    value
+  )
+
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+
+    .replace(
+      /</g,
+      "&lt;"
+    )
+
+    .replace(
+      />/g,
+      "&gt;"
+    )
+
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+
+}
+
+
+function escapeAttr(
+  value
+){
+
+  return escapeHtml(
+    value
+  );
+
+}
+
+
+/* --------------------------------------------------
+   DETAILANSICHT
+-------------------------------------------------- */
+
+function openDetail(
+  id
+){
+
+  document.getElementById("incompleteView").style.display = "none";
+
+  currentPlace =
+    restaurants.find(
+      r =>
+        String(r.id) ===
+        String(id)
+    );
+
+  if(!currentPlace)
+    return;
+
+  document.getElementById(
+    "home"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "homeHeader"
+  ).style.display =
+    "none";
+
+  document.getElementById("mapView").style.display = "none";
+
+  document.getElementById(
+    "detail"
+  ).style.display =
+    "block";
+
+  document.getElementById(
+    "dname"
+  ).textContent =
+    currentPlace.name;
+
+  document.getElementById(
+    "dplace"
+  ).textContent =
+    [
+      currentPlace.ort,
+      currentPlace.kategorie
+    ]
+    .filter(Boolean)
+    .join(" · ");
+
+  document.getElementById(
+    "daddress"
+  ).textContent =
+    currentPlace.adresse ||
+    "Noch ergänzen";
+
+  document.getElementById(
+    "dhours"
+  ).textContent =
+    currentPlace.oeffnungszeiten ||
+    "Noch ergänzen";
+
+  document.getElementById(
+    "dclosed"
+  ).textContent =
+    currentPlace.ruhetag ||
+    "Kein Ruhetag hinterlegt";
+
+  document.getElementById(
+    "dphone"
+  ).textContent =
+    currentPlace.telefon ||
+    "Noch ergänzen";
+
+  document.getElementById(
+    "demail"
+  ).textContent =
+    currentPlace.email ||
+    "Noch ergänzen";
+
+  
+  const web =
+    document.getElementById(
+      "dweb"
+    );
+
+  if(
+    currentPlace.website
+  ){
+
+    web.innerHTML = `
+
+      <a
+        href="${escapeAttr(
+          currentPlace.website
+        )}"
+        target="_blank"
+        rel="noopener"
+      >
+        Webseite öffnen
+      </a>
+
+    `;
+
+  }else{
+
+    web.textContent =
+      "Noch ergänzen";
+
+  }
+
+
+  const reservationAction =
+    document.getElementById(
+      "reservationAction"
+    );
+
+  if(
+    currentPlace.reservierung
+  ){
+
+    reservationAction.style.display =
+      "block";
+
+  }else{
+
+    reservationAction.style.display =
+      "none";
+
+  }
+
+
+  const hero =
+    document.getElementById(
+      "hero"
+    );
+
+  const image =
+    getRestaurantImage(
+      currentPlace
+    );
+
+  if(image){
+
+    hero.innerHTML = `
+
+      <img
+        src="${escapeAttr(image)}"
+        alt="${escapeAttr(
+          currentPlace.name
+        )}"
+        onerror="this.parentElement.innerHTML='🍽️'"
+      >
+
+    `;
+
+  }else{
+
+    hero.innerHTML =
+      iconFor(
+        currentPlace
+      );
+
+  }
+
+
+  document.getElementById(
+    "note"
+  ).value =
+    currentPlace.notizen ||
+    "";
+
+  // Detailansicht immer am Seitenanfang öffnen.
+  window.scrollTo({top:0, behavior:"auto"});
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+
+}
+
+
+/* --------------------------------------------------
+   STARTSEITE
+-------------------------------------------------- */
+
+function showHome(){
+
+  document.getElementById("incompleteView").style.display = "none";
+
+  document.getElementById(
+    "detail"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "home"
+  ).style.display =
+    "block";
+
+  document.getElementById(
+    "homeHeader"
+  ).style.display =
+    "block";
+
+  document.getElementById("mapView").style.display = "none";
+
+  currentPlace =
+    null;
+
+  render();
+
+}
+
+
+function isFieldMissing(value){
+  const v = cleanValue(value).trim();
+  if(!v) return true;
+  return /^(noch ergänzen|noch ergänzen\.|nicht hinterlegt|keine angabe|unbekannt|bitte ergänzen|bitte prüfen|öffnungszeiten bitte prüfen)$/i.test(v);
+}
+
+function getMissingRestaurantFields(place){
+  const fields = [
+    ["ort","Ort"],
+    ["kategorie","Kategorie"],
+    ["adresse","Adresse"],
+    ["telefon","Telefon"],
+    ["website","Webseite"],
+    ["email","E-Mail"],
+    ["oeffnungszeiten","Öffnungszeiten"],
+    ["ruhetag","Ruhetag"],
+    ["reservierung","Reservierungslink"]
+  ];
+  return fields.filter(([key]) => isFieldMissing(place[key])).map(([,label]) => label);
+}
+
+function showIncompleteEntries(){
+  closeAppMenu();
+  document.getElementById("home").style.display = "none";
+  document.getElementById("homeHeader").style.display = "none";
+  document.getElementById("detail").style.display = "none";
+  document.getElementById("mapView").style.display = "none";
+  document.getElementById("incompleteView").style.display = "block";
+  window.scrollTo({top:0,behavior:"auto"});
+  const incomplete = restaurants.map(place => ({place,missing:getMissingRestaurantFields(place)})).filter(item => item.missing.length);
+  const count = document.getElementById("incompleteMenuCount");
+  if(count) count.textContent = incomplete.length;
+  document.getElementById("incompleteSummary").textContent = incomplete.length
+    ? incomplete.length + " von " + restaurants.length + " Restaurant-Einträgen haben noch fehlende Angaben. Angezeigt werden leere oder als „Noch ergänzen“ markierte Felder. Bild und Notizen gelten als optional."
+    : "Alle Restaurant-Einträge enthalten die geprüften Angaben. Bild und Notizen sind optional.";
+  const list = document.getElementById("incompleteList");
+  if(!incomplete.length){
+    list.innerHTML = '<div class="incomplete-card">🎉 Keine unvollständigen Einträge gefunden.</div>';
+    return;
+  }
+  list.innerHTML = incomplete.map(({place,missing}) => '<section class="incomplete-card">'
+    + '<div class="incomplete-name">'+escapeHtml(place.name||"Restaurant ohne Namen")+'</div>'
+    + '<div class="incomplete-meta">'+escapeHtml([place.ort,place.kategorie].filter(Boolean).join(" · ")||"Ort/Kategorie fehlen")+'</div>'
+    + '<div><strong>Fehlende Angaben:</strong></div><div class="missing-list">'+missing.map(label=>'<span class="missing-chip">'+escapeHtml(label)+'</span>').join("")+'</div>'
+    + '<div class="incomplete-actions"><button type="button" onclick="openDetail(\''+escapeAttr(String(place.id))+'\')">Eintrag öffnen</button><button type="button" onclick="editRestaurantById(\''+escapeAttr(String(place.id))+'\')">Bearbeiten</button></div>'
+    + '</section>').join("");
+}
+
+function editRestaurantById(id){
+  const place = restaurants.find(r => String(r.id) === String(id));
+  if(!place) return;
+  openDetail(id);
+  if(typeof editPlace === "function") editPlace();
+}
+
+function focusSearch(){
+
+  showHome();
+
+  document.getElementById(
+    "search"
+  ).focus();
+
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
+
+}
+
+
+/* --------------------------------------------------
+   FAVORITENANSICHT
+-------------------------------------------------- */
+
+function showFavorites(){
+
+  showHome();
+
+  const list =
+    restaurants.filter(
+      r =>
+        isFavorite(
+          r.id
+        )
+    );
+
+  const cards =
+    document.getElementById(
+      "cards"
+    );
+
+  document.getElementById(
+    "count"
+  ).textContent =
+    list.length;
+
+  if(!list.length){
+
+    cards.innerHTML = `
+      <div class="empty">
+        Du hast noch keine Favoriten gespeichert.
+      </div>
+    `;
+
+    return;
+
+  }
+
+
+  cards.innerHTML =
+    list.map(
+      place => {
+
+        const status =
+          getOpeningStatus(
+            place
+          );
+
+        return `
+
+          <div class="card">
+
+            <div class="cardtop">
+
+              <div class="icon">
+                ${imageHtml(place)}
+              </div>
+
+              <div class="cardmain">
+
+                <div class="cardname">
+                  ${escapeHtml(
+                    place.name
+                  )}
+                </div>
+
+                <div class="place">
+                  ${escapeHtml(
+                    place.ort
+                  )}
+                </div>
+
+                <div
+                  class="status ${status.type}"
+                >
+                  ${status.text}
+                </div>
+
+              </div>
+
+              <button
+                class="fav"
+                onclick="toggleFavorite('${escapeAttr(place.id)}')"
+              >
+                ❤️
+              </button>
+
+            </div>
+
+
+            <div class="tile-card-links" id="tile-card-links-${escapeAttr(place.id)}" aria-label="Offizielle Karten"></div>
+
+            <div class="cardbottom">
+
+              <button
+                onclick="openDetail('${escapeAttr(place.id)}')"
+              >
+                Details
+              </button>
+
+              <button
+
+                onclick="routeTo('${escapeAttr(place.id)}')"
+              >
+                📍 Route
+              </button>
+
+
+              ${
+                place.telefon
+
+                ? `
+                  <button
+                    onclick="callPhone('${escapeAttr(place.telefon)}')"
+                  >
+                    ☎️ Anrufen
+                  </button>
+                `
+
+                : ""
+              }
+
+
+              ${
+                place.reservierung
+
+                ? `
+                  <button
+                    onclick="reserveTable('${escapeAttr(place.reservierung)}')"
+                  >
+                    🍽️ Tisch reservieren
+                  </button>
+                `
+
+                : ""
+              }
+
+            </div>
+
+          </div>
+
+        `;
+
+      }
+    ).join("");
+
+  loadTileCardLinks(list);
+
+}
+
+
+/* --------------------------------------------------
+   ROUTE / TELEFON
+-------------------------------------------------- */
+
+function routeTo(
+  id
+){
+
+  const place =
+    restaurants.find(
+      r =>
+        String(r.id) ===
+        String(id)
+    );
+
+  if(!place)
+    return;
+
+  const destination =
+    encodeURIComponent(
+      place.adresse ||
+      [
+        place.name,
+        place.ort
+      ]
+      .filter(Boolean)
+      .join(", ")
+    );
+
+  window.open(
+
+    "https://www.google.com/maps/search/?api=1&query=" +
+    destination,
+
+    "_blank"
+
+  );
+
+}
+
+
+function openRoute(){
+
+  if(currentPlace){
+
+    routeTo(
+      currentPlace.id
+    );
+
+  }
+
+}
+
+
+function callPhone(
+  phone
+){
+
+  if(phone){
+
+    window.location.href =
+      "tel:" +
+      phone.replace(
+        /[^\d+]/g,
+        ""
+      );
+
+  }
+
+}
+
+
+function callPlace(){
+
+  if(currentPlace){
+
+    callPhone(
+      currentPlace.telefon
+    );
+
+  }
+
+}
+
+
+/* --------------------------------------------------
+   BENUTZERDEFINIERTE KATEGORIE
+-------------------------------------------------- */
+
+
+async function lookupRestaurantInApp(){
+  const input = document.getElementById("f_name");
+  const name = (input.value || "").trim();
+
+  if (!name) {
+    alert("Bitte zuerst den Restaurantnamen eingeben.");
+    input.focus();
+    return;
+  }
+
+  try {
+    const url = API_URL + "?action=lookup&name=" + encodeURIComponent(name);
+    const response = await fetch(url, {
+      method: "GET",
+      cache: "no-store",
+      headers: { "Accept": "application/json" }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || data.error || "Die Suche ist fehlgeschlagen.");
+    }
+
+    const candidates = Array.isArray(data.candidates)
+      ? data.candidates
+      : [];
+
+    if (candidates.length === 0) {
+      loadTavilyUsage();
+      alert("Keine passenden Daten gefunden. Du kannst die Google-Suche nutzen oder die Angaben manuell ergänzen.");
+      return;
+    }
+
+    let selected = candidates[0];
+
+    if (candidates.length > 1) {
+      const list = candidates.map((r, i) =>
+        (i + 1) + ". " + (r.name || "Unbekannt") +
+        (r.adresse ? " — " + r.adresse : "") +
+        (r.ort ? " (" + r.ort + ")" : "")
+      ).join("\n");
+
+      const answer = prompt(
+        "Bitte den passenden Treffer auswählen:\n\n" +
+        list + "\n\nNummer eingeben:",
+        "1"
+      );
+
+      if (answer === null) return;
+
+      const index = Number(answer);
+
+      if (!Number.isInteger(index) || index < 1 || index > candidates.length) {
+        alert("Bitte eine gültige Nummer eingeben.");
+        return;
+      }
+
+      selected = candidates[index - 1];
+    }
+
+    // Vor dem Ergänzen ausdrücklich fragen. Vorhandene Werte bleiben geschützt.
+    const proposedFields = [
+      ["f_adresse", "Adresse", selected.adresse],
+      ["f_telefon", "Telefon", selected.telefon],
+      ["f_website", "Website", selected.website],
+      ["f_email", "E-Mail", selected.email],
+      ["f_oeffnungszeiten", "Öffnungszeiten/Küchenzeiten", selected.oeffnungszeiten],
+      ["f_ruhetag", "Ruhetag", selected.ruhetag],
+      ["f_notizen", "Notizen", selected.notizen],
+      ["f_reservierung", "Reservierungslink", selected.reservierung],
+      ["f_speisekarte_url", "Speisekarte", selected.speisekarte_url],
+      ["f_getraenkekarte_url", "Getränkekarte", selected.getraenkekarte_url]
+    ];
+    const blankProposals = proposedFields.filter(([id, label, value]) => {
+      const field = document.getElementById(id);
+      return field && !field.value.trim() && value && String(value).trim();
+    });
+    const answer = blankProposals.length
+      ? confirm(
+          "Die Suche hat Angaben für bisher leere Felder gefunden:\n\n" +
+          blankProposals.map(([, label]) => "• " + label).join("\n") +
+          "\n\nMöchtest du diese fehlenden Angaben übernehmen?\n\n" +
+          "Bereits ausgefüllte Felder werden nicht verändert."
+        )
+      : false;
+
+    function fillIfBlank(id, value) {
+      const field = document.getElementById(id);
+      if (answer && field && value && !field.value.trim()) {
+        field.value = value;
+      }
+    }
+
+    if (!answer) {
+      // Ergebnisse und Quellen anzeigen, ohne Formulardaten zu ändern.
+      const review = document.getElementById("lookupReview");
+      if (review) {
+        const sourceList = Array.isArray(selected.quellen)
+          ? selected.quellen.filter(source => source && /^https?:\/\//i.test(source.url || "")).slice(0, 5)
+          : [];
+        review.innerHTML = "<strong>Suchergebnisse gefunden – nichts übernommen</strong>" +
+          "<p>Deine bisherigen Angaben sind unverändert geblieben. Du kannst die fehlenden Felder bei Bedarf manuell ergänzen.</p>" +
+          (sourceList.length
+            ? "<strong>Quellen zur Kontrolle</strong><ul>" + sourceList.map(source =>
+                '<li><a href="' + escapeAttr(source.url) + '" target="_blank" rel="noopener noreferrer">' +
+                escapeHtml(source.title || source.url) + "</a></li>"
+              ).join("") + "</ul>"
+            : "");
+        review.hidden = false;
+      }
+      loadTavilyUsage();
+      return;
+    }
+
+    fillIfBlank("f_adresse", selected.adresse);
+    fillIfBlank("f_telefon", selected.telefon);
+    fillIfBlank("f_website", selected.website);
+    fillIfBlank("f_email", selected.email);
+    fillIfBlank("f_oeffnungszeiten", selected.oeffnungszeiten);
+    fillIfBlank("f_ruhetag", selected.ruhetag);
+    fillIfBlank("f_notizen", selected.notizen);
+    fillIfBlank("f_reservierung", selected.reservierung);
+    fillIfBlank("f_speisekarte_url", selected.speisekarte_url);
+    fillIfBlank("f_getraenkekarte_url", selected.getraenkekarte_url);
+
+    // Bei der automatischen Suche die Kartenfelder sichtbar machen,
+    // damit gefundene Links vor dem Speichern geprüft werden können.
+    const cardEditSection = document.getElementById("cardEditSection");
+    if (cardEditSection) cardEditSection.style.display = "block";
+    for (const kind of ["speisekarte", "getraenkekarte"]) {
+      const field = document.getElementById("f_" + kind + "_url");
+      const status = document.getElementById("f_" + kind + "_status");
+      if (status && field) {
+        status.textContent = field.value.trim()
+          ? "Link gefunden – bitte vor dem Speichern prüfen."
+          : "Kein Link gefunden. Du kannst ihn hier ergänzen.";
+      }
+    }
+
+    const ort = document.getElementById("f_ort");
+
+    if (ort && selected.ort && !ort.value.trim()) {
+      const option = Array.from(ort.options).find(
+        o => o.value.toLowerCase() === selected.ort.toLowerCase()
+      );
+
+      if (option) {
+        ort.value = option.value;
+      } else {
+        ort.value = "Anderer Ort";
+      }
+    }
+
+    const category = document.getElementById("f_kategorie");
+    const customCategory = document.getElementById("f_kategorie_custom");
+
+    if (category && selected.kategorie && !category.value.trim()) {
+      const option = Array.from(category.options).find(
+        o => o.value.toLowerCase() === selected.kategorie.toLowerCase()
+      );
+
+      if (option) {
+        category.value = option.value;
+        if (customCategory) customCategory.value = "";
+      } else if (
+        Array.from(category.options).some(o => o.value === "__custom__")
+      ) {
+        category.value = "__custom__";
+        if (customCategory) customCategory.value = selected.kategorie;
+      }
+    }
+
+    if (typeof toggleCustomCategory === "function") {
+      toggleCustomCategory();
+    }
+
+    const reviewFields = [
+      ["f_ort", "Ort"],
+      ["f_adresse", "Adresse"],
+      ["f_telefon", "Telefon"],
+      ["f_website", "Webseite"],
+      ["f_email", "E-Mail"],
+      ["f_oeffnungszeiten", "Öffnungszeiten/Küchenzeiten"],
+      ["f_ruhetag", "Ruhetag"],
+      ["f_reservierung", "Reservierungslink"],
+      ["f_speisekarte_url", "Speisekarte"],
+      ["f_getraenkekarte_url", "Getränkekarte"]
+    ];
+    const missing = reviewFields
+      .filter(([id]) => {
+        const field = document.getElementById(id);
+        return !field || !String(field.value || "").trim();
+      })
+      .map(([, label]) => label);
+    const categoryValue = category && category.value === "__custom__"
+      ? (customCategory ? customCategory.value.trim() : "")
+      : (category ? category.value.trim() : "");
+    if (!categoryValue) missing.splice(1, 0, "Kategorie");
+
+    const sourceList = Array.isArray(selected.quellen)
+      ? selected.quellen.filter(source => source && /^https?:\/\//i.test(source.url || "")).slice(0, 5)
+      : [];
+    const review = document.getElementById("lookupReview");
+    if (review) {
+      const missingHtml = missing.length
+        ? "<strong>Noch fehlende Angaben</strong><ul>" + missing.map(label => "<li>" + escapeHtml(label) + "</li>").join("") + "</ul>"
+        : "<strong>Die wichtigsten Formularfelder sind ausgefüllt.</strong>";
+      const sourcesHtml = sourceList.length
+        ? "<strong>Quellen zur Kontrolle</strong><ul>" + sourceList.map(source =>
+            '<li><a href="' + escapeAttr(source.url) + '" target="_blank" rel="noopener noreferrer">' +
+            escapeHtml(source.title || source.url) + "</a>" +
+            (source.extracted ? " <span>(Webseite ausgelesen)</span>" : "") +
+            "</li>"
+          ).join("") + "</ul>"
+        : '<p>Der Worker hat für diesen Treffer keine direkten Quellenlinks mitgeliefert. Als Hilfestellung kannst du die Angaben hier separat prüfen: ' +
+          '<a href="https://www.google.com/search?q=' + encodeURIComponent((name || "") + ' Tegernsee Adresse Telefon Öffnungszeiten offizielle Website Reservierung') +
+          '" target="_blank" rel="noopener noreferrer">Google-Suche in neuem Tab öffnen</a>. Diese Suche ist keine Bestätigung der Angaben.</p>';
+      review.innerHTML = "<strong>Bitte Suchergebnisse prüfen – noch nicht gespeichert</strong>" +
+        "<p>Die automatisch gefundenen Angaben sind Vorschläge und nicht garantiert aktuell oder korrekt.</p>" +
+        missingHtml + sourcesHtml;
+      review.hidden = false;
+    }
+    alert(
+      "Die gefundenen Angaben wurden ins Formular übernommen.\n\n" +
+      (missing.length ? "Noch fehlend: " + missing.join(", ") + ".\n\n" : "") +
+      "Bitte prüfe die Angaben und die jetzt im Formular angezeigten Quellen. Es wurde noch nichts gespeichert."
+    );
+    loadTavilyUsage();
+
+  } catch (error) {
+    loadTavilyUsage();
+    alert(
+      "Die automatische Suche ist momentan nicht verfügbar.\n\n" +
+      "Deine bisherigen Eingaben bleiben erhalten. Du kannst die Google-Suche als Alternative nutzen.\n\n" +
+      "Hinweis: " + error.message
+    );
+  }
+}
+  
+function searchRestaurantWeb(){
+
+  const input = document.getElementById("f_name");
+  const name = (input.value || "").trim();
+
+  if(!name){
+    alert("Bitte zuerst den Restaurantnamen eingeben.");
+    input.focus();
+    return;
+  }
+
+  const query = name + " Tegernsee Adresse Öffnungszeiten Telefon Website";
+  const url = "https://www.google.com/search?q=" + encodeURIComponent(query);
+  window.open(url, "_blank");
+
+}
+  function toggleCustomCategory(){
+
+  const select = document.getElementById("f_kategorie");
+  const customInput = document.getElementById("f_kategorie_custom");
+  const useCustom = select.value === "__custom__";
+
+  customInput.style.display = useCustom ? "block" : "none";
+  customInput.required = useCustom;
+
+  if(!useCustom){
+    customInput.value = "";
+  }
+}
+
+
+/* --------------------------------------------------
+   HINZUFÜGEN
+-------------------------------------------------- */
+
+function scrollRestaurantFormToTop(){
+  const modal = document.getElementById("modal");
+  const modalbox = modal ? modal.querySelector(".modalbox") : null;
+  if(modal){
+    modal.scrollTop = 0;
+    modal.scrollTo({top:0, behavior:"auto"});
+  }
+  if(modalbox){
+    modalbox.scrollTop = 0;
+  }
+}
+
+function openAdd(){
+
+  editId =
+    null;
+
+  pendingLocalImage =
+    null;
+
+  pendingRemoveLocalImage =
+    false;
+
+  document.getElementById(
+    "modalTitle"
+  ).textContent =
+    "Restaurant hinzufügen";
+
+  clearForm();
+
+  document.getElementById(
+    "editImageSection"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "modal"
+  ).style.display =
+    "block";
+
+  scrollRestaurantFormToTop();
+
+}
+
+
+/* --------------------------------------------------
+   BEARBEITEN
+-------------------------------------------------- */
+
+function editPlace(){
+
+  if(!currentPlace)
+    return;
+
+  editId =
+    currentPlace.id;
+
+  pendingLocalImage =
+    null;
+
+  pendingRemoveLocalImage =
+    false;
+
+  document.getElementById(
+    "modalTitle"
+  ).textContent =
+    "Restaurant bearbeiten";
+
+
+  document.getElementById(
+    "f_name"
+  ).value =
+    currentPlace.name;
+
+
+  document.getElementById(
+    "f_ort"
+  ).value =
+    currentPlace.ort;
+
+  
+  const categorySelect = document.getElementById("f_kategorie");
+  const categoryCustom = document.getElementById("f_kategorie_custom");
+  const savedCategory = currentPlace.kategorie || "Restaurant";
+  const hasStandardCategory = Array.from(categorySelect.options)
+    .some(option => option.value === savedCategory && option.value !== "__custom__");
+
+  if(hasStandardCategory){
+    categorySelect.value = savedCategory;
+    categoryCustom.value = "";
+  }else{
+    categorySelect.value = "__custom__";
+    categoryCustom.value = savedCategory;
+  }
+  toggleCustomCategory();
+
+
+  document.getElementById(
+    "f_adresse"
+  ).value =
+    currentPlace.adresse;
+
+
+  document.getElementById(
+    "f_telefon"
+  ).value =
+    currentPlace.telefon;
+
+
+  document.getElementById(
+    "f_website"
+  ).value =
+    currentPlace.website;
+
+
+  document.getElementById(
+    "f_reservierung"
+  ).value =
+    currentPlace.reservierung;
+
+
+  document.getElementById(
+    "f_email"
+  ).value =
+    currentPlace.email;
+
+
+  document.getElementById(
+    "f_oeffnungszeiten"
+  ).value =
+    currentPlace.oeffnungszeiten;
+
+
+  document.getElementById(
+    "f_ruhetag"
+  ).value =
+    currentPlace.ruhetag;
+
+
+  document.getElementById(
+    "f_notizen"
+  ).value =
+    currentPlace.notizen;
+
+
+  document.getElementById(
+    "editImageSection"
+  ).style.display =
+    "block";
+
+
+  prepareExistingImage();
+
+
+  document.getElementById("cardEditSection").style.display = "block";
+  loadCardEditor(currentPlace.id);
+
+  document.getElementById(
+    "modal"
+  ).style.display =
+    "block";
+
+  scrollRestaurantFormToTop();
+
+}
+
+
+/* --------------------------------------------------
+   FORMULAR
+-------------------------------------------------- */
+
+function clearForm(){
+
+  cardEditorState = {restaurantId:null,status:"idle"};
+  ["f_speisekarte_url","f_getraenkekarte_url"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = "";
+  });
+  ["f_speisekarte_status","f_getraenkekarte_status"].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = "Noch kein offizieller Kartenlink hinterlegt.";
+  });
+  document.getElementById("cardEditSection").style.display = "none";
+
+  [
+
+    "f_name",
+    "f_ort",
+    "f_adresse",
+    "f_telefon",
+    "f_website",
+    "f_reservierung",
+    "f_email",
+    "f_oeffnungszeiten",
+    "f_ruhetag",
+    "f_notizen"
+
+  ].forEach(
+    id => {
+
+      document.getElementById(
+        id
+      ).value = "";
+
+    }
+  );
+
+
+  document.getElementById(
+    "f_kategorie"
+  ).value =
+    "Restaurant";
+
+  document.getElementById("f_kategorie_custom").value = "";
+  toggleCustomCategory();
+
+  document.getElementById(
+    "imagepreview"
+  ).style.display =
+    "none";
+
+
+  document.getElementById(
+    "removeimage"
+  ).style.display =
+    "none";
+
+
+  document.getElementById(
+    "previewimg"
+  ).src =
+    "";
+
+}
+
+
+function closeModal(){
+
+  document.getElementById(
+    "modal"
+  ).style.display =
+    "none";
+
+  pendingLocalImage =
+    null;
+
+  pendingRemoveLocalImage =
+    false;
+
+}
+
+
+function getFormData(){
+
+  return {
+
+    name:
+      document.getElementById(
+        "f_name"
+      )
+      .value
+      .trim(),
+
+    ort:
+      document.getElementById(
+        "f_ort"
+      )
+      .value
+      .trim(),
+
+    kategorie:
+      document.getElementById("f_kategorie").value === "__custom__"
+        ? document.getElementById("f_kategorie_custom").value.trim()
+        : document.getElementById("f_kategorie").value,
+
+    adresse:
+      document.getElementById(
+        "f_adresse"
+      )
+      .value
+      .trim(),
+
+    telefon:
+      document.getElementById(
+        "f_telefon"
+      )
+      .value
+      .trim(),
+
+    website:
+      document.getElementById(
+        "f_website"
+      )
+      .value
+      .trim(),
+
+    reservierung:
+      document.getElementById(
+        "f_reservierung"
+      )
+      .value
+      .trim(),
+
+    email:
+      document.getElementById(
+        "f_email"
+      )
+      .value
+      .trim(),
+
+    oeffnungszeiten:
+      document.getElementById(
+        "f_oeffnungszeiten"
+      )
+      .value
+      .trim(),
+
+    ruhetag:
+      document.getElementById(
+        "f_ruhetag"
+      )
+      .value
+      .trim(),
+
+    notizen:
+      document.getElementById(
+        "f_notizen"
+      )
+      .value
+      .trim(),
+
+    bild:
+      pendingRemoveLocalImage
+        ? ""
+        : (pendingLocalImage || (currentPlace && editId && String(currentPlace.id) === String(editId) ? cleanValue(currentPlace.bild) : ""))
+
+  };
+
+}
+
+
+/* --------------------------------------------------
+   SPEISE- UND GETRÄNKEKARTEN (zentral)
+-------------------------------------------------- */
+
+async function loadRestaurantCards(restaurantId, officialWebsite){
+  const menuStatus = document.getElementById("menuCardStatus");
+  const drinkStatus = document.getElementById("drinkCardStatus");
+  if(menuStatus) menuStatus.textContent = "Offizielle Karte wird geladen …";
+  if(drinkStatus) drinkStatus.textContent = "Offizielle Karte wird geladen …";
+  try{
+    const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(restaurantId) + "&t=" + Date.now(), {cache:"no-store"});
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error || "Kartenlinks konnten nicht geladen werden.");
+    const cards = data.cards || {};
+    [["speisekarte","menuCardStatus","Speisekarte öffnen"],["getraenkekarte","drinkCardStatus","Getränkekarte öffnen"]].forEach(([kind,elementId,label])=>{
+      const el = document.getElementById(elementId);
+      if(!el) return;
+      const card = cards[kind] || {};
+      const target = card.url || officialWebsite || "";
+      let audit = "";
+      if(card.checkedAt){
+        const checked = new Date(card.checkedAt);
+        const dateText = Number.isNaN(checked.getTime()) ? "" : checked.toLocaleDateString("de-DE");
+        if(card.checkStatus === "unreachable" || card.checkStatus === "error" || card.checkStatus === "too_large"){
+          audit = '<p class="menu-check-note">Letzte Quellenprüfung: ' + escapeAttr(dateText) + ' – nicht vollständig prüfbar.</p>';
+        }else if(card.checkStatus === "baseline"){
+          audit = '<p class="menu-check-note">Offizielle Quelle zuletzt geprüft: ' + escapeAttr(dateText) + '.</p>';
+        }else{
+          audit = '<p class="menu-check-note">Offizielle Quelle zuletzt geprüft: ' + escapeAttr(dateText) + (card.changedAt ? ' · Inhaltsänderung erkannt' : '') + '.</p>';
+        }
+      }else if(card.url){
+        audit = '<p class="menu-check-note">Die automatische Prüfung startet mit dem nächsten täglichen Lauf.</p>';
+      }
+      if(target && /^https?:\/\//i.test(target)){
+        const text = card.url ? label : "Offizielle Website öffnen";
+        el.innerHTML = '<a href="' + escapeAttr(target) + '" target="_blank" rel="noopener noreferrer">🌐 ' + text + '</a>' +
+          (card.url ? '<p>Offizieller Kartenlink</p>' : '<p>Keine direkte Karte hinterlegt. Bitte auf der offiziellen Website nachsehen.</p>') + audit;
+      }else{
+        el.textContent = "Noch keine offizielle Karte oder Website hinterlegt.";
+      }
+    });
+  }catch(error){
+    console.error(error);
+    if(menuStatus) menuStatus.textContent = "Offizielle Kartenlinks derzeit nicht verfügbar.";
+    if(drinkStatus) drinkStatus.textContent = "Offizielle Kartenlinks derzeit nicht verfügbar.";
+  }
+}
+
+let cardEditorState = {restaurantId:null,status:"idle"};
+
+async function loadCardEditor(restaurantId){
+  const statusIds = {speisekarte:"f_speisekarte_status",getraenkekarte:"f_getraenkekarte_status"};
+  cardEditorState = {restaurantId:String(restaurantId),status:"loading"};
+  try{
+    const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(restaurantId) + "&t=" + Date.now(), {cache:"no-store"});
+    const data = await response.json();
+    if(!response.ok) throw new Error(data.error || "Kartenlinks konnten nicht geladen werden.");
+    for(const kind of ["speisekarte","getraenkekarte"]){
+      const card = (data.cards || {})[kind] || {};
+      const urlInput = document.getElementById("f_" + kind + "_url");
+      const status = document.getElementById(statusIds[kind]);
+      if(urlInput) urlInput.value = card.url || "";
+      if(status) status.textContent = card.url ? "Offizieller Link ist hinterlegt." : "Noch kein offizieller Kartenlink hinterlegt.";
+    }
+    cardEditorState = {restaurantId:String(restaurantId),status:"loaded"};
+  }catch(error){
+    cardEditorState = {restaurantId:String(restaurantId),status:"error"};
+    console.error(error);
+    for(const id of Object.values(statusIds)){
+      const el = document.getElementById(id);
+      if(el) el.textContent = "Kartenlinks konnten nicht geladen werden.";
+    }
+  }
+}
+
+async function saveOneRestaurantCard(restaurantId, kind, password){
+  const urlInput = document.getElementById("f_" + kind + "_url");
+  const cardUrl = (urlInput ? urlInput.value : "").trim();
+  if(cardUrl && !/^https?:\/\//i.test(cardUrl)) throw new Error("Bitte einen vollständigen http(s)-Link zur offiziellen Karte eintragen.");
+  const headers = {"Content-Type":"application/json","Authorization":"Bearer " + password};
+  const response = await fetch(API_URL,{
+    method:"POST",headers,
+    body:JSON.stringify({action:"saveCard",restaurantId:String(restaurantId),kind,url:cardUrl})
+  });
+  const data = await response.json();
+  if(!response.ok || data.error) throw new Error(data.error || "Der Kartenlink konnte nicht gespeichert werden.");
+}
+
+async function syncRestaurantCards(restaurantId,password){
+  await saveOneRestaurantCard(restaurantId,"speisekarte",password);
+  await saveOneRestaurantCard(restaurantId,"getraenkekarte",password);
+}
+
+/* --------------------------------------------------
+   SPEICHERN
+-------------------------------------------------- */
+
+
+async function savePlace(){
+
+  const restaurant = getFormData();
+
+  if(restaurant.ort === "Anderer Ort"){
+    const otherOrt = prompt("Bitte den Ortsnamen eingeben:");
+    if(!otherOrt || !otherOrt.trim()) return;
+    restaurant.ort = otherOrt.trim();
+  }
+
+  if(!restaurant.name){
+    alert("Bitte zuerst einen Namen eingeben.");
+    return;
+  }
+
+  if(!restaurant.kategorie){
+    alert("Bitte eine eigene Kategorie eingeben.");
+    document.getElementById("f_kategorie_custom").focus();
+    return;
+  }
+
+  const password = await askAdminPassword(
+    "Bitte Admin-Passwort zum Speichern eingeben."
+  );
+
+  if(password === null) return;
+
+  if(password === ""){
+    alert("Bitte ein Passwort eingeben.");
+    return;
+  }
+
+  try{
+
+    const isEditing = Boolean(editId);
+    const savedEditId = editId;
+
+    const body = isEditing
+      ? {
+          action: "update",
+          id: editId,
+          restaurant
+        }
+      : {
+          action: "create",
+          restaurant
+        };
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + password
+      },
+      body: JSON.stringify(body)
+    });
+
+    if(!response.ok){
+      throw new Error("HTTP " + response.status);
+    }
+
+    // Antwort des Servers prüfen, sofern sie JSON enthält.
+    let result = null;
+
+    try{
+      result = await response.json();
+    }catch(_){
+      // Manche Worker-Antworten enthalten kein JSON.
+    }
+
+    if(
+      result &&
+      (
+        result.success === false ||
+        result.ok === false ||
+        result.error
+      )
+    ){
+      throw new Error(
+        result.error || "Der Server hat das Speichern abgelehnt."
+      );
+    }
+
+    if(isEditing && !applyPendingLocalImage()){
+      alert(
+        "Die Restaurantdaten wurden gespeichert, " +
+        "aber das Bild konnte auf diesem Handy nicht gespeichert werden."
+      );
+    }
+
+    closeModal();
+
+    await loadData();
+
+    // Prüfen, ob der Eintrag nach dem Neuladen vorhanden ist.
+    const savedRestaurant = isEditing
+      ? restaurants.find(
+          r => String(r.id) === String(savedEditId)
+        )
+      : restaurants.find(
+          r =>
+            String(r.name || "").trim().toLowerCase() ===
+            String(restaurant.name || "").trim().toLowerCase()
+        );
+
+    let cardWarning = "";
+    if(savedRestaurant){
+      if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
+      const cardEditorReady = !isEditing ||
+        (cardEditorState.status === "loaded" &&
+         String(cardEditorState.restaurantId) === String(savedRestaurant.id));
+      if(!cardEditorReady){
+        // Niemals leere Formularfelder in die zentrale Karten-Tabelle schreiben,
+        // wenn die vorhandenen Links beim Bearbeiten nicht sicher geladen wurden.
+        cardWarning = "\n\nDie Restaurantdaten wurden gespeichert. Die Speise- und Getränkekarten-Links wurden vorsichtshalber nicht verändert, weil sie vorher nicht zuverlässig geladen werden konnten. Bitte öffne das Formular erneut und prüfe die Kartenlinks.";
+      }else{
+        try{
+          // Bei Bearbeitung nur speichern, wenn der Kartenbestand erfolgreich geladen wurde.
+          // Bei neuen Restaurants dürfen zunächst leere Kartenlinks gespeichert werden.
+          await syncRestaurantCards(savedRestaurant.id,password);
+        }catch(cardError){
+          console.error(cardError);
+          cardWarning = "\n\nDie Restaurantdaten wurden gespeichert, aber die Speise-/Getränkekarten konnten nicht vollständig gespeichert werden: " + (cardError.message || "");
+        }
+      }
+    }
+
+    if(savedRestaurant){
+      alert(
+        (isEditing
+          ? "Restaurant erfolgreich aktualisiert."
+          : "Restaurant erfolgreich gespeichert.") + cardWarning
+
+      );
+
+      if(isEditing){
+        openDetail(savedRestaurant.id);
+      }
+    }else{
+      alert(
+        "Der Server hat die Anfrage angenommen, aber der Eintrag " +
+        "wurde nach dem Neuladen nicht gefunden. Bitte prüfe die " +
+        "Restaurantliste, bevor du erneut speicherst."
+      );
+    }
+
+  }catch(error){
+
+    console.error(error);
+
+    alert(
+      "Speichern fehlgeschlagen.\n\n" +
+      "Bitte Admin-Passwort und Verbindung prüfen.\n\n" +
+      (error.message || "")
+    );
+
+  }
+}
+
+
+/* --------------------------------------------------
+   LÖSCHEN
+-------------------------------------------------- */
+
+async function deletePlace(){
+
+  if(!currentPlace)
+    return;
+
+
+  if(
+    !confirm(
+      "Möchtest du „" +
+      currentPlace.name +
+      "“ wirklich löschen?"
+    )
+  ){
+
+    return;
+
+  }
+
+
+  const password =
+    await askAdminPassword(
+      "Bitte Admin-Passwort zum Löschen eingeben."
+    );
+
+
+  if(password === null)
+    return;
+
+
+  if(password === ""){
+
+    alert(
+      "Bitte ein Passwort eingeben."
+    );
+
+    return;
+
+  }
+
+
+  try{
+
+    const response =
+      await fetch(
+        API_URL,
+        {
+
+          method:"POST",
+
+          headers:{
+
+            "Content-Type":
+              "application/json",
+
+            "Authorization":
+              "Bearer " +
+              password
+
+          },
+
+          body:
+            JSON.stringify({
+
+              action:"delete",
+
+              id:
+                currentPlace.id
+
+            })
+
+        }
+      );
+
+
+    if(!response.ok){
+
+      throw new Error(
+        "HTTP " +
+        response.status
+      );
+
+    }
+
+
+    showHome();
+
+    await loadData();
+
+
+  }catch(error){
+
+    console.error(
+      error
+    );
+
+    alert(
+      "Löschen fehlgeschlagen.\n\n" +
+      "Bitte Admin-Passwort prüfen."
+    );
+
+  }
+
+}
+
+
+/* --------------------------------------------------
+   NOTIZEN SPEICHERN
+-------------------------------------------------- */
+
+let noteTimer =
+  null;
+
+
+document.getElementById(
+  "note"
+).addEventListener(
+  "input",
+  function(){
+
+    if(!currentPlace)
+      return;
+
+    clearTimeout(
+      noteTimer
+    );
+
+
+    noteTimer =
+      setTimeout(
+        async () => {
+
+          const password =
+            await askAdminPassword(
+              "Admin-Passwort zum Speichern der Notiz eingeben."
+            );
+
+
+          if(password === null)
+            return;
+
+
+          if(password === ""){
+
+            alert(
+              "Bitte ein Passwort eingeben."
+            );
+
+            return;
+
+          }
+
+
+          try{
+
+            const response =
+              await fetch(
+                API_URL,
+                {
+
+                  method:"POST",
+
+                  headers:{
+
+                    "Content-Type":
+                      "application/json",
+
+                    "Authorization":
+                      "Bearer " +
+                      password
+
+                  },
+
+                  body:
+                    JSON.stringify({
+
+                      action:"update",
+
+                      id:
+                        currentPlace.id,
+
+                      restaurant:{
+                        ...currentPlace,
+                        notizen:
+                          this.value
+                      }
+
+                    })
+
+                }
+              );
+
+
+            if(!response.ok){
+
+              throw new Error(
+                "HTTP " +
+                response.status
+              );
+
+            }
+
+
+            currentPlace.notizen =
+              this.value;
+
+
+          }catch(error){
+
+            console.error(
+
+              error
+            );
+
+            alert(
+              "Notiz konnte nicht gespeichert werden."
+            );
+
+          }
+
+        },
+        900
+      );
+
+  }
+);
+
+
+/* --------------------------------------------------
+   AKTUALISIEREN
+-------------------------------------------------- */
+
+function refreshData(){
+
+  loadData();
+
+}
+
+
+function showSyncInfo(){
+
+  alert(
+
+    "Die App lädt Restaurantdaten und gespeicherte Bilder " +
+    "beim Öffnen und beim Aktualisieren aus der zentralen Online-Datenbank.\n\n" +
+
+    "Änderungen werden nach erfolgreichem Speichern zentral übernommen " +
+    "und sind anschließend auch für andere Nutzer verfügbar."
+
+  );
+
+}
+
+
+/* --------------------------------------------------
+   SUCHE
+-------------------------------------------------- */
+
+document.getElementById(
+  "search"
+).addEventListener(
+  "input",
+  render
+);
+
+
+/* --------------------------------------------------
+   FILTER
+-------------------------------------------------- */
+
+document.querySelectorAll(
+  ".chip"
+).forEach(
+  button => {
+
+    button.addEventListener(
+      "click",
+      () => {
+
+        document
+          .querySelectorAll(
+            ".chip"
+          )
+          .forEach(
+            b =>
+              b.classList.remove(
+                "active"
+              )
+          );
+
+
+        button.classList.add(
+          "active"
+        );
+
+
+        currentFilter =
+          button.dataset.filter;
+
+
+        render();
+
+      }
+    );
+
+  }
+);
+
+
+/* --------------------------------------------------
+   AUTOMATISCHE AKTUALISIERUNG DER ANZEIGE
+-------------------------------------------------- */
+
+setInterval(
+  render,
+  60000
+);
+
+
+/* KARTENMENÜ UND RESTAURANTSKARTE */
+let restaurantMap = null;
+let mapMarkers = null;
+let mapOpening = false;
+const GEOCODE_CACHE_KEY = 'tegernseeMapCoordinates_v1';
+function openAppMenu(){document.getElementById('appMenuOverlay').style.display='block';}
+function closeAppMenu(){document.getElementById('appMenuOverlay').style.display='none';}
+function loadLeaflet(){if(window.L)return Promise.resolve();if(window.__leafletLoading)return window.__leafletLoading;window.__leafletLoading=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';script.integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';script.crossOrigin='';script.onload=resolve;script.onerror=()=>reject(new Error('Kartenbibliothek konnte nicht geladen werden.'));document.head.appendChild(script);});return window.__leafletLoading;}
+function readMapCache(){try{return JSON.parse(localStorage.getItem(GEOCODE_CACHE_KEY)||'{}')}catch(e){return {}}}
+function writeMapCache(cache){try{localStorage.setItem(GEOCODE_CACHE_KEY,JSON.stringify(cache))}catch(e){}}
+function waitMap(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+async function geocodeRestaurant(place,cache){const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const key=String(place.id||place.name)+'|'+query;if(Object.prototype.hasOwnProperty.call(cache,key))return cache[key];if(!query||!place.ort)return null;try{const response=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(query),{headers:{Accept:'application/json'}});if(!response.ok)return null;const data=await response.json();if(!data.length){cache[key]=null;writeMapCache(cache);return null;}const point={lat:Number(data[0].lat),lon:Number(data[0].lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return null;cache[key]=point;writeMapCache(cache);return point;}catch(e){console.warn('Standort nicht gefunden:',place.name,e);return null;}}
+async function openRestaurantMap(){closeAppMenu();document.getElementById('home').style.display='none';document.getElementById('homeHeader').style.display='none';document.getElementById('detail').style.display='none';document.getElementById('incompleteView').style.display='none';document.getElementById('mapView').style.display='block';window.scrollTo({top:0,behavior:'auto'});try{await loadLeaflet();if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.featureGroup().addTo(restaurantMap);}setTimeout(()=>restaurantMap.invalidateSize(),120);if(mapOpening)return;mapOpening=true;const status=document.getElementById('mapStatus');const cache=readMapCache();mapMarkers.clearLayers();const places=restaurants.slice();let found=0,failed=0,requests=0;const points=[];status.textContent='Standorte werden ermittelt. Beim ersten Öffnen kann das etwas dauern …';for(let i=0;i<places.length;i++){const place=places[i];const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const cacheKey=String(place.id||place.name)+'|'+query;if(!Object.prototype.hasOwnProperty.call(cache,cacheKey)&&query&&place.ort){if(requests>0)await waitMap(1100);requests++;}const point=await geocodeRestaurant(place,cache);if(!point){failed++;continue;}found++;points.push(point);const marker=L.marker([point.lat,point.lon]).addTo(mapMarkers);const popup='<div class="map-popup-title">'+escapeHtml(place.name||'Restaurant')+'</div><div>'+escapeHtml(place.ort||'')+'</div><a class="map-popup-link" href="#" onclick="openDetail(decodeURIComponent(this.dataset.id));return false" data-id="' + encodeURIComponent(String(place.id)) + '">Restaurant öffnen →</a><br><a class="map-popup-link" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent([place.adresse,place.ort].filter(Boolean).join(', '))+'">Navigation starten ↗</a>';marker.bindPopup(popup);marker.bindTooltip(escapeHtml(place.name||'Restaurant'),{permanent:true,direction:'right',offset:[8,0],className:'restaurant-map-label'});status.textContent='Karte wird aufgebaut: '+found+' von '+places.length+' Restaurants gefunden …';}if(points.length===1)restaurantMap.setView([points[0].lat,points[0].lon],14);else if(points.length>1)restaurantMap.fitBounds(mapMarkers.getBounds().pad(0.12),{maxZoom:13});status.textContent=found+' von '+places.length+' Restaurant-Einträgen auf der Karte.'+(failed?' Für '+failed+' Einträge konnte noch kein genauer Standort gefunden werden.':'')+' Standorte werden auf diesem Gerät zwischengespeichert.';}catch(error){console.error(error);document.getElementById('mapStatus').textContent='Die Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.';}finally{mapOpening=false;}}
+
+/* --------------------------------------------------
+   START
+-------------------------------------------------- */
+
+loadData();
+
+const toggleTavilyUsage = document.getElementById("toggleTavilyUsage");
+const tavilyUsageCard = document.getElementById("tavilyUsageCard");
+
+if (toggleTavilyUsage && tavilyUsageCard) {
+  toggleTavilyUsage.addEventListener("click", () => {
+    const isOpening = tavilyUsageCard.hidden;
+    tavilyUsageCard.hidden = !isOpening;
+    toggleTavilyUsage.setAttribute("aria-expanded", String(isOpening));
+    toggleTavilyUsage.textContent = isOpening
+      ? "📊 Suchkontingent ausblenden"
+      : "📊 Suchkontingent anzeigen";
+    if (isOpening) loadTavilyUsage();
+  });
+}
+
+
+// Eigenes Titelbild auswählen (nur auf diesem Gerät gespeichert)
+(function setupWelcomeHeroImage(){
+  const hero = document.getElementById("welcomeHero");
+  const picker = document.getElementById("heroImagePicker");
+  const button = document.getElementById("changeHeroImage");
+  if (!hero || !picker || !button) return;
+  try {
+    const saved = localStorage.getItem("tegernseeWelcomeHeroImage");
+    if (saved) hero.style.setProperty("--welcome-image", "url(" + JSON.stringify(saved).slice(1,-1) + ")");
+  } catch (e) {}
+  button.addEventListener("click", () => picker.click());
+  picker.addEventListener("change", () => {
+    const file = picker.files && picker.files[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { alert("Bitte wähle eine Bilddatei aus."); return; }
+    if (file.size > 5 * 1024 * 1024) { alert("Bitte wähle ein Bild mit höchstens 5 MB."); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const data = reader.result;
+      hero.style.setProperty("--welcome-image", "url(" + JSON.stringify(data).slice(1,-1) + ")");
+      try { localStorage.setItem("tegernseeWelcomeHeroImage", data); }
+      catch (e) { alert("Das Bild ist zu groß für den lokalen Speicher. Bitte ein kleineres Bild wählen."); }
+    };
+    reader.readAsDataURL(file);
+  });
+})();
+
+</script>
+
+</body>
+</html>
