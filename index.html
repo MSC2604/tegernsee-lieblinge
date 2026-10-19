@@ -1330,9 +1330,12 @@ const IS_PREVIEW = /\.pages\.dev$/i.test(window.location.hostname);
 // Restaurantdaten und gespeicherte Einträge immer aus der zentralen Datenbank lesen.
 // Nur die automatische Suche wird in der Vorschau gegen den Test-Worker ausgeführt.
 const API_URL = "https://tegernsee-restaurants-api.msc4021.workers.dev";
-// Die Vorschau nutzt bis zur Klärung der Preview-Secrets dieselbe funktionierende
-// Suche wie die Hauptversion; der Test-Worker wird separat geprüft.
-const SEARCH_API_URL = API_URL;
+// In der Vorschau zuerst den Test-Worker verwenden. Fehlen dort Secrets,
+// wird ausschließlich die Suche auf den funktionierenden Produktiv-Worker
+// zurückgeschaltet; Restaurantdaten werden weiterhin nur lesend geladen.
+const SEARCH_API_URL = IS_PREVIEW
+  ? "https://fix-restaurant-search-quality-tegernsee-restaurants-api.msc4021.workers.dev"
+  : API_URL;
 
 // Vorschau-Schutz: Schreibzugriffe bleiben gesperrt; Lesezugriffe und Suche
 // laufen gegen den Worker der Vorschau.
@@ -3380,14 +3383,30 @@ async function lookupRestaurantInApp(){
   }
 
   try {
-    const url = SEARCH_API_URL + "?action=lookup&name=" + encodeURIComponent(name);
-    const response = await safeFetch(url, {
+    const lookupUrl = base => base + "?action=lookup&name=" + encodeURIComponent(name);
+    let response = await safeFetch(lookupUrl(SEARCH_API_URL), {
       method: "GET",
       cache: "no-store",
       headers: { "Accept": "application/json" }
     });
+    let data = await response.json();
 
-    const data = await response.json();
+    // Wenn dem Preview-Worker nur die Secrets fehlen, fällt die Suche auf den
+    // bisherigen Worker zurück. Andere Fehler bleiben sichtbar und werden nicht
+    // durch einen zweiten Suchlauf oder zusätzliche API-Kosten verschleiert.
+    const previewSecretsMissing = IS_PREVIEW &&
+      SEARCH_API_URL !== API_URL &&
+      /TAVILY_API_KEY ist nicht eingerichtet|Serverkonfiguration unvollständig/i.test(
+        String(data.message || data.error || "")
+      );
+    if (!response.ok && previewSecretsMissing) {
+      response = await safeFetch(lookupUrl(API_URL), {
+        method: "GET",
+        cache: "no-store",
+        headers: { "Accept": "application/json" }
+      });
+      data = await response.json();
+    }
 
     if (!response.ok) {
       throw new Error(data.message || data.error || "Die Suche ist fehlgeschlagen.");
