@@ -1036,15 +1036,6 @@ a{
   </div>
 
 
-  <section class="detail-menu-cards" id="detailMenuCards" style="display:none" aria-label="Speise- und Getränkekarten">
-    <h2>🍽️ Speise- und Getränkekarten</h2>
-    <div class="detail-menu-buttons">
-      <a id="menuCardStatus" href="#" target="_blank" rel="noopener noreferrer" style="display:none">🍽️ Speisekarte PDF öffnen</a>
-      <a id="drinkCardStatus" href="#" target="_blank" rel="noopener noreferrer" style="display:none">🥤 Getränkekarte PDF öffnen</a>
-    </div>
-    <p id="detailMenuMessage">Für dieses Restaurant sind noch keine direkten PDF-Karten hinterlegt.</p>
-  </section>
-
   <div class="note">
 
     <b>
@@ -1205,7 +1196,7 @@ a{
       <textarea id="f_notizen"></textarea>
 
 
-      <div id="cardEditSection" style="display:none">
+      <div id="cardEditSection" style="display:block">
         <h3>🍽️ Offizielle Speise- und Getränkekarten</h3>
         <p class="localimagehint">Bitte nur Links zur offiziellen Restaurantwebsite oder zu einer Menüplattform eintragen, auf die die offizielle Website ausdrücklich verweist. Keine Uploads oder fremden Dateien. Änderungen auf der verlinkten Originalseite werden dort direkt sichtbar.</p>
         <div class="card-edit-box">
@@ -3011,8 +3002,6 @@ function openDetail(
     currentPlace.notizen ||
     "";
 
-  loadRestaurantCards(currentPlace.id, currentPlace.website || "");
-
   // Detailansicht immer am Seitenanfang öffnen.
   window.scrollTo({top:0, behavior:"auto"});
   document.documentElement.scrollTop = 0;
@@ -3985,39 +3974,6 @@ function getFormData(){
 /* --------------------------------------------------
    SPEISE- UND GETRÄNKEKARTEN (zentral)
 -------------------------------------------------- */
-
-async function loadRestaurantCards(restaurantId, officialWebsite){
-  const section = document.getElementById("detailMenuCards");
-  const message = document.getElementById("detailMenuMessage");
-  const menuStatus = document.getElementById("menuCardStatus");
-  const drinkStatus = document.getElementById("drinkCardStatus");
-  if(section) section.style.display = "block";
-  if(message) message.textContent = "PDF-Karten werden geladen …";
-  [menuStatus,drinkStatus].forEach(el=>{if(el){el.style.display="none";el.removeAttribute("href");}});
-  try{
-    const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(restaurantId) + "&t=" + Date.now(), {cache:"no-store"});
-    const data = await response.json();
-    if(!response.ok) throw new Error(data.error || "Kartenlinks konnten nicht geladen werden.");
-    const cards = data.cards || {};
-    let visible = 0;
-    [["speisekarte",menuStatus,"🍽️ Speisekarte PDF öffnen"],["getraenkekarte",drinkStatus,"🥤 Getränkekarte PDF öffnen"]].forEach(([kind,el,label])=>{
-      if(!el) return;
-      const raw = String((cards[kind] && cards[kind].url) || "").trim();
-      let isPdf = false;
-      try { const parsed = new URL(raw); isPdf = /^https?:$/.test(parsed.protocol) && /\.pdf$/i.test(parsed.pathname); } catch {}
-      if(isPdf){
-        el.href = raw;
-        el.textContent = label;
-        el.style.display = "block";
-        visible++;
-      }
-    });
-    if(message) message.textContent = visible ? "Tippe auf eine Karte, um die PDF-Datei zu öffnen." : "Für dieses Restaurant sind noch keine direkten PDF-Karten hinterlegt. Links kannst du über „Bearbeiten“ ergänzen.";
-  }catch(error){
-    console.error(error);
-    if(message) message.textContent = "Die PDF-Karten konnten gerade nicht geladen werden. Bitte später erneut versuchen.";
-  }
-}
 
 let cardEditorState = {restaurantId:null,status:"idle"};
 
