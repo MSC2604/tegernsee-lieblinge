@@ -3786,6 +3786,7 @@ function editPlace(){
 
 function clearForm(){
 
+  cardEditorState = {restaurantId:null,status:"idle"};
   ["f_speisekarte_url","f_getraenkekarte_url"].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.value = "";
@@ -4001,8 +4002,11 @@ async function loadRestaurantCards(restaurantId, officialWebsite){
   }
 }
 
+let cardEditorState = {restaurantId:null,status:"idle"};
+
 async function loadCardEditor(restaurantId){
   const statusIds = {speisekarte:"f_speisekarte_status",getraenkekarte:"f_getraenkekarte_status"};
+  cardEditorState = {restaurantId:String(restaurantId),status:"loading"};
   try{
     const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(restaurantId) + "&t=" + Date.now(), {cache:"no-store"});
     const data = await response.json();
@@ -4014,7 +4018,9 @@ async function loadCardEditor(restaurantId){
       if(urlInput) urlInput.value = card.url || "";
       if(status) status.textContent = card.url ? "Offizieller Link ist hinterlegt." : "Noch kein offizieller Kartenlink hinterlegt.";
     }
+    cardEditorState = {restaurantId:String(restaurantId),status:"loaded"};
   }catch(error){
+    cardEditorState = {restaurantId:String(restaurantId),status:"error"};
     console.error(error);
     for(const id of Object.values(statusIds)){
       const el = document.getElementById(id);
@@ -4154,12 +4160,22 @@ async function savePlace(){
     let cardWarning = "";
     if(savedRestaurant){
       if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
-      try{
-        // Kartenlinks auch bei neu angelegten Restaurants zentral speichern.
-        await syncRestaurantCards(savedRestaurant.id,password);
-      }catch(cardError){
-        console.error(cardError);
-        cardWarning = "\n\nDie Restaurantdaten wurden gespeichert, aber die Speise-/Getränkekarten konnten nicht vollständig gespeichert werden: " + (cardError.message || "");
+      const cardEditorReady = !isEditing ||
+        (cardEditorState.status === "loaded" &&
+         String(cardEditorState.restaurantId) === String(savedRestaurant.id));
+      if(!cardEditorReady){
+        // Niemals leere Formularfelder in die zentrale Karten-Tabelle schreiben,
+        // wenn die vorhandenen Links beim Bearbeiten nicht sicher geladen wurden.
+        cardWarning = "\n\nDie Restaurantdaten wurden gespeichert. Die Speise- und Getränkekarten-Links wurden vorsichtshalber nicht verändert, weil sie vorher nicht zuverlässig geladen werden konnten. Bitte öffne das Formular erneut und prüfe die Kartenlinks.";
+      }else{
+        try{
+          // Bei Bearbeitung nur speichern, wenn der Kartenbestand erfolgreich geladen wurde.
+          // Bei neuen Restaurants dürfen zunächst leere Kartenlinks gespeichert werden.
+          await syncRestaurantCards(savedRestaurant.id,password);
+        }catch(cardError){
+          console.error(cardError);
+          cardWarning = "\n\nDie Restaurantdaten wurden gespeichert, aber die Speise-/Getränkekarten konnten nicht vollständig gespeichert werden: " + (cardError.message || "");
+        }
       }
     }
 
