@@ -4073,13 +4073,12 @@ async function syncRestaurantCards(restaurantId,password){
 
 async function savePlace(){
 
-  const restaurant = getFormData();
-
-  // Dateiauswahl sichern, bevor Speichern/Neuladen die Formularansicht verändert.
+  // PDF-Dateien unbedingt vor allen anderen Formularaktionen sichern.
   const selectedCardFiles = {
     speisekarte: document.getElementById("f_speisekarte_pdf")?.files?.[0] || null,
     getraenkekarte: document.getElementById("f_getraenkekarte_pdf")?.files?.[0] || null
   };
+  const restaurant = getFormData();
 
   if(restaurant.ort === "Anderer Ort"){
     const otherOrt = prompt("Bitte den Ortsnamen eingeben:");
