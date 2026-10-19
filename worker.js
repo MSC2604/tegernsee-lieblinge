@@ -405,7 +405,13 @@ console.log("Tavily usage account:", {
       // Eigene Restaurant-Webseiten bevorzugen.
       relevant.sort((a, b) => {
         function score(result) {
-          if (!result.url || isDirectory(result.url)) return 0;
+          if (!result.url) return 0;
+
+          // Offizielle regionale Gastgeberprofile enthalten häufig die
+          // verlässlichsten Anschrift- und Öffnungszeitenangaben. Diese Quelle
+          // muss auch vor allgemeinen Verzeichnissen extrahiert werden.
+          if (isTrustedRegionalSource(result.url)) return 25;
+          if (isDirectory(result.url)) return 0;
 
           let value = 1;
           try {
