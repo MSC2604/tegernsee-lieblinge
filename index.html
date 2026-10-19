@@ -2589,6 +2589,8 @@ async function loadOneTileCardLink(place){
       (menuPdf ? '<a href="' + escapeAttr(pdfUrl("speisekarte")) + '" target="_blank" rel="noopener noreferrer">📄 Speisekarte (PDF)</a>' : '') +
       (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarten-Link</a>' : '') +
       (drinkPdf ? '<a href="' + escapeAttr(pdfUrl("getraenkekarte")) + '" target="_blank" rel="noopener noreferrer">📄 Getränkekarte (PDF)</a>' : '');
+    // Den gesamten Kartenbereich nur zeigen, wenn mindestens ein gültiger Eintrag existiert.
+    current.style.display = current.innerHTML.trim() ? "flex" : "none";
   };
 
   if(tileCardCache.has(id)){
@@ -2610,6 +2612,8 @@ async function loadOneTileCardLink(place){
       tileCardCache.set(id, cards);
       draw(cards);
     }catch(error){
+      const current = document.getElementById("tile-card-links-" + id);
+      if(current){ current.innerHTML = ""; current.style.display = "none"; }
       console.warn("Kartenlinks für Restaurant " + id + " konnten nicht geladen werden.", error);
     }finally{
       tileCardPending.delete(id);
