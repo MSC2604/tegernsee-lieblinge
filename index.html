@@ -2578,9 +2578,6 @@ async function loadOneTileCardLink(place){
     if(!current) return;
     const menuUrl = cards && cards.speisekarte && cards.speisekarte.url;
     const drinkUrl = cards && cards.getraenkekarte && cards.getraenkekarte.url;
-    const menuPdf = Boolean(cards && cards.speisekarte && cards.speisekarte.fileAvailable);
-    const drinkPdf = Boolean(cards && cards.getraenkekarte && cards.getraenkekarte.fileAvailable);
-    const pdfUrl = kind => API_URL + "?action=cardFile&restaurantId=" + encodeURIComponent(id) + "&kind=" + encodeURIComponent(kind);
     const safe = url => {
       const value = String(url || "").trim();
       return /^https?:\/\//i.test(value) ? value : "";
@@ -2589,9 +2586,7 @@ async function loadOneTileCardLink(place){
     const drink = safe(drinkUrl);
     current.innerHTML =
       (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarten-Link</a>' : '') +
-      (menuPdf ? '<a href="' + escapeAttr(pdfUrl("speisekarte")) + '" target="_blank" rel="noopener noreferrer">📄 Speisekarte (PDF)</a>' : '') +
-      (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarten-Link</a>' : '') +
-      (drinkPdf ? '<a href="' + escapeAttr(pdfUrl("getraenkekarte")) + '" target="_blank" rel="noopener noreferrer">📄 Getränkekarte (PDF)</a>' : '');
+      (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarten-Link</a>' : '');
     // Den gesamten Kartenbereich nur zeigen, wenn mindestens ein gültiger Eintrag existiert.
     current.style.display = current.innerHTML.trim() ? "flex" : "none";
   };
