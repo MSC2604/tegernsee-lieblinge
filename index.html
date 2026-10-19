@@ -3391,21 +3391,18 @@ async function lookupRestaurantInApp(){
     });
     let data = await response.json();
 
-    // Wenn dem Preview-Worker nur die Secrets fehlen, fällt die Suche auf den
-    // bisherigen Worker zurück. Andere Fehler bleiben sichtbar und werden nicht
-    // durch einen zweiten Suchlauf oder zusätzliche API-Kosten verschleiert.
+    // Niemals unbemerkt auf den Produktiv-Worker zurückfallen:
+    // Das würde alte Suchergebnisse liefern und Tests der neuen Logik verfälschen.
     const previewSecretsMissing = IS_PREVIEW &&
       SEARCH_API_URL !== API_URL &&
       /TAVILY_API_KEY ist nicht eingerichtet|Serverkonfiguration unvollständig/i.test(
         String(data.message || data.error || "")
       );
     if (!response.ok && previewSecretsMissing) {
-      response = await safeFetch(lookupUrl(API_URL), {
-        method: "GET",
-        cache: "no-store",
-        headers: { "Accept": "application/json" }
-      });
-      data = await response.json();
+      throw new Error(
+        "Die Testversion erreicht ihren eigenen Such-Worker, aber dort fehlt die Tavily-Konfiguration. " +
+        "Es wird absichtlich nicht die alte Suche der Hauptversion verwendet."
+      );
     }
 
     if (!response.ok) {
