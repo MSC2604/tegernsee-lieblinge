@@ -4182,6 +4182,16 @@ async function savePlace(){
         );
 
     let cardWarning = "";
+    const selectedPdfNames = Object.entries(selectedCardFiles)
+      .filter(([, file]) => Boolean(file))
+      .map(([, file]) => file.name);
+    if(!selectedPdfNames.length){
+      const pdfStatuses = ["f_speisekarte_pdf_status","f_getraenkekarte_pdf_status"]
+        .map(id => document.getElementById(id)?.textContent || "");
+      if(pdfStatuses.some(text => /wird beim Speichern hochgeladen/i.test(text))){
+        cardWarning = "\n\nDie PDF-Auswahl wurde vor dem Upload verloren. Bitte die PDF erneut auswählen.";
+      }
+    }
     if(savedRestaurant){
       if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
       const cardEditorReady = !isEditing ||
