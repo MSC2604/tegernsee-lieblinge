@@ -623,6 +623,7 @@ console.log("Tavily usage account:", {
           .replace(/<[^>]*>/g, " ")
           .replace(/&nbsp;|&#160;/gi, " ")
           .replace(/&amp;/gi, "&")
+          .replace(/[ \t]+/g, " ")
           .replace(/\s+/g, " ");
 
         const fullDays = [
@@ -637,8 +638,44 @@ console.log("Tavily usage account:", {
         const dayPattern = fullDays.map(item => item[1]).join("|");
         const separator = "(?:\\s*(?:,|;|und|&|/)\\s*)";
 
-        // Erst explizit als Ruhetage markierte Angaben auswerten und mehrere
-        // aufeinanderfolgende Wochentage erfassen (z. B. Mo/Di sowie Sa/So).
+        function canonicalDays(segment) {
+          const dayRegex = new RegExp("\\b(" + dayPattern + ")\\b", "gi");
+          const found = [];
+          for (const token of segment.match(dayRegex) || []) {
+            const item = fullDays.find(day => new RegExp("^" + day[1] + "$", "i").test(token));
+            if (item && !found.includes(item[0])) found.push(item[0]);
+          }
+          // Wochentagsbereiche wie „Mi–Fr“ oder „Montag bis Freitag“ auflösen.
+          const rangeRegex = new RegExp(
+            "\\b(" + dayPattern + ")\\s*(?:-|–|—|bis)\\s*(" + dayPattern + ")\\b", "gi"
+          );
+          let range;
+          while ((range = rangeRegex.exec(segment)) !== null) {
+            const from = fullDays.findIndex(day => new RegExp("^" + day[1] + "$", "i").test(range[1]));
+            const to = fullDays.findIndex(day => new RegExp("^" + day[1] + "$", "i").test(range[2]));
+            if (from >= 0 && to >= from) {
+              for (let i = from; i <= to; i++) if (!found.includes(fullDays[i][0])) found.push(fullDays[i][0]);
+            }
+          }
+          return found.sort((a, b) => fullDays.findIndex(day => day[0] === a) - fullDays.findIndex(day => day[0] === b));
+        }
+
+        // Wochenpläne in getrennten Abschnitten auswerten, z. B.
+        // „Mo, Di geschlossen · Mi–Fr 11–17 Uhr · Sa, So geschlossen“.
+        const segments = value.split(/[·|;\n]+/).map(item => item.trim()).filter(Boolean);
+        const closedDays = [];
+        for (const segment of segments) {
+          if (!/(?:geschlossen|Ruhetag(?:e)?|Betriebsruhe|kein(?:e|en)?\s+Betrieb)/i.test(segment)) continue;
+          const days = canonicalDays(segment);
+          for (const day of days) if (!closedDays.includes(day)) closedDays.push(day);
+        }
+        if (closedDays.length) {
+          return closedDays.sort((a, b) =>
+            fullDays.findIndex(day => day[0] === a) - fullDays.findIndex(day => day[0] === b)
+          ).join(", ");
+        }
+
+        // Fallback für Fließtext, in dem die Ruhetage explizit genannt werden.
         const ruhetagBefore = value.match(new RegExp(
           "\\b((?:" + dayPattern + ")(?:" + separator + "(?:" + dayPattern + ")){0,6})\\s*(?:sind\\s*)?Ruhetag(?:e)?\\b", "i"
         ));
@@ -647,29 +684,11 @@ console.log("Tavily usage account:", {
         ));
         const explicit = ruhetagBefore || ruhetagAfter;
         if (explicit) {
-          const found = [];
-          for (const token of explicit[1].match(new RegExp(dayPattern, "gi")) || []) {
-            const item = fullDays.find(day => new RegExp("^" + day[1] + "$", "i").test(token));
-            if (item && !found.includes(item[0])) found.push(item[0]);
-          }
-          if (found.length) return found.join(", ");
-        }
-
-        // Explizit geschlossene Tage ohne das Wort Ruhetag erkennen.
-        const closed = value.match(new RegExp(
-          "\\b((?:" + dayPattern + ")(?:" + separator + "(?:" + dayPattern + ")){0,6})\\s*(?:sind|ist)?\\s*(?:geschlossen|Betriebsferien)\\b", "i"
-        ));
-        if (closed) {
-          const found = [];
-          for (const token of closed[1].match(new RegExp(dayPattern, "gi")) || []) {
-            const item = fullDays.find(day => new RegExp("^" + day[1] + "$", "i").test(token));
-            if (item && !found.includes(item[0])) found.push(item[0]);
-          }
+          const found = canonicalDays(explicit[1]);
           if (found.length) return found.join(", ");
         }
         return "";
       }
-
       function extractHours(text) {
         // HTML-Text in getrennte Textzeilen umwandeln, damit zusammengeklebte
         // Suchtreffer oder Bewertungsseiten nicht als Öffnungszeiten durchrutschen.
