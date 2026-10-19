@@ -315,6 +315,19 @@ console.log("Tavily usage account:", {
           ].includes(token)
         );
 
+      function hasRestaurantNameInHost(url) {
+        try {
+          const host = normalize(new URL(url).hostname.replace(/^www\\./i, ""));
+          if (!nameTokens.length) return false;
+          const hostParts = host.split(/\\s+/).filter(Boolean);
+          return nameTokens.every(token =>
+            hostParts.some(part => part === token || (token.length >= 5 && part.startsWith(token))
+          ));
+        } catch {
+          return false;
+        }
+      }
+
       function isDirectory(url) {
         try {
           const host = new URL(url).hostname.toLowerCase();
@@ -689,14 +702,14 @@ console.log("Tavily usage account:", {
           adresse: extractAddress(content),
           ort: extractTown(content),
           telefon: extractPhone(content),
-          email: extractEmail(content),
+          email: hasRestaurantNameInHost(url) ? extractEmail(extracted) : "",
           kategorie: extractCategory(
             String(result.title || "") + "\n" + content
           ),
           oeffnungszeiten: hours.opening,
           kuechenzeiten: hours.kitchen,
           ruhetag: extractClosedDay(content),
-          website: url && !isDirectory(url) ? url : ""
+          website: url && !isDirectory(url) && hasRestaurantNameInHost(url) ? url : ""
         };
       });
 
@@ -859,7 +872,7 @@ console.log("Tavily usage account:", {
           adresse: extractAddress(page.content),
           ort: extractTown(page.content),
           telefon: extractPhone(page.content),
-          email: extractEmail(page.content),
+          email: hasRestaurantNameInHost(page.url) ? extractEmail(page.content) : "",
           kategorie: extractCategory(page.title + "\\n" + page.content),
           oeffnungszeiten: hours.opening,
           kuechenzeiten: hours.kitchen,
