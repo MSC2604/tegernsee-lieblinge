@@ -280,8 +280,10 @@ main{
 }
 .tile-card-links:empty{display:none}
 .tile-card-links a{
-  flex:1 1 40%;
+  flex:1 1 100%;
   display:block;
+  position:relative;
+  z-index:2;
   box-sizing:border-box;
   text-align:center;
   text-decoration:none;
@@ -293,6 +295,7 @@ main{
   font-size:13px;
   font-weight:800;
   box-shadow:0 2px 6px rgba(23,53,45,.05);
+  pointer-events:auto;
 }
 
 .detail{
@@ -1198,7 +1201,7 @@ a{
 
       <div id="cardEditSection" style="display:block">
         <h3>🍽️ Offizielle Speise- und Getränkekarten</h3>
-        <p class="localimagehint">Bitte nur Links zur offiziellen Restaurantwebsite oder zu einer Menüplattform eintragen, auf die die offizielle Website ausdrücklich verweist. Keine Uploads oder fremden Dateien. Änderungen auf der verlinkten Originalseite werden dort direkt sichtbar.</p>
+        <p class="localimagehint">Offizielle Kartenlinks oder PDF-Dateien zentral für alle Geräte. Maximal 5 MB je PDF. Hochladen erfolgt beim Speichern des Restaurants.</p>
         <div class="card-edit-box">
           <label for="f_speisekarte_url">Offizieller Link zur Speisekarte</label>
           <input id="f_speisekarte_url" type="url" placeholder="https://..." autocomplete="off">
@@ -1209,6 +1212,8 @@ a{
           <input id="f_getraenkekarte_url" type="url" placeholder="https://..." autocomplete="off">
           <small id="f_getraenkekarte_status">Noch kein offizieller Kartenlink hinterlegt.</small>
         </div>
+        <div class="card-edit-box"><label for="f_speisekarte_pdf">Speisekarte als PDF (max. 5 MB)</label><input id="f_speisekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_speisekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
+        <div class="card-edit-box"><label for="f_getraenkekarte_pdf">Getränkekarte als PDF (max. 5 MB)</label><input id="f_getraenkekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_getraenkekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
       </div>
 
       <!-- Bild nur beim Bearbeiten -->
@@ -2580,8 +2585,10 @@ async function loadOneTileCardLink(place){
     const menu = safe(menuUrl);
     const drink = safe(drinkUrl);
     current.innerHTML =
-      (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarte</a>' : '') +
-      (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarte</a>' : '');
+      (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarten-Link</a>' : '') +
+      (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarten-Link</a>' : '');
+    // Den gesamten Kartenbereich nur zeigen, wenn mindestens ein gültiger Eintrag existiert.
+    current.style.display = current.innerHTML.trim() ? "flex" : "none";
   };
 
   if(tileCardCache.has(id)){
@@ -2603,6 +2610,8 @@ async function loadOneTileCardLink(place){
       tileCardCache.set(id, cards);
       draw(cards);
     }catch(error){
+      const current = document.getElementById("tile-card-links-" + id);
+      if(current){ current.innerHTML = ""; current.style.display = "none"; }
       console.warn("Kartenlinks für Restaurant " + id + " konnten nicht geladen werden.", error);
     }finally{
       tileCardPending.delete(id);
@@ -3809,6 +3818,8 @@ function editPlace(){
 function clearForm(){
 
   cardEditorState = {restaurantId:null,status:"idle"};
+  ["f_speisekarte_pdf","f_getraenkekarte_pdf"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  ["f_speisekarte_pdf_status","f_getraenkekarte_pdf_status"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent="Keine neue PDF ausgewählt.";});
   ["f_speisekarte_url","f_getraenkekarte_url"].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.value = "";
@@ -3994,7 +4005,11 @@ async function loadCardEditor(restaurantId){
       const urlInput = document.getElementById("f_" + kind + "_url");
       const status = document.getElementById(statusIds[kind]);
       if(urlInput) urlInput.value = card.url || "";
-      if(status) status.textContent = card.url ? "Offizieller Link ist hinterlegt." : "Noch kein offizieller Kartenlink hinterlegt.";
+      if(status) status.textContent = card.fileAvailable ? "PDF zentral gespeichert: " + (card.filename || "Datei vorhanden") : (card.url ? "Offizieller Link ist hinterlegt." : "Noch kein offizieller Kartenlink hinterlegt.");
+      const pdfInput = document.getElementById("f_" + kind + "_pdf");
+      const pdfStatus = document.getElementById("f_" + kind + "_pdf_status");
+      if(pdfInput) pdfInput.value = "";
+      if(pdfStatus) pdfStatus.textContent = card.fileAvailable ? "Vorhandene PDF bleibt erhalten, wenn keine neue Datei ausgewählt wird." : "Keine neue PDF ausgewählt.";
     }
     cardEditorState = {restaurantId:String(restaurantId),status:"loaded"};
   }catch(error){
@@ -4005,6 +4020,38 @@ async function loadCardEditor(restaurantId){
       if(el) el.textContent = "Kartenlinks konnten nicht geladen werden.";
     }
   }
+}
+
+const MAX_CARD_PDF_BYTES = 5 * 1024 * 1024;
+// FileList in Android-WebViews kann beim Öffnen/Schließen von Dialogen verloren gehen.
+ // Deshalb die ausgewählte Datei zusätzlich direkt beim Auswählen im Speicher halten.
+ const pendingCardPdfFiles = {speisekarte:null,getraenkekarte:null};
+function setupCardPdfInput(kind){
+ const input=document.getElementById("f_"+kind+"_pdf"), status=document.getElementById("f_"+kind+"_pdf_status");
+ if(!input||!status)return;
+ input.addEventListener("change",()=>{
+  const file=input.files&&input.files[0];
+  if(!file){pendingCardPdfFiles[kind]=null;status.textContent="Keine neue PDF ausgewählt.";return;}
+  if(!(file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf"))){input.value="";pendingCardPdfFiles[kind]=null;alert("Bitte wähle eine PDF-Datei aus.");return;}
+  if(file.size>MAX_CARD_PDF_BYTES){input.value="";pendingCardPdfFiles[kind]=null;status.textContent="Datei zu groß – maximal 5 MB.";alert("Die PDF-Datei ist größer als 5 MB.");return;}
+  pendingCardPdfFiles[kind]=file;
+  status.textContent=file.name+" ("+(file.size/1048576).toFixed(2)+" MB) – wird beim Speichern hochgeladen.";
+ });
+}
+setupCardPdfInput("speisekarte"); setupCardPdfInput("getraenkekarte");
+function fileToBase64(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error("PDF konnte nicht gelesen werden."));reader.onload=()=>{const bytes=new Uint8Array(reader.result);let binary="";for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+0x8000,bytes.length)));resolve(btoa(binary));};reader.readAsArrayBuffer(file);});}
+async function uploadPendingCardFiles(restaurantId,password,selectedFiles){
+ for(const kind of ["speisekarte","getraenkekarte"]){
+  const input=document.getElementById("f_"+kind+"_pdf"),status=document.getElementById("f_"+kind+"_pdf_status");
+  const file=selectedFiles ? selectedFiles[kind] : (input&&input.files&&input.files[0]);
+  if(!file)continue;if(file.size>MAX_CARD_PDF_BYTES)throw new Error(file.name+" ist größer als 5 MB.");
+  const base64=await fileToBase64(file);
+  const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"uploadCardFile",restaurantId:String(restaurantId),kind,filename:file.name,base64})});
+  let data={};try{data=await response.json();}catch(_){throw new Error("Der Server hat keine gültige Antwort zum PDF-Upload geliefert (HTTP "+response.status+").");}
+  if(!response.ok||data.error||data.success!==true)throw new Error(data.error||"PDF-Upload fehlgeschlagen (HTTP "+response.status+").");
+  if(input)input.value="";if(status)status.textContent="PDF zentral gespeichert: "+file.name;
+  if(typeof pendingCardPdfFiles!=="undefined")pendingCardPdfFiles[kind]=null;
+ }
 }
 
 async function saveOneRestaurantCard(restaurantId, kind, password){
@@ -4032,6 +4079,11 @@ async function syncRestaurantCards(restaurantId,password){
 
 async function savePlace(){
 
+  // Dateiobjekte sichern, bevor das Formular geschlossen oder neu geladen wird.
+  const selectedCardFiles = {
+    speisekarte: pendingCardPdfFiles.speisekarte || document.getElementById("f_speisekarte_pdf")?.files?.[0] || null,
+    getraenkekarte: pendingCardPdfFiles.getraenkekarte || document.getElementById("f_getraenkekarte_pdf")?.files?.[0] || null
+  };
   const restaurant = getFormData();
 
   if(restaurant.ort === "Anderer Ort"){
@@ -4039,156 +4091,106 @@ async function savePlace(){
     if(!otherOrt || !otherOrt.trim()) return;
     restaurant.ort = otherOrt.trim();
   }
-
   if(!restaurant.name){
     alert("Bitte zuerst einen Namen eingeben.");
     return;
   }
-
   if(!restaurant.kategorie){
     alert("Bitte eine eigene Kategorie eingeben.");
     document.getElementById("f_kategorie_custom").focus();
     return;
   }
 
-  const password = await askAdminPassword(
-    "Bitte Admin-Passwort zum Speichern eingeben."
-  );
+  const hasSelectedPdf = Object.values(selectedCardFiles).some(Boolean);
+  if(hasSelectedPdf && Object.values(selectedCardFiles).some(file => file && file.size > MAX_CARD_PDF_BYTES)){
+    alert("Die PDF-Datei darf höchstens 5 MB groß sein. Bitte wähle eine kleinere Datei aus.");
+    return;
+  }
 
+  const password = await askAdminPassword("Bitte Admin-Passwort zum Speichern eingeben.");
   if(password === null) return;
-
   if(password === ""){
     alert("Bitte ein Passwort eingeben.");
     return;
   }
 
   try{
-
     const isEditing = Boolean(editId);
     const savedEditId = editId;
-
     const body = isEditing
-      ? {
-          action: "update",
-          id: editId,
-          restaurant
-        }
-      : {
-          action: "create",
-          restaurant
-        };
+      ? { action:"update", id:editId, restaurant }
+      : { action:"create", restaurant };
 
     const response = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + password
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer " + password
       },
-      body: JSON.stringify(body)
+      body:JSON.stringify(body)
     });
 
-    if(!response.ok){
-      throw new Error("HTTP " + response.status);
-    }
-
-    // Antwort des Servers prüfen, sofern sie JSON enthält.
-    let result = null;
-
-    try{
-      result = await response.json();
-    }catch(_){
-      // Manche Worker-Antworten enthalten kein JSON.
-    }
-
-    if(
-      result &&
-      (
-        result.success === false ||
-        result.ok === false ||
-        result.error
-      )
-    ){
-      throw new Error(
-        result.error || "Der Server hat das Speichern abgelehnt."
-      );
+    let result = {};
+    try { result = await response.json(); }
+    catch { throw new Error("Der Server hat keine gültige Antwort geliefert (HTTP " + response.status + ")."); }
+    if(!response.ok || result.error || result.success === false || result.ok === false){
+      throw new Error(result.error || "Speichern fehlgeschlagen (HTTP " + response.status + ").");
     }
 
     if(isEditing && !applyPendingLocalImage()){
-      alert(
-        "Die Restaurantdaten wurden gespeichert, " +
-        "aber das Bild konnte auf diesem Handy nicht gespeichert werden."
-      );
+      alert("Die Restaurantdaten wurden gespeichert, aber das Bild konnte auf diesem Handy nicht gespeichert werden.");
     }
 
     closeModal();
-
     await loadData();
 
-    // Prüfen, ob der Eintrag nach dem Neuladen vorhanden ist.
     const savedRestaurant = isEditing
-      ? restaurants.find(
-          r => String(r.id) === String(savedEditId)
-        )
-      : restaurants.find(
-          r =>
-            String(r.name || "").trim().toLowerCase() ===
-            String(restaurant.name || "").trim().toLowerCase()
-        );
+      ? restaurants.find(r => String(r.id) === String(savedEditId))
+      : restaurants.find(r => String(r.name || "").trim().toLowerCase() === String(restaurant.name || "").trim().toLowerCase());
 
-    let cardWarning = "";
-    if(savedRestaurant){
-      if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
-      const cardEditorReady = !isEditing ||
-        (cardEditorState.status === "loaded" &&
-         String(cardEditorState.restaurantId) === String(savedRestaurant.id));
-      if(!cardEditorReady){
-        // Niemals leere Formularfelder in die zentrale Karten-Tabelle schreiben,
-        // wenn die vorhandenen Links beim Bearbeiten nicht sicher geladen wurden.
-        cardWarning = "\n\nDie Restaurantdaten wurden gespeichert. Die Speise- und Getränkekarten-Links wurden vorsichtshalber nicht verändert, weil sie vorher nicht zuverlässig geladen werden konnten. Bitte öffne das Formular erneut und prüfe die Kartenlinks.";
-      }else{
-        try{
-          // Bei Bearbeitung nur speichern, wenn der Kartenbestand erfolgreich geladen wurde.
-          // Bei neuen Restaurants dürfen zunächst leere Kartenlinks gespeichert werden.
-          await syncRestaurantCards(savedRestaurant.id,password);
-        }catch(cardError){
-          console.error(cardError);
-          cardWarning = "\n\nDie Restaurantdaten wurden gespeichert, aber die Speise-/Getränkekarten konnten nicht vollständig gespeichert werden: " + (cardError.message || "");
-        }
-      }
+    if(!savedRestaurant){
+      alert("Die Restaurantdaten wurden vom Server angenommen, aber der Eintrag wurde nach dem Neuladen nicht gefunden. Bitte prüfe die Restaurantliste, bevor du erneut speicherst.");
+      return;
     }
 
-    if(savedRestaurant){
-      alert(
-        (isEditing
-          ? "Restaurant erfolgreich aktualisiert."
-          : "Restaurant erfolgreich gespeichert.") + cardWarning
+    if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
+    let messages = [];
 
-      );
+    const cardEditorReady = !isEditing ||
+      (cardEditorState.status === "loaded" && String(cardEditorState.restaurantId) === String(savedRestaurant.id));
 
-      if(isEditing){
-        openDetail(savedRestaurant.id);
+    if(cardEditorReady){
+      try{
+        await syncRestaurantCards(savedRestaurant.id,password);
+      }catch(cardError){
+        console.error("Kartenlinks konnten nicht gespeichert werden:",cardError);
+        messages.push("Die Restaurantdaten sind gespeichert, aber die Kartenlinks konnten nicht vollständig gespeichert werden: " + (cardError.message || "Unbekannter Fehler"));
       }
     }else{
-      alert(
-        "Der Server hat die Anfrage angenommen, aber der Eintrag " +
-        "wurde nach dem Neuladen nicht gefunden. Bitte prüfe die " +
-        "Restaurantliste, bevor du erneut speicherst."
-      );
+      messages.push("Die vorhandenen Kartenlinks wurden vorsichtshalber nicht verändert, weil sie vor dem Speichern nicht zuverlässig geladen werden konnten.");
     }
 
+    // Genau ein Upload-Versuch je ausgewählter PDF, erst wenn die Restaurant-ID feststeht.
+    if(hasSelectedPdf){
+      try{
+        await uploadPendingCardFiles(savedRestaurant.id,password,selectedCardFiles);
+        if(typeof tileCardCache !== "undefined") tileCardCache.delete(String(savedRestaurant.id));
+        messages.push("PDF erfolgreich hochgeladen und vom Server als gespeichert bestätigt.");
+      }catch(cardError){
+        console.error("PDF-Upload fehlgeschlagen:",cardError);
+        messages.push("PDF NICHT gespeichert: " + (cardError.message || "Unbekannter Fehler") + ". Bitte erst nach erfolgreichem Upload erneut speichern.");
+      }
+    }
+
+    alert((isEditing ? "Restaurant erfolgreich aktualisiert." : "Restaurant erfolgreich gespeichert.") +
+      (messages.length ? "\n\n" + messages.join("\n\n") : ""));
+
+    if(isEditing) openDetail(savedRestaurant.id);
   }catch(error){
-
     console.error(error);
-
-    alert(
-      "Speichern fehlgeschlagen.\n\n" +
-      "Bitte Admin-Passwort und Verbindung prüfen.\n\n" +
-      (error.message || "")
-    );
-
+    alert("Speichern fehlgeschlagen.\n\n" + (error.message || "Bitte Admin-Passwort und Verbindung prüfen."));
   }
 }
-
 
 /* --------------------------------------------------
    LÖSCHEN
