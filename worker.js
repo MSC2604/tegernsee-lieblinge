@@ -320,9 +320,11 @@ console.log("Tavily usage account:", {
           const host = normalize(new URL(url).hostname.replace(/^www\./i, ""));
           if (!nameTokens.length) return false;
           const hostParts = host.split(/\s+/).filter(Boolean);
-          return nameTokens.every(token =>
-            hostParts.some(part => part === token || (token.length >= 5 && part.startsWith(token))
-          ));
+          return nameTokens.every(token => {
+            return hostParts.some(part =>
+              part === token || (token.length >= 5 && part.startsWith(token))
+            );
+          });
         } catch {
           return false;
         }
@@ -330,7 +332,7 @@ console.log("Tavily usage account:", {
 
       function isTrustedRegionalSource(url) {
         try {
-          const host = new URL(url).hostname.toLowerCase().replace(/^www\\./i, "");
+          const host = new URL(url).hostname.toLowerCase().replace(/^www\./i, "");
           return host === "tegernsee.com" || host.endsWith(".tegernsee.com");
         } catch {
           return false;
