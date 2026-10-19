@@ -3399,6 +3399,60 @@ async function lookupRestaurantInApp(){
       selected = candidates[index - 1];
     }
 
+    // Vor dem Ergänzen ausdrücklich fragen. Vorhandene Werte bleiben geschützt.
+    const proposedFields = [
+      ["f_adresse", "Adresse", selected.adresse],
+      ["f_telefon", "Telefon", selected.telefon],
+      ["f_website", "Website", selected.website],
+      ["f_email", "E-Mail", selected.email],
+      ["f_oeffnungszeiten", "Öffnungszeiten/Küchenzeiten", selected.oeffnungszeiten],
+      ["f_ruhetag", "Ruhetag", selected.ruhetag],
+      ["f_notizen", "Notizen", selected.notizen],
+      ["f_reservierung", "Reservierungslink", selected.reservierung],
+      ["f_speisekarte_url", "Speisekarte", selected.speisekarte_url],
+      ["f_getraenkekarte_url", "Getränkekarte", selected.getraenkekarte_url]
+    ];
+    const blankProposals = proposedFields.filter(([id, label, value]) => {
+      const field = document.getElementById(id);
+      return field && !field.value.trim() && value && String(value).trim();
+    });
+    const answer = blankProposals.length
+      ? confirm(
+          "Die Suche hat Angaben für bisher leere Felder gefunden:\n\n" +
+          blankProposals.map(([, label]) => "• " + label).join("\n") +
+          "\n\nMöchtest du diese fehlenden Angaben übernehmen?\n\n" +
+          "Bereits ausgefüllte Felder werden nicht verändert."
+        )
+      : true;
+
+    function fillIfBlank(id, value) {
+      const field = document.getElementById(id);
+      if (answer && field && value && !field.value.trim()) {
+        field.value = value;
+      }
+    }
+
+    if (!answer) {
+      // Ergebnisse und Quellen anzeigen, ohne Formulardaten zu ändern.
+      const review = document.getElementById("lookupReview");
+      if (review) {
+        const sourceList = Array.isArray(selected.quellen)
+          ? selected.quellen.filter(source => source && /^https?:\/\//i.test(source.url || "")).slice(0, 5)
+          : [];
+        review.innerHTML = "<strong>Suchergebnisse gefunden – nichts übernommen</strong>" +
+          "<p>Deine bisherigen Angaben sind unverändert geblieben. Du kannst die fehlenden Felder bei Bedarf manuell ergänzen.</p>" +
+          (sourceList.length
+            ? "<strong>Quellen zur Kontrolle</strong><ul>" + sourceList.map(source =>
+                '<li><a href="' + escapeAttr(source.url) + '" target="_blank" rel="noopener noreferrer">' +
+                escapeHtml(source.title || source.url) + "</a></li>"
+              ).join("") + "</ul>"
+            : "");
+        review.hidden = false;
+      }
+      loadTavilyUsage();
+      return;
+    }
+
     // Ort und Kategorie haben Standardwerte in den Auswahlfeldern.
     // Deshalb diese Felder separat prüfen: Nur nach ausdrücklicher Zustimmung
     // darf die Suche einen bereits gesetzten Standardwert ändern.
@@ -3445,60 +3499,6 @@ async function lookupRestaurantInApp(){
           }
         }
       }
-    }
-
-    // Vor dem Ergänzen ausdrücklich fragen. Vorhandene Werte bleiben geschützt.
-    const proposedFields = [
-      ["f_adresse", "Adresse", selected.adresse],
-      ["f_telefon", "Telefon", selected.telefon],
-      ["f_website", "Website", selected.website],
-      ["f_email", "E-Mail", selected.email],
-      ["f_oeffnungszeiten", "Öffnungszeiten/Küchenzeiten", selected.oeffnungszeiten],
-      ["f_ruhetag", "Ruhetag", selected.ruhetag],
-      ["f_notizen", "Notizen", selected.notizen],
-      ["f_reservierung", "Reservierungslink", selected.reservierung],
-      ["f_speisekarte_url", "Speisekarte", selected.speisekarte_url],
-      ["f_getraenkekarte_url", "Getränkekarte", selected.getraenkekarte_url]
-    ];
-    const blankProposals = proposedFields.filter(([id, label, value]) => {
-      const field = document.getElementById(id);
-      return field && !field.value.trim() && value && String(value).trim();
-    });
-    const answer = blankProposals.length
-      ? confirm(
-          "Die Suche hat Angaben für bisher leere Felder gefunden:\n\n" +
-          blankProposals.map(([, label]) => "• " + label).join("\n") +
-          "\n\nMöchtest du diese fehlenden Angaben übernehmen?\n\n" +
-          "Bereits ausgefüllte Felder werden nicht verändert."
-        )
-      : false;
-
-    function fillIfBlank(id, value) {
-      const field = document.getElementById(id);
-      if (answer && field && value && !field.value.trim()) {
-        field.value = value;
-      }
-    }
-
-    if (!answer) {
-      // Ergebnisse und Quellen anzeigen, ohne Formulardaten zu ändern.
-      const review = document.getElementById("lookupReview");
-      if (review) {
-        const sourceList = Array.isArray(selected.quellen)
-          ? selected.quellen.filter(source => source && /^https?:\/\//i.test(source.url || "")).slice(0, 5)
-          : [];
-        review.innerHTML = "<strong>Suchergebnisse gefunden – nichts übernommen</strong>" +
-          "<p>Deine bisherigen Angaben sind unverändert geblieben. Du kannst die fehlenden Felder bei Bedarf manuell ergänzen.</p>" +
-          (sourceList.length
-            ? "<strong>Quellen zur Kontrolle</strong><ul>" + sourceList.map(source =>
-                '<li><a href="' + escapeAttr(source.url) + '" target="_blank" rel="noopener noreferrer">' +
-                escapeHtml(source.title || source.url) + "</a></li>"
-              ).join("") + "</ul>"
-            : "");
-        review.hidden = false;
-      }
-      loadTavilyUsage();
-      return;
     }
 
     fillIfBlank("f_adresse", selected.adresse);
