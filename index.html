@@ -1330,9 +1330,9 @@ const IS_PREVIEW = /\.pages\.dev$/i.test(window.location.hostname);
 // Restaurantdaten und gespeicherte Einträge immer aus der zentralen Datenbank lesen.
 // Nur die automatische Suche wird in der Vorschau gegen den Test-Worker ausgeführt.
 const API_URL = "https://tegernsee-restaurants-api.msc4021.workers.dev";
-const SEARCH_API_URL = IS_PREVIEW
-  ? "https://fix-restaurant-search-quality-tegernsee-restaurants-api.msc4021.workers.dev"
-  : API_URL;
+// Die Vorschau nutzt bis zur Klärung der Preview-Secrets dieselbe funktionierende
+// Suche wie die Hauptversion; der Test-Worker wird separat geprüft.
+const SEARCH_API_URL = API_URL;
 
 // Vorschau-Schutz: Schreibzugriffe bleiben gesperrt; Lesezugriffe und Suche
 // laufen gegen den Worker der Vorschau.
