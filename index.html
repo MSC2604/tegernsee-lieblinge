@@ -1330,7 +1330,7 @@ const API_URL =
 // Vorschau-Schutz: Auf Cloudflare-Pages-Vorschauen dürfen keine Änderungen
 // an der produktiven Restaurantdatenbank vorgenommen werden. Lesezugriffe
 // (z. B. Restaurantsuche) bleiben möglich.
-const IS_PREVIEW = /\\.pages\\.dev$/i.test(window.location.hostname);
+const IS_PREVIEW = /\.pages\.dev$/i.test(window.location.hostname);
 async function safeFetch(input, init = {}) {
   const targetUrl = typeof input === "string"
     ? input
