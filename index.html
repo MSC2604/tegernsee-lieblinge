@@ -2585,8 +2585,10 @@ async function loadOneTileCardLink(place){
     const menu = safe(menuUrl);
     const drink = safe(drinkUrl);
     current.innerHTML =
-      (menuPdf ? '<a href="' + escapeAttr(pdfUrl("speisekarte")) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarte (PDF)</a>' : (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarte</a>' : '')) +
-      (drinkPdf ? '<a href="' + escapeAttr(pdfUrl("getraenkekarte")) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarte (PDF)</a>' : (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarte</a>' : ''));
+      (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarten-Link</a>' : '') +
+      (menuPdf ? '<a href="' + escapeAttr(pdfUrl("speisekarte")) + '" target="_blank" rel="noopener noreferrer">📄 Speisekarte (PDF)</a>' : '') +
+      (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarten-Link</a>' : '') +
+      (drinkPdf ? '<a href="' + escapeAttr(pdfUrl("getraenkekarte")) + '" target="_blank" rel="noopener noreferrer">📄 Getränkekarte (PDF)</a>' : '');
   };
 
   if(tileCardCache.has(id)){
