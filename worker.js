@@ -85,9 +85,19 @@ export default {
     }
 
     function rowValue(value) {
-      if (value == null) return "";
-      if (typeof value === "object" && "value" in value) return value.value;
-      return value;
+      // LibSQL/Turso kann Werte je nach Antwortpfad mehrfach als {value: ...} verpacken.
+      // Alle Wrapper entfernen, damit Dateinamen nicht als "[object Object]" erscheinen
+      // und die PDF-Prüfung echte Zeichenketten und Zahlen vergleicht.
+      let current = value;
+      for (let depth = 0; depth < 8; depth++) {
+        if (current == null) return "";
+        if (typeof current === "object" && !Array.isArray(current) && "value" in current) {
+          current = current.value;
+          continue;
+        }
+        return current;
+      }
+      return current;
     }
 
     function isAdmin(req) {
