@@ -936,10 +936,32 @@ console.log("Tavily usage account:", {
         updated_at TEXT NOT NULL DEFAULT '',
         PRIMARY KEY (restaurant_id, kind)
       )`);
+      await turso(`CREATE TABLE IF NOT EXISTS restaurant_card_files (
+        restaurant_id TEXT NOT NULL, kind TEXT NOT NULL, filename TEXT NOT NULL,
+        mime_type TEXT NOT NULL DEFAULT 'application/pdf', file_data BLOB NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, kind)
+      )`);
 
       if (request.method === "GET") {
         const url = new URL(request.url);
         const action = url.searchParams.get("action");
+
+        if (action === "cardFile") {
+          const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
+          const kind = (url.searchParams.get("kind") || "").trim();
+          if (!restaurantId || !["speisekarte", "getraenkekarte"].includes(kind)) return json({error:"Restaurant oder Kartenart ist ungültig."},400);
+          const result = await turso("SELECT filename, mime_type, file_data FROM restaurant_card_files WHERE restaurant_id = ? AND kind = ?",[textArg(restaurantId),textArg(kind)],true);
+          const row = result?.results?.[0]?.response?.result?.rows?.[0];
+          if (!row) return json({error:"Für diese Karte ist keine PDF-Datei gespeichert."},404);
+          const raw = row[2];
+          const encoded = raw && typeof raw === "object" ? (raw.base64 || raw.value || "") : String(raw || "");
+          if (!encoded) return json({error:"Die gespeicherte PDF-Datei ist leer oder ungültig."},500);
+          let bytes;
+          try { const binary = atob(encoded); bytes = new Uint8Array(binary.length); for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i); }
+          catch { return json({error:"Die PDF-Datei konnte nicht gelesen werden."},500); }
+          const filename = String(rowValue(row[0]) || "karte.pdf").replace(/[\\r\\n"\\\\]/g,"_").slice(0,120);
+          return new Response(bytes,{status:200,headers:{...corsHeaders,"Content-Type":"application/pdf","Content-Length":String(bytes.length),"Content-Disposition":'inline; filename="'+filename+'"',"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
+        }
 
         if (action === "cards") {
           // Ensure the status table exists before the cards endpoint joins it.
@@ -957,10 +979,10 @@ console.log("Tavily usage account:", {
           const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
           if (!restaurantId) return json({ error: "Restaurant-ID fehlt." }, 400);
           const result = await turso(
-            `SELECT c.kind, c.url, q.checked_at, q.changed_at, q.status, q.detail, q.url
+            `SELECT c.kind, c.url, q.checked_at, q.changed_at, q.status, q.detail, q.url, f.filename, f.mime_type
              FROM restaurant_cards c
-             LEFT JOIN restaurant_card_checks q
-               ON q.restaurant_id = c.restaurant_id AND q.kind = c.kind
+             LEFT JOIN restaurant_card_checks q ON q.restaurant_id = c.restaurant_id AND q.kind = c.kind
+             LEFT JOIN restaurant_card_files f ON f.restaurant_id = c.restaurant_id AND f.kind = c.kind
              WHERE c.restaurant_id = ?`,
             [textArg(restaurantId)], true
           );
@@ -976,7 +998,8 @@ console.log("Tavily usage account:", {
               checkedAt: checkedUrl === cardUrl ? (rowValue(row[2]) || "") : "",
               changedAt: checkedUrl === cardUrl ? (rowValue(row[3]) || "") : "",
               checkStatus: checkedUrl === cardUrl ? (rowValue(row[4]) || "") : "",
-              checkDetail: checkedUrl === cardUrl ? (rowValue(row[5]) || "") : ""
+              checkDetail: checkedUrl === cardUrl ? (rowValue(row[5]) || "") : "",
+              fileAvailable: Boolean(rowValue(row[7])), filename: rowValue(row[7]) || "", mimeType: rowValue(row[8]) || ""
             };
           }
           return json({ cards });
@@ -1055,6 +1078,19 @@ console.log("Tavily usage account:", {
           body = await request.json();
         } catch {
           return json({ error: "Ungültiger JSON-Inhalt" }, 400);
+        }
+
+        if (body.action === "uploadCardFile") {
+          const restaurantId=String(body.restaurantId||"").trim(), kind=String(body.kind||"").trim();
+          const filename=String(body.filename||"").trim().slice(0,120), base64=String(body.base64||"");
+          if(!restaurantId||!["speisekarte","getraenkekarte"].includes(kind)) return json({error:"Restaurant oder Kartenart ist ungültig."},400);
+          if(!filename.toLowerCase().endsWith(".pdf")||!base64) return json({error:"Bitte eine gültige PDF-Datei auswählen."},400);
+          if(base64.length>7_100_000) return json({error:"Die PDF-Datei darf höchstens 5 MB groß sein."},413);
+          let binary; try{binary=atob(base64)}catch{return json({error:"Die PDF-Datei ist ungültig kodiert."},400)}
+          if(binary.length>5*1024*1024) return json({error:"Die PDF-Datei darf höchstens 5 MB groß sein."},413);
+          if(binary.length<5||binary.slice(0,5)!=="%PDF-") return json({error:"Die Datei scheint keine gültige PDF-Datei zu sein."},400);
+          await turso(`INSERT INTO restaurant_card_files (restaurant_id,kind,filename,mime_type,file_data,updated_at) VALUES (?, ?, ?, 'application/pdf', ?, ?) ON CONFLICT(restaurant_id,kind) DO UPDATE SET filename=excluded.filename,mime_type=excluded.mime_type,file_data=excluded.file_data,updated_at=excluded.updated_at`,[textArg(restaurantId),textArg(kind),textArg(filename),{type:"blob",base64},textArg(new Date().toISOString())]);
+          return json({success:true,action:"uploadCardFile",bytes:binary.length});
         }
 
         if (body.action === "saveCard") {
