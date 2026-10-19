@@ -317,9 +317,9 @@ console.log("Tavily usage account:", {
 
       function hasRestaurantNameInHost(url) {
         try {
-          const host = normalize(new URL(url).hostname.replace(/^www\\./i, ""));
+          const host = normalize(new URL(url).hostname.replace(/^www\./i, ""));
           if (!nameTokens.length) return false;
-          const hostParts = host.split(/\\s+/).filter(Boolean);
+          const hostParts = host.split(/\s+/).filter(Boolean);
           return nameTokens.every(token =>
             hostParts.some(part => part === token || (token.length >= 5 && part.startsWith(token))
           ));
