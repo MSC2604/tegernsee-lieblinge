@@ -492,7 +492,7 @@ console.log("Tavily usage account:", {
 
         const lines = value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
         const streetPattern =
-          /\b(?!Rottach[-–—]Egern)[A-ZÄÖÜ][\p{L}.'-]*(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b|\b(?!Rottach[-–—]Egern)[A-ZÄÖÜ][\p{L}.'-]*(?:[ \t]+[\p{L}.'-]+){0,4}[ \t]+(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b/iu;
+          /(?<!Rottach[-–—])\b(?!Rottach[-–—]Egern)(?!EgernPlatz\b)[A-ZÄÖÜ][\p{L}.'-]*(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b|(?<!Rottach[-–—])\b(?!Rottach[-–—]Egern)(?!EgernPlatz\b)[A-ZÄÖÜ][\p{L}.'-]*(?:[ \t]+[\p{L}.'-]+){0,4}[ \t]+(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b/iu;
 
         // Ortslagen wie „Enterrottach 1“ sind gültige Anschriften am Tegernsee,
         // obwohl sie nicht auf Straße/Weg/Platz enden. Nur bekannte lokale
@@ -786,6 +786,7 @@ console.log("Tavily usage account:", {
         if (field === "adresse") {
           const valid = nonEmpty.filter(item =>
             !/Rottach[-–—]Egern\s*Platz\s*\d*/i.test(item.value) &&
+            !/^EgernPlatz\s*\d*/i.test(item.value) &&
             /\d/.test(item.value) &&
             /(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig|Enterrottach|Sutten|Valepp|Wildbad Kreuth|Siebenhütten|Monialm|Wallberg)/i.test(item.value)
           );
