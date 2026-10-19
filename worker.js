@@ -359,12 +359,16 @@ console.log("Tavily usage account:", {
       function hasStrongNameMatch(result) {
         const title = normalize(result.title);
         let host = "";
-        try { host = normalize(new URL(result.url).hostname.replace(/^www\./i, "")); } catch {}
-        // Markante Namensbestandteile müssen im Titel oder in der Domain stehen,
-        // nicht nur irgendwo im allgemeinen Suchtext.
-        return nameTokens.some(token =>
-          title.split(/\s+/).includes(token) ||
-          host.split(/\s+/).some(part => part === token || part.startsWith(token))
+        try { host = normalize(new URL(result.url).hostname.replace(/^www\\./i, "")); } catch {}
+        // Alle markanten Bestandteile des Restaurantnamens müssen im Seitentitel
+        // oder in der Domain vorkommen. Ein einzelnes gemeinsames Wort genügt
+        // nicht mehr, da sonst ähnlich benannte Betriebe durchrutschen können.
+        const titleAndHost = (title + " " + host).split(/\\s+/).filter(Boolean);
+        if (!nameTokens.length) return false;
+        return nameTokens.every(token =>
+          titleAndHost.some(part =>
+            part === token || (token.length >= 5 && part.startsWith(token))
+          )
         );
       }
 
