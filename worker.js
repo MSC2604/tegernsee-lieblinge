@@ -482,30 +482,50 @@ console.log("Tavily usage account:", {
       function extractAddress(text) {
         const value = String(text || "")
           .replace(/<\s*br\s*\/?>/gi, "\n")
-          .replace(/<\/(?:p|div|li|tr|h[1-6])\s*>/gi, "\n")
+          .replace(/<\/(?:p|div|li|tr|h[1-6]|address|section)\s*>/gi, "\n")
           .replace(/<[^>]*>/g, " ")
           .replace(/&nbsp;|&#160;/gi, " ")
-          .replace(/&amp;/gi, "&");
+          .replace(/&amp;/gi, "&")
+          .replace(/&quot;|&#34;/gi, '"')
+          .replace(/&#39;|&apos;/gi, "'")
+          .replace(/[ \t]+/g, " ");
 
-        // Support house-number ranges and both spaced and abbreviated street names,
-        // including compound abbreviations such as "Nördliche Hauptstr. 17–19".
+        const lines = value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
         const streetPattern =
-          /\b(?:[A-ZÄÖÜ][\p{L}.'-]*(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)|[A-ZÄÖÜ][\p{L}.'-]*(?:[ \t]+[\p{L}.'-]+){0,4}[ \t]+(?:straße|strasse|straße|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig))[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b/iu;
+          /\b(?:[A-ZÄÖÜ][\p{L}.'-]*(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)|[A-ZÄÖÜ][\p{L}.'-]*(?:[ \t]+[\p{L}.'-]+){0,4}[ \t]+(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig))[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b/iu;
 
-        const match = value.match(streetPattern);
-        if (!match) return "";
+        // Ortslagen wie „Enterrottach 1“ sind gültige Anschriften am Tegernsee,
+        // obwohl sie nicht auf Straße/Weg/Platz enden. Nur bekannte lokale
+        // Anschriftenformen werden zusätzlich akzeptiert.
+        const localAddressPattern =
+          /\b(?:Enterrottach|Sutten|Valepp|Wildbad Kreuth|Siebenhütten|Monialm|Wallbergstraße|Wallbergstr\.?)\s+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b/iu;
+        const postalPattern = /\b(?:83700|83703|83707|83708|83727|83730|83734|83684)\s+[A-ZÄÖÜ][\p{L}-]+/iu;
+        const addressLabel = /(?:adresse|anschrift|standort|anfahrt|besuchen sie uns|hier finden sie uns)/i;
 
-        const after = value.slice(match.index + match[0].length);
-        const postal = after.match(
-          /^\s*[,;\n-]?\s*(\d{5}\s+[A-ZÄÖÜ][\p{L}-]+)/iu
-        );
-
-        return (
-          match[0].replace(/\s*[-–—/]\s*/g, "–") +
-          (postal ? ", " + postal[1] : "")
-        ).replace(/\s+/g, " ").trim().slice(0, 180);
+        // Beschriftete Adresszeilen haben Vorrang vor zufälligen Straßenangaben
+        // in Texten, Veranstaltungen oder verlinkten Fremdseiten.
+        const orderedLines = [
+          ...lines.filter(line => addressLabel.test(line)),
+          ...lines.filter(line => postalPattern.test(line)),
+          ...lines
+        ];
+        const seen = new Set();
+        for (const line of orderedLines) {
+          if (seen.has(line)) continue;
+          seen.add(line);
+          const match = line.match(streetPattern) || line.match(localAddressPattern);
+          if (!match) continue;
+          const after = line.slice((match.index || 0) + match[0].length);
+          const postal = after.match(
+            /^\s*[,;]?\s*(\d{5}\s+[A-ZÄÖÜ][\p{L}-]+)/iu
+          );
+          return (
+            match[0].replace(/\s*[-–—/]\s*/g, "–") +
+            (postal ? ", " + postal[1] : "")
+          ).replace(/\s+/g, " ").trim().slice(0, 180);
+        }
+        return "";
       }
-
       function extractTown(text) {
         const value = String(text || "")
           .replace(/<[^>]*>/g, " ")
@@ -604,27 +624,51 @@ console.log("Tavily usage account:", {
           .replace(/&nbsp;|&#160;/gi, " ")
           .replace(/&amp;/gi, "&")
           .replace(/\s+/g, " ");
-        const days = "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag";
-        const shortDays = "Mo(?:ntag)?|Di(?:enstag)?|Mi(?:ttwoch)?|Do(?:nnerstag)?|Fr(?:eitag)?|Sa(?:mstag)?|So(?:nntag)?";
-        const pair = "(?:" + days + ")(?:\\s*(?:,|und|&|/)\\s*(?:" + days + "))?";
-        const beforeRuhetag = value.match(new RegExp("\\b(" + days + ")(?:\\s*(?:,|und|&|/)\\s*(" + days + "))?\\b.{0,35}\\bRuhetag(?:e)?\\b", "i"));
-        if (beforeRuhetag) return [beforeRuhetag[1], beforeRuhetag[2]].filter(Boolean).join(" und ");
 
-        const afterRuhetag = value.match(new RegExp("\\bRuhetag(?:e)?\\s*[:：]?\\s*(" + days + ")(?:\\s*(?:,|und|&|/)\\s*(" + days + "))?\\b", "i"));
-        if (afterRuhetag) return [afterRuhetag[1], afterRuhetag[2]].filter(Boolean).join(" und ");
+        const fullDays = [
+          ["Montag", "Mo(?:ntag)?"],
+          ["Dienstag", "Di(?:enstag)?"],
+          ["Mittwoch", "Mi(?:ttwoch)?"],
+          ["Donnerstag", "Do(?:nnerstag)?"],
+          ["Freitag", "Fr(?:eitag)?"],
+          ["Samstag", "Sa(?:mstag)?"],
+          ["Sonntag", "So(?:nntag)?"]
+        ];
+        const dayPattern = fullDays.map(item => item[1]).join("|");
+        const separator = "(?:\\s*(?:,|;|und|&|/)\\s*)";
 
-        // Viele Restaurantseiten nennen Schließtage ohne das Wort "Ruhetag".
-        const closed = value.match(new RegExp("\\b(" + days + ")(?:\\s*(?:,|und|&|/)\\s*(" + days + "))?\\s*(?:ist|sind)?\\s*(?:geschlossen|Betriebsferien)\\b", "i"));
-        if (closed) return [closed[1], closed[2]].filter(Boolean).join(" und ");
+        // Erst explizit als Ruhetage markierte Angaben auswerten und mehrere
+        // aufeinanderfolgende Wochentage erfassen (z. B. Mo/Di sowie Sa/So).
+        const ruhetagBefore = value.match(new RegExp(
+          "\\b((?:" + dayPattern + ")(?:" + separator + "(?:" + dayPattern + ")){0,6})\\s*(?:sind\\s*)?Ruhetag(?:e)?\\b", "i"
+        ));
+        const ruhetagAfter = value.match(new RegExp(
+          "\\bRuhetag(?:e)?\\s*[:：]?\\s*((?:" + dayPattern + ")(?:" + separator + "(?:" + dayPattern + ")){0,6})\\b", "i"
+        ));
+        const explicit = ruhetagBefore || ruhetagAfter;
+        if (explicit) {
+          const found = [];
+          for (const token of explicit[1].match(new RegExp(dayPattern, "gi")) || []) {
+            const item = fullDays.find(day => new RegExp("^" + day[1] + "$", "i").test(token));
+            if (item && !found.includes(item[0])) found.push(item[0]);
+          }
+          if (found.length) return found.join(", ");
+        }
 
-        const shortClosed = value.match(new RegExp("\\b(" + shortDays + ")\\s*(?:,|/|&|und)\\s*(" + shortDays + ")\\s*(?:Ruhetag(?:e)?|geschlossen)\\b", "i"));
-        if (shortClosed) {
-          const expand = day => ({mo:"Montag",di:"Dienstag",mi:"Mittwoch",do:"Donnerstag",fr:"Freitag",sa:"Samstag",so:"Sonntag"})[day.slice(0,2).toLowerCase()];
-          return [expand(shortClosed[1]), expand(shortClosed[2])].join(" und ");
+        // Explizit geschlossene Tage ohne das Wort Ruhetag erkennen.
+        const closed = value.match(new RegExp(
+          "\\b((?:" + dayPattern + ")(?:" + separator + "(?:" + dayPattern + ")){0,6})\\s*(?:sind|ist)?\\s*(?:geschlossen|Betriebsferien)\\b", "i"
+        ));
+        if (closed) {
+          const found = [];
+          for (const token of closed[1].match(new RegExp(dayPattern, "gi")) || []) {
+            const item = fullDays.find(day => new RegExp("^" + day[1] + "$", "i").test(token));
+            if (item && !found.includes(item[0])) found.push(item[0]);
+          }
+          if (found.length) return found.join(", ");
         }
         return "";
       }
-
 
       function extractHours(text) {
         // HTML-Text in getrennte Textzeilen umwandeln, damit zusammengeklebte
