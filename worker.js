@@ -492,7 +492,7 @@ console.log("Tavily usage account:", {
 
         const lines = value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
         const streetPattern =
-          /\b(?:[A-ZÄÖÜ][\p{L}.'-]*(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)|[A-ZÄÖÜ][\p{L}.'-]*(?:[ \t]+[\p{L}.'-]+){0,4}[ \t]+(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig))[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b/iu;
+          /\b(?!Rottach[-–—]Egern)[A-ZÄÖÜ][\p{L}.'-]*(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b|\b(?!Rottach[-–—]Egern)[A-ZÄÖÜ][\p{L}.'-]*(?:[ \t]+[\p{L}.'-]+){0,4}[ \t]+(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig)[ \t]+\d+[a-z]?(?:\s*[-–—/]\s*\d+[a-z]?)?\b/iu;
 
         // Ortslagen wie „Enterrottach 1“ sind gültige Anschriften am Tegernsee,
         // obwohl sie nicht auf Straße/Weg/Platz enden. Nur bekannte lokale
@@ -777,39 +777,72 @@ console.log("Tavily usage account:", {
       });
 
       function firstValue(field) {
-        // Bei Öffnungszeiten konkrete Wochentagsangaben immer vor pauschalen
-        // Aussagen wie "Täglich ab 11:30 Uhr" bevorzugen.
-        if (field === "oeffnungszeiten") {
-          const specific = records.find(record => {
-            const value = String(record[field] || "").trim();
-            return value &&
-              /(?:Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\\bMo\\b|\\bDi\\b|\\bMi\\b|\\bDo\\b|\\bFr\\b|\\bSa\\b|\\bSo\\b)/i.test(value) &&
-              !/\\b(?:täglich|taeglich|jeden\\s+tag)\\b/i.test(value);
-          });
-          if (specific) return String(specific[field]).trim();
-        }
-        // Küchenzeiten können in einer Quelle verkürzt und in einer anderen
-        // vollständig stehen. Nicht blind den ersten Treffer übernehmen:
-        // Angaben mit einer Sonntags-Ausnahme haben Vorrang, danach die
-        // ausführlichste gefundene Küchenzeit.
-        if (field === "kuechenzeiten") {
-          const kitchenValues = [...new Set(records
-            .map(record => String(record[field] || "").trim())
-            .filter(Boolean))];
-          kitchenValues.sort((a, b) => {
-            const aSunday = /sonntags?|sonntag/i.test(a) ? 1 : 0;
-            const bSunday = /sonntags?|sonntag/i.test(b) ? 1 : 0;
-            return bSunday - aSunday || b.length - a.length;
-          });
-          if (kitchenValues.length) return kitchenValues[0];
-        }
-        for (const record of records) {
-          const value = String(record[field] || "").trim();
-          if (value) return value;
-        }
-        return "";
-      }
+        const nonEmpty = records
+          .map(record => ({ record, value: String(record[field] || "").trim() }))
+          .filter(item => item.value);
 
+        // Eine falsch zusammengesetzte Ortsangabe wie „Rottach-EgernPlatz 14“
+        // darf nicht als Anschrift ins Formular gelangen.
+        if (field === "adresse") {
+          const valid = nonEmpty.filter(item =>
+            !/Rottach[-–—]Egern\s*Platz\s*\d*/i.test(item.value) &&
+            /\d/.test(item.value) &&
+            /(?:straße|strasse|str\.?|weg|platz|gasse|allee|ufer|ring|chaussee|damm|steig|Enterrottach|Sutten|Valepp|Wildbad Kreuth|Siebenhütten|Monialm|Wallberg)/i.test(item.value)
+          );
+          valid.sort((a, b) => {
+            const priority = item =>
+              isTrustedRegionalSource(item.record.url) ? 3 :
+              hasRestaurantNameInHost(item.record.url) ? 2 : 1;
+            return priority(b) - priority(a);
+          });
+          if (valid.length) return valid[0].value;
+        }
+
+        // Bei Öffnungszeiten einen möglichst vollständigen Wochenplan bevorzugen,
+        // statt eine einzelne Tagesangabe aus einem anderen Verzeichnis zu wählen.
+        if (field === "oeffnungszeiten") {
+          const dayRegex = /Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|\bMo\b|\bDi\b|\bMi\b|\bDo\b|\bFr\b|\bSa\b|\bSo\b/gi;
+          nonEmpty.sort((a, b) => {
+            const countDays = value => new Set(value.match(dayRegex) || []).size;
+            const dayDifference = countDays(b.value) - countDays(a.value);
+            if (dayDifference) return dayDifference;
+            const priority = item =>
+              isTrustedRegionalSource(item.record.url) ? 3 :
+              hasRestaurantNameInHost(item.record.url) ? 2 : 1;
+            return priority(b) - priority(a) || b.value.length - a.value.length;
+          });
+          if (nonEmpty.length) return nonEmpty[0].value;
+        }
+
+        // Mehrere explizit genannte Ruhetage sind aussagekräftiger als ein
+        // einzelner Wochentag aus einem anderen Treffer.
+        if (field === "ruhetag") {
+          const dayRegex = /Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag/gi;
+          nonEmpty.sort((a, b) => {
+            const countDays = value => new Set(value.match(dayRegex) || []).size;
+            const dayDifference = countDays(b.value) - countDays(a.value);
+            if (dayDifference) return dayDifference;
+            const priority = item =>
+              isTrustedRegionalSource(item.record.url) ? 3 :
+              hasRestaurantNameInHost(item.record.url) ? 2 : 1;
+            return priority(b) - priority(a);
+          });
+          if (nonEmpty.length) return nonEmpty[0].value;
+        }
+
+        // Küchenzeiten: bevorzugt eine Quelle mit Sonntags-Ausnahme, danach die
+        // ausführlichste Angabe.
+        if (field === "kuechenzeiten") {
+          nonEmpty.sort((a, b) => {
+            const aSunday = /sonntags?|sonntag/i.test(a.value) ? 1 : 0;
+            const bSunday = /sonntags?|sonntag/i.test(b.value) ? 1 : 0;
+            return bSunday - aSunday || b.value.length - a.value.length;
+          });
+          if (nonEmpty.length) return nonEmpty[0].value;
+        }
+
+        return nonEmpty.length ? nonEmpty[0].value : "";
+      }
       const sources = records.map(record => ({
         title: record.title,
         url: record.url,
