@@ -4023,13 +4023,18 @@ async function loadCardEditor(restaurantId){
 }
 
 const MAX_CARD_PDF_BYTES = 5 * 1024 * 1024;
+// FileList in Android-WebViews kann beim Öffnen/Schließen von Dialogen verloren gehen.
+ // Deshalb die ausgewählte Datei zusätzlich direkt beim Auswählen im Speicher halten.
+ const pendingCardPdfFiles = {speisekarte:null,getraenkekarte:null};
 function setupCardPdfInput(kind){
  const input=document.getElementById("f_"+kind+"_pdf"), status=document.getElementById("f_"+kind+"_pdf_status");
  if(!input||!status)return;
  input.addEventListener("change",()=>{
-  const file=input.files&&input.files[0]; if(!file){status.textContent="Keine neue PDF ausgewählt.";return;}
-  if(!(file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf"))){input.value="";alert("Bitte wähle eine PDF-Datei aus.");return;}
-  if(file.size>MAX_CARD_PDF_BYTES){input.value="";status.textContent="Datei zu groß – maximal 5 MB.";alert("Die PDF-Datei ist größer als 5 MB.");return;}
+  const file=input.files&&input.files[0];
+  if(!file){pendingCardPdfFiles[kind]=null;status.textContent="Keine neue PDF ausgewählt.";return;}
+  if(!(file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf"))){input.value="";pendingCardPdfFiles[kind]=null;alert("Bitte wähle eine PDF-Datei aus.");return;}
+  if(file.size>MAX_CARD_PDF_BYTES){input.value="";pendingCardPdfFiles[kind]=null;status.textContent="Datei zu groß – maximal 5 MB.";alert("Die PDF-Datei ist größer als 5 MB.");return;}
+  pendingCardPdfFiles[kind]=file;
   status.textContent=file.name+" ("+(file.size/1048576).toFixed(2)+" MB) – wird beim Speichern hochgeladen.";
  });
 }
@@ -4045,6 +4050,7 @@ async function uploadPendingCardFiles(restaurantId,password,selectedFiles){
   let data={};try{data=await response.json();}catch(_){throw new Error("Der Server hat keine gültige Antwort zum PDF-Upload geliefert (HTTP "+response.status+").");}
   if(!response.ok||data.error||data.success!==true)throw new Error(data.error||"PDF-Upload fehlgeschlagen (HTTP "+response.status+").");
   if(input)input.value="";if(status)status.textContent="PDF zentral gespeichert: "+file.name;
+  if(typeof pendingCardPdfFiles!=="undefined")pendingCardPdfFiles[kind]=null;
  }
 }
 
@@ -4075,8 +4081,8 @@ async function savePlace(){
 
   // PDF-Dateien unbedingt vor allen anderen Formularaktionen sichern.
   const selectedCardFiles = {
-    speisekarte: document.getElementById("f_speisekarte_pdf")?.files?.[0] || null,
-    getraenkekarte: document.getElementById("f_getraenkekarte_pdf")?.files?.[0] || null
+    speisekarte: pendingCardPdfFiles.speisekarte || document.getElementById("f_speisekarte_pdf")?.files?.[0] || null,
+    getraenkekarte: pendingCardPdfFiles.getraenkekarte || document.getElementById("f_getraenkekarte_pdf")?.files?.[0] || null
   };
   const restaurant = getFormData();
 
