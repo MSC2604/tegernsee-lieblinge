@@ -3698,6 +3698,11 @@ function editPlace(){
   ).textContent =
     "Restaurant bearbeiten";
 
+  // Kartenfelder beim Bearbeiten sofort sichtbar machen, bevor weitere
+  // Formular-/Bildfunktionen ausgeführt werden.
+  const cardSection = document.getElementById("cardEditSection");
+  if(cardSection) cardSection.style.display = "block";
+
 
   document.getElementById(
     "f_name"
