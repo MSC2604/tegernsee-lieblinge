@@ -795,6 +795,7 @@ a{
     <button class="app-menu-item" onclick="closeAppMenu();focusSearch()"><span>🔎</span><span>Restaurants suchen</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();showFavorites()"><span>♥</span><span>Meine Favoriten</span></button>
     <button class="app-menu-item" type="button" id="changeHeroImage"><span>🖼️</span><span id="changeHeroImageLabel">Titelbild ändern</span></button>
+    <button class="app-menu-item" type="button" id="changeHeroText" onclick="editWelcomeHeroText()"><span>✏️</span><span>Titelbild-Text ändern</span></button>
     <button type="button" id="toggleTavilyUsage" aria-expanded="false" aria-controls="tavilyUsageCard" class="app-menu-item"><span>📊</span><span id="toggleTavilyUsageLabel">Suchkontingent anzeigen</span></button>
     <section class="tavily-usage" id="tavilyUsageCard" aria-live="polite" hidden>
       <div class="tavily-usage-head">
@@ -839,8 +840,8 @@ a{
 
   <section class="welcome-hero" id="welcomeHero" aria-label="Willkommen am Tegernsee">
     <div class="welcome-copy">
-      <h2>Tegernsee</h2>
-      <p>Entdecken. Genießen. Wohlfühlen.</p>
+      <h2 id="welcomeHeroTitle">Tegernsee</h2>
+      <p id="welcomeHeroSubtitle">Entdecken. Genießen. Wohlfühlen.</p>
     </div>
     <input type="file" id="heroImagePicker" accept="image/*" hidden>
   </section>
@@ -4627,6 +4628,71 @@ if (toggleTavilyUsage && tavilyUsageCard) {
  });
  load();
 })();
+
+
+ 
+// Überschrift und Untertitel werden zentral gespeichert und allen Besuchern angezeigt.
+let welcomeHeroText = { title: "Tegernsee", subtitle: "Entdecken. Genießen. Wohlfühlen." };
+
+async function loadWelcomeHeroText() {
+  try {
+    const response = await fetch(API_URL + "?action=titleText&_=" + Date.now(), { cache: "no-store" });
+    if (!response.ok) throw new Error("Titelbild-Text konnte nicht geladen werden.");
+    const data = await response.json();
+    welcomeHeroText = {
+      title: String(data.title || "Tegernsee"),
+      subtitle: String(data.subtitle || "Entdecken. Genießen. Wohlfühlen.")
+    };
+    const title = document.getElementById("welcomeHeroTitle");
+    const subtitle = document.getElementById("welcomeHeroSubtitle");
+    if (title) title.textContent = welcomeHeroText.title;
+    if (subtitle) subtitle.textContent = welcomeHeroText.subtitle;
+  } catch (error) {
+    console.warn("Titelbild-Text:", error);
+  }
+}
+
+async function editWelcomeHeroText() {
+  closeAppMenu();
+  const password = await askAdminPassword("Bitte Admin-Passwort eingeben, um den Titelbild-Text zu ändern.");
+  if (!password) return;
+
+  const title = prompt("Neue große Überschrift (max. 120 Zeichen):", welcomeHeroText.title);
+  if (title === null) return;
+  const subtitle = prompt("Neuer Untertitel (max. 240 Zeichen):", welcomeHeroText.subtitle);
+  if (subtitle === null) return;
+  if (!title.trim() || !subtitle.trim()) {
+    alert("Bitte Überschrift und Untertitel ausfüllen. Beide Texte müssen mindestens ein Zeichen enthalten.");
+    return;
+  }
+
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + password },
+      body: JSON.stringify({
+        action: "saveTitleText",
+        title: title.trim().slice(0, 120),
+        subtitle: subtitle.trim().slice(0, 240)
+      })
+    });
+    let data = {};
+    try { data = await response.json(); } catch (_) {}
+    if (!response.ok || data.success !== true || data.verified !== true) {
+      throw new Error(data.error || "Der Titelbild-Text konnte nicht sicher gespeichert werden.");
+    }
+    welcomeHeroText = { title: data.title, subtitle: data.subtitle };
+    const titleElement = document.getElementById("welcomeHeroTitle");
+    const subtitleElement = document.getElementById("welcomeHeroSubtitle");
+    if (titleElement) titleElement.textContent = welcomeHeroText.title;
+    if (subtitleElement) subtitleElement.textContent = welcomeHeroText.subtitle;
+    alert("Titelbild-Text zentral gespeichert. Alle Besucher sehen die Änderung nach dem Aktualisieren der App.");
+  } catch (error) {
+    alert(error.message || "Der Titelbild-Text konnte nicht gespeichert werden.");
+  }
+}
+
+loadWelcomeHeroText();
 
 </script>
 

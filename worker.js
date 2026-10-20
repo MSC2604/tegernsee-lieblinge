@@ -961,6 +961,13 @@ console.log("Tavily usage account:", {
         mime_type TEXT NOT NULL, file_data BLOB NOT NULL, updated_at TEXT NOT NULL DEFAULT ''
       )`);
 
+      await turso(`CREATE TABLE IF NOT EXISTS title_text_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        title TEXT NOT NULL DEFAULT 'Tegernsee',
+        subtitle TEXT NOT NULL DEFAULT 'Entdecken. Genießen. Wohlfühlen.',
+        updated_at TEXT NOT NULL DEFAULT ''
+      )`);
+
       if (request.method === "GET") {
         const url = new URL(request.url);
         const action = url.searchParams.get("action");
@@ -980,6 +987,15 @@ console.log("Tavily usage account:", {
           catch { return json({error:"Die PDF-Datei konnte nicht gelesen werden."},500); }
           const filename = String(rowValue(row[0]) || "karte.pdf").replace(/[\\r\\n"\\\\]/g,"_").slice(0,120);
           return new Response(bytes,{status:200,headers:{...corsHeaders,"Content-Type":"application/pdf","Content-Length":String(bytes.length),"Content-Disposition":'inline; filename="'+filename+'"',"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
+        }
+
+        if (action === "titleText") {
+          const result = await turso("SELECT title, subtitle FROM title_text_settings WHERE id = 1", [], true);
+          const row = result?.results?.[0]?.response?.result?.rows?.[0];
+          return json({
+            title: row ? String(rowValue(row[0]) || "Tegernsee") : "Tegernsee",
+            subtitle: row ? String(rowValue(row[1]) || "Entdecken. Genießen. Wohlfühlen.") : "Entdecken. Genießen. Wohlfühlen."
+          });
         }
 
         if (action === "titleImage") {
@@ -1120,6 +1136,30 @@ console.log("Tavily usage account:", {
           body = await request.json();
         } catch {
           return json({ error: "Ungültiger JSON-Inhalt" }, 400);
+        }
+
+        if (body.action === "saveTitleText") {
+          const title = String(body.title || "").trim().slice(0, 120);
+          const subtitle = String(body.subtitle || "").trim().slice(0, 240);
+          if (!title || !subtitle) return json({ error: "Überschrift und Untertitel dürfen nicht leer sein." }, 400);
+          try {
+            const updatedAt = new Date().toISOString();
+            await turso(
+              "INSERT INTO title_text_settings (id,title,subtitle,updated_at) VALUES (1,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,subtitle=excluded.subtitle,updated_at=excluded.updated_at",
+              [textArg(title), textArg(subtitle), textArg(updatedAt)]
+            );
+            const verify = await turso("SELECT title, subtitle FROM title_text_settings WHERE id = 1", [], true);
+            const row = verify?.results?.[0]?.response?.result?.rows?.[0];
+            const savedTitle = row ? String(rowValue(row[0]) || "") : "";
+            const savedSubtitle = row ? String(rowValue(row[1]) || "") : "";
+            if (savedTitle !== title || savedSubtitle !== subtitle) {
+              return json({ error: "Die Datenbank hat die Textänderung nicht korrekt bestätigt." }, 500);
+            }
+            return json({ success: true, verified: true, title: savedTitle, subtitle: savedSubtitle });
+          } catch (error) {
+            console.error("Title text save failed", String(error?.message || error).slice(0, 300));
+            return json({ error: "Titeltext konnte nicht gespeichert werden: " + String(error?.message || error).slice(0, 180) }, 500);
+          }
         }
 
         if (body.action === "uploadTitleImage") {
