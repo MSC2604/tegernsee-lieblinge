@@ -1307,7 +1307,7 @@ a{
 
       <div id="cardEditSection" style="display:block">
         <h3>🍽️ Offizielle Speise- und Getränkekarten</h3>
-        <p class="localimagehint">Offizielle Kartenlinks oder PDF-Dateien zentral für alle Geräte. Maximal 5 MB je PDF. Hochladen erfolgt beim Speichern des Restaurants.</p>
+        <p class="localimagehint">Offizielle Kartenlinks oder PDF-Dateien zentral für alle Geräte. Maximal 7 MB je PDF. Hochladen erfolgt beim Speichern des Restaurants.</p>
         <div class="card-edit-box">
           <label for="f_speisekarte_url">Offizieller Link zur Speisekarte</label>
           <input id="f_speisekarte_url" type="url" placeholder="https://..." autocomplete="off">
@@ -1318,8 +1318,8 @@ a{
           <input id="f_getraenkekarte_url" type="url" placeholder="https://..." autocomplete="off">
           <small id="f_getraenkekarte_status">Noch kein offizieller Kartenlink hinterlegt.</small>
         </div>
-        <div class="card-edit-box"><label for="f_speisekarte_pdf">Speisekarte als PDF (max. 5 MB)</label><input id="f_speisekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_speisekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
-        <div class="card-edit-box"><label for="f_getraenkekarte_pdf">Getränkekarte als PDF (max. 5 MB)</label><input id="f_getraenkekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_getraenkekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
+        <div class="card-edit-box"><label for="f_speisekarte_pdf">Speisekarte als PDF (max. 7 MB)</label><input id="f_speisekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_speisekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
+        <div class="card-edit-box"><label for="f_getraenkekarte_pdf">Getränkekarte als PDF (max. 7 MB)</label><input id="f_getraenkekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_getraenkekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
       </div>
 
       <!-- Bild nur beim Bearbeiten -->
@@ -4267,7 +4267,7 @@ async function loadCardEditor(restaurantId){
   }
 }
 
-const MAX_CARD_PDF_BYTES = 5 * 1024 * 1024;
+const MAX_CARD_PDF_BYTES = 7 * 1024 * 1024;
 // FileList in Android-WebViews kann beim Öffnen/Schließen von Dialogen verloren gehen.
  // Deshalb die ausgewählte Datei zusätzlich direkt beim Auswählen im Speicher halten.
  const pendingCardPdfFiles = {speisekarte:null,getraenkekarte:null};
@@ -4278,7 +4278,7 @@ function setupCardPdfInput(kind){
   const file=input.files&&input.files[0];
   if(!file){pendingCardPdfFiles[kind]=null;status.textContent="Keine neue PDF ausgewählt.";return;}
   if(!(file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf"))){input.value="";pendingCardPdfFiles[kind]=null;alert("Bitte wähle eine PDF-Datei aus.");return;}
-  if(file.size>MAX_CARD_PDF_BYTES){input.value="";pendingCardPdfFiles[kind]=null;status.textContent="Datei zu groß – maximal 5 MB.";alert("Die PDF-Datei ist größer als 5 MB.");return;}
+  if(file.size>MAX_CARD_PDF_BYTES){input.value="";pendingCardPdfFiles[kind]=null;status.textContent="Datei zu groß – maximal 7 MB.";alert("Die PDF-Datei ist größer als 7 MB.");return;}
   pendingCardPdfFiles[kind]=file;
   status.textContent=file.name+" ("+(file.size/1048576).toFixed(2)+" MB) – wird beim Speichern hochgeladen.";
  });
@@ -4289,7 +4289,7 @@ async function uploadPendingCardFiles(restaurantId,password,selectedFiles){
  for(const kind of ["speisekarte","getraenkekarte"]){
   const input=document.getElementById("f_"+kind+"_pdf"),status=document.getElementById("f_"+kind+"_pdf_status");
   const file=selectedFiles ? selectedFiles[kind] : (input&&input.files&&input.files[0]);
-  if(!file)continue;if(file.size>MAX_CARD_PDF_BYTES)throw new Error(file.name+" ist größer als 5 MB.");
+  if(!file)continue;if(file.size>MAX_CARD_PDF_BYTES)throw new Error(file.name+" ist größer als 7 MB.");
   const base64=await fileToBase64(file);
   const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"uploadCardFile",restaurantId:String(restaurantId),kind,filename:file.name,base64})});
   let data={};try{data=await response.json();}catch(_){throw new Error("Der Server hat keine gültige Antwort zum PDF-Upload geliefert (HTTP "+response.status+").");}
@@ -4348,7 +4348,7 @@ async function savePlace(){
 
   const hasSelectedPdf = Object.values(selectedCardFiles).some(Boolean);
   if(hasSelectedPdf && Object.values(selectedCardFiles).some(file => file && file.size > MAX_CARD_PDF_BYTES)){
-    alert("Die PDF-Datei darf höchstens 5 MB groß sein. Bitte wähle eine kleinere Datei aus.");
+    alert("Die PDF-Datei darf höchstens 7 MB groß sein. Bitte wähle eine kleinere Datei aus.");
     return;
   }
 
