@@ -3028,6 +3028,14 @@ function openDetail(
   if(!currentPlace)
     return;
 
+  // Eigenen Verlaufseintrag anlegen, damit die Handy-Rückwärtstaste
+  // aus den Restaurantdetails zurück zur Liste führt.
+  history.pushState(
+    {...(history.state || {}), tegernseeRestaurantDetail: true},
+    "",
+    "#restaurant-" + encodeURIComponent(String(id))
+  );
+
   document.getElementById(
     "home"
   ).style.display =
@@ -3196,6 +3204,13 @@ function openDetail(
 
 function showHome(){
 
+  // Bei aktivem Detail zuerst den Verlauf zurückgehen lassen.
+  // Der popstate-Handler zeigt anschließend die Liste an.
+  if(currentPlace && history.state && history.state.tegernseeRestaurantDetail){
+    history.back();
+    return;
+  }
+
   document.getElementById("incompleteView").style.display = "none";
 
   document.getElementById(
@@ -3228,6 +3243,13 @@ function showHome(){
   });
 
 }
+
+// Reagiert auf die Handy-/Browser-Rückwärtstaste, wenn Restaurantdetails offen sind.
+window.addEventListener("popstate", () => {
+  if(currentPlace){
+    showHome();
+  }
+});
 
 
 function isFieldMissing(value){
