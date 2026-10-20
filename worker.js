@@ -956,6 +956,10 @@ console.log("Tavily usage account:", {
         mime_type TEXT NOT NULL DEFAULT 'application/pdf', file_data BLOB NOT NULL,
         updated_at TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, kind)
       )`);
+      await turso(`CREATE TABLE IF NOT EXISTS title_image_settings (
+        id INTEGER PRIMARY KEY CHECK (id = 1), filename TEXT NOT NULL,
+        mime_type TEXT NOT NULL, file_data BLOB NOT NULL, updated_at TEXT NOT NULL DEFAULT ''
+      )`);
 
       if (request.method === "GET") {
         const url = new URL(request.url);
@@ -976,6 +980,21 @@ console.log("Tavily usage account:", {
           catch { return json({error:"Die PDF-Datei konnte nicht gelesen werden."},500); }
           const filename = String(rowValue(row[0]) || "karte.pdf").replace(/[\\r\\n"\\\\]/g,"_").slice(0,120);
           return new Response(bytes,{status:200,headers:{...corsHeaders,"Content-Type":"application/pdf","Content-Length":String(bytes.length),"Content-Disposition":'inline; filename="'+filename+'"',"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
+        }
+
+        if (action === "titleImage") {
+          const result = await turso("SELECT filename, mime_type, file_data FROM title_image_settings WHERE id = 1", [], true);
+          const row = result?.results?.[0]?.response?.result?.rows?.[0];
+          if (!row) return json({error:"Noch kein Titelbild gespeichert."},404);
+          const raw = row[2];
+          const encoded = raw && typeof raw === "object" ? (raw.base64 || raw.value || "") : String(raw || "");
+          if (!encoded) return json({error:"Das Titelbild ist leer oder ungültig."},500);
+          let bytes;
+          try { const binary=atob(encoded); bytes=new Uint8Array(binary.length); for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i); }
+          catch { return json({error:"Das Titelbild konnte nicht gelesen werden."},500); }
+          const mimeType=String(rowValue(row[1]) || "");
+          if (!["image/webp","image/jpeg","image/png"].includes(mimeType)) return json({error:"Bildformat nicht erlaubt."},500);
+          return new Response(bytes,{status:200,headers:{...corsHeaders,"Content-Type":mimeType,"Content-Length":String(bytes.length),"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
         }
 
         if (action === "cards") {
@@ -1101,6 +1120,36 @@ console.log("Tavily usage account:", {
           body = await request.json();
         } catch {
           return json({ error: "Ungültiger JSON-Inhalt" }, 400);
+        }
+
+        if (body.action === "uploadTitleImage") {
+          const filename=String(body.filename || "titelbild.webp").replace(/[\\r\\n"\\\\]/g,"_").slice(0,120);
+          const mimeType=String(body.mimeType || "");
+          const base64=String(body.base64 || "");
+          if (!["image/webp","image/jpeg","image/png"].includes(mimeType) || !base64) return json({error:"Bitte ein gültiges JPG-, PNG- oder WebP-Bild auswählen."},400);
+          if (base64.length > 7100000) return json({error:"Das Titelbild darf höchstens 5 MB groß sein."},413);
+          let binary;
+          try { binary=atob(base64); } catch { return json({error:"Das Bild ist ungültig kodiert."},400); }
+          if (binary.length < 12 || binary.length > 5*1024*1024) return json({error:"Das Titelbild darf höchstens 5 MB groß sein."},413);
+          const isJpeg=binary.charCodeAt(0)===255 && binary.charCodeAt(1)===216 && binary.charCodeAt(2)===255;
+          const isPng=binary.slice(0,8)===String.fromCharCode(137,80,78,71,13,10,26,10);
+          const isWebp=binary.slice(0,4)==="RIFF" && binary.slice(8,12)==="WEBP";
+          if (!((mimeType==="image/jpeg"&&isJpeg)||(mimeType==="image/png"&&isPng)||(mimeType==="image/webp"&&isWebp))) return json({error:"Dateiformat und Bildinhalt stimmen nicht überein."},400);
+          try {
+            const updatedAt=new Date().toISOString();
+            await turso("INSERT INTO title_image_settings (id,filename,mime_type,file_data,updated_at) VALUES (1,?,?,?,?) ON CONFLICT(id) DO UPDATE SET filename=excluded.filename,mime_type=excluded.mime_type,file_data=excluded.file_data,updated_at=excluded.updated_at",
+              [textArg(filename),textArg(mimeType),{type:"blob",base64:base64},textArg(updatedAt)]);
+            const verify=await turso("SELECT filename,mime_type,length(file_data) FROM title_image_settings WHERE id=1",[],true);
+            const row=verify?.results?.[0]?.response?.result?.rows?.[0];
+            const savedName=row?String(rowValue(row[0])||""):"";
+            const savedMime=row?String(rowValue(row[1])||""):"";
+            const savedBytes=row?Number(rowValue(row[2])||0):0;
+            if (!row || savedName!==filename || savedMime!==mimeType || savedBytes!==binary.length) return json({error:"Die Datenbank hat das Titelbild nicht korrekt bestätigt."},500);
+            return json({success:true,verified:true,bytes:savedBytes});
+          } catch(error) {
+            console.error("Title image upload failed",String(error?.message||error).slice(0,300));
+            return json({error:"Titelbild-Speicherfehler: "+String(error?.message||error).slice(0,200)},500);
+          }
         }
 
         if (body.action === "uploadCardFile") {
