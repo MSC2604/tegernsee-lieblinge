@@ -2019,13 +2019,20 @@ function dayIsMentioned(text, day) {
 function formatTileWeekdays(value){
   let text = cleanValue(value);
   const replacements = [
-    [/\bmontag\b/gi, "Mo"],
-    [/\bdienstag\b/gi, "Di"],
-    [/\bmittwoch\b/gi, "Mi"],
-    [/\bdonnerstag\b/gi, "Do"],
-    [/\bfreitag\b/gi, "Fr"],
-    [/\bsamstag\b/gi, "Sa"],
-    [/\bsonntag\b/gi, "So"]
+    [/\bmo\.?\b/gi, "Montag"],
+    [/\bdi\.?\b/gi, "Dienstag"],
+    [/\bmi\.?\b/gi, "Mittwoch"],
+    [/\bdo\.?\b/gi, "Donnerstag"],
+    [/\bfr\.?\b/gi, "Freitag"],
+    [/\bsa\.?\b/gi, "Samstag"],
+    [/\bso\.?\b/gi, "Sonntag"],
+    [/\bmontag\b/gi, "Montag"],
+    [/\bdienstag\b/gi, "Dienstag"],
+    [/\bmittwoch\b/gi, "Mittwoch"],
+    [/\bdonnerstag\b/gi, "Donnerstag"],
+    [/\bfreitag\b/gi, "Freitag"],
+    [/\bsamstag\b/gi, "Samstag"],
+    [/\bsonntag\b/gi, "Sonntag"]
   ];
   replacements.forEach(([pattern, replacement]) => { text = text.replace(pattern, replacement); });
   return text
