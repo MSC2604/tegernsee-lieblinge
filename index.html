@@ -1318,11 +1318,11 @@ a{
           <input id="f_getraenkekarte_url" type="url" placeholder="https://..." autocomplete="off">
           <small id="f_getraenkekarte_status">Noch kein offizieller Kartenlink hinterlegt.</small>
         </div>
-        <div class="card-edit-box"><label for="f_speisekarte_pdf">Speisekarte als PDF (max. 7 MB)</label><input id="f_speisekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_speisekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
-        <div class="card-edit-box"><label for="f_getraenkekarte_pdf">Getränkekarte als PDF (max. 7 MB)</label><input id="f_getraenkekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_getraenkekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
-        <div class="card-edit-box"><label for="f_dessertkarte_pdf">Dessertkarte als PDF (max. 4 MB)</label><input id="f_dessertkarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_dessertkarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
-        <div class="card-edit-box"><label for="f_brotzeitkarte_pdf">Brotzeitkarte als PDF (max. 4 MB)</label><input id="f_brotzeitkarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_brotzeitkarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
-        <div class="card-edit-box"><label for="f_saisonkarte_pdf">Saisonkarte als PDF (max. 4 MB)</label><input id="f_saisonkarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_saisonkarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
+        <div class="card-edit-box"><label for="f_speisekarte_pdf">Speisekarte als PDF (max. 7 MB)</label><input id="f_speisekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_speisekarte_pdf_status">Keine neue PDF ausgewählt.</small><button type="button" class="secondarybutton" style="margin-top:6px;padding:6px 10px;font-size:13px" onclick="deleteCardPdf('speisekarte')">🗑️ PDF löschen</button></div>
+        <div class="card-edit-box"><label for="f_getraenkekarte_pdf">Getränkekarte als PDF (max. 7 MB)</label><input id="f_getraenkekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_getraenkekarte_pdf_status">Keine neue PDF ausgewählt.</small><button type="button" class="secondarybutton" style="margin-top:6px;padding:6px 10px;font-size:13px" onclick="deleteCardPdf('getraenkekarte')">🗑️ PDF löschen</button></div>
+        <div class="card-edit-box"><label for="f_dessertkarte_pdf">Dessertkarte als PDF (max. 4 MB)</label><input id="f_dessertkarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_dessertkarte_pdf_status">Keine neue PDF ausgewählt.</small><button type="button" class="secondarybutton" style="margin-top:6px;padding:6px 10px;font-size:13px" onclick="deleteCardPdf('dessertkarte')">🗑️ PDF löschen</button></div>
+        <div class="card-edit-box"><label for="f_brotzeitkarte_pdf">Brotzeitkarte als PDF (max. 4 MB)</label><input id="f_brotzeitkarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_brotzeitkarte_pdf_status">Keine neue PDF ausgewählt.</small><button type="button" class="secondarybutton" style="margin-top:6px;padding:6px 10px;font-size:13px" onclick="deleteCardPdf('brotzeitkarte')">🗑️ PDF löschen</button></div>
+        <div class="card-edit-box"><label for="f_saisonkarte_pdf">Saisonkarte als PDF (max. 4 MB)</label><input id="f_saisonkarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_saisonkarte_pdf_status">Keine neue PDF ausgewählt.</small><button type="button" class="secondarybutton" style="margin-top:6px;padding:6px 10px;font-size:13px" onclick="deleteCardPdf('saisonkarte')">🗑️ PDF löschen</button></div>
       </div>
 
       <!-- Bild nur beim Bearbeiten -->
@@ -4306,6 +4306,27 @@ async function uploadPendingCardFiles(restaurantId,password,selectedFiles){
   if(input)input.value="";if(status)status.textContent="PDF zentral gespeichert: "+file.name;
   if(typeof pendingCardPdfFiles!=="undefined")pendingCardPdfFiles[kind]=null;
  }
+}
+
+async function deleteCardPdf(kind){
+  const labels={speisekarte:"Speisekarte",getraenkekarte:"Getränkekarte",dessertkarte:"Dessertkarte",brotzeitkarte:"Brotzeitkarte",saisonkarte:"Saisonkarte"};
+  if(!labels[kind]) return;
+  if(!editId){alert("Bitte zuerst das Restaurant bearbeiten, dessen PDF gelöscht werden soll.");return;}
+  if(!confirm("Möchtest du die gespeicherte PDF der "+labels[kind]+" wirklich dauerhaft löschen? Der Kartenlink und alle anderen Daten bleiben erhalten.")) return;
+  const password=await askAdminPassword("Bitte Admin-Passwort zum Löschen der PDF eingeben.");
+  if(password===null) return;
+  if(!password){alert("Bitte ein Passwort eingeben.");return;}
+  try{
+    const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"deleteCardFile",restaurantId:String(editId),kind})});
+    let data={};try{data=await response.json();}catch(_){}
+    if(!response.ok||data.error||data.success!==true) throw new Error(data.error||"Die PDF konnte nicht gelöscht werden.");
+    const status=document.getElementById("f_"+kind+"_pdf_status");
+    const input=document.getElementById("f_"+kind+"_pdf");
+    if(input) input.value="";
+    if(typeof pendingCardPdfFiles!=="undefined") pendingCardPdfFiles[kind]=null;
+    if(status) status.textContent="PDF gelöscht. Der Kartenlink bleibt unverändert.";
+    alert(labels[kind]+"-PDF wurde gelöscht.");
+  }catch(error){alert("PDF konnte nicht gelöscht werden: "+String(error.message||error));}
 }
 
 async function saveOneRestaurantCard(restaurantId, kind, password){
