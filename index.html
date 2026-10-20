@@ -847,7 +847,7 @@ a{
 
   <div class="sectionhead">
     <h2>Restaurants entdecken</h2>
-    <span class="count" id="count">0</span>
+    <span class="count" id="restaurantCount">0</span>
   </div>
 
   <div class="filters">
@@ -2650,6 +2650,9 @@ function render(){
     "count"
   ).textContent =
     list.length;
+
+  const restaurantCount = document.getElementById("restaurantCount");
+  if(restaurantCount) restaurantCount.textContent = list.length;
 
   if(!list.length){
 
