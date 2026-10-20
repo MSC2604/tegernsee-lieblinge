@@ -1514,6 +1514,9 @@ let currentFilter =
 let currentPlace =
   null;
 
+// Merkt sich die Listenposition, damit die passende Kachel nach Details wieder sichtbar ist.
+let detailReturnScrollY = 0;
+
 let editId =
   null;
 
@@ -3010,6 +3013,9 @@ function openDetail(
   id
 ){
 
+  // Position der Restaurantliste vor dem Öffnen der Details merken.
+  detailReturnScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+
   document.getElementById("incompleteView").style.display = "none";
 
   currentPlace =
@@ -3213,6 +3219,13 @@ function showHome(){
     null;
 
   render();
+
+  // Nach dem erneuten Aufbau der Kacheln zur vorherigen Listenposition zurückkehren.
+  requestAnimationFrame(() => {
+    window.scrollTo({top: detailReturnScrollY, behavior: "auto"});
+    document.documentElement.scrollTop = detailReturnScrollY;
+    document.body.scrollTop = detailReturnScrollY;
+  });
 
 }
 
