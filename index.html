@@ -4561,31 +4561,55 @@ if (toggleTavilyUsage && tavilyUsageCard) {
 }
 
 
-// Eigenes Titelbild auswählen (nur auf diesem Gerät gespeichert)
+// Zentrales Titelbild: Auswahl aus der Handy-Galerie, Komprimierung und Admin-Passwort.
 (function setupWelcomeHeroImage(){
-  const hero = document.getElementById("welcomeHero");
-  const picker = document.getElementById("heroImagePicker");
-  const button = document.getElementById("changeHeroImage");
-  if (!hero || !picker || !button) return;
-  try {
-    const saved = localStorage.getItem("tegernseeWelcomeHeroImage");
-    if (saved) hero.style.setProperty("--welcome-image", "url(" + JSON.stringify(saved).slice(1,-1) + ")");
-  } catch (e) {}
-  button.addEventListener("click", () => picker.click());
-  picker.addEventListener("change", () => {
-    const file = picker.files && picker.files[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { alert("Bitte wähle eine Bilddatei aus."); return; }
-    if (file.size > 5 * 1024 * 1024) { alert("Bitte wähle ein Bild mit höchstens 5 MB."); return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const data = reader.result;
-      hero.style.setProperty("--welcome-image", "url(" + JSON.stringify(data).slice(1,-1) + ")");
-      try { localStorage.setItem("tegernseeWelcomeHeroImage", data); }
-      catch (e) { alert("Das Bild ist zu groß für den lokalen Speicher. Bitte ein kleineres Bild wählen."); }
-    };
-    reader.readAsDataURL(file);
-  });
+ const hero=document.getElementById("welcomeHero"),picker=document.getElementById("heroImagePicker"),button=document.getElementById("changeHeroImage");
+ if(!hero||!picker||!button)return;
+ let objectUrl=null;
+ function apply(url){hero.style.setProperty("--welcome-image","url("+JSON.stringify(url).slice(1,-1)+")");}
+ async function load(){
+  try{
+   const r=await fetch(API_URL+"?action=titleImage&_="+Date.now(),{cache:"no-store"});
+   if(r.status===404){try{const old=localStorage.getItem("tegernseeWelcomeHeroImage");if(old)apply(old);}catch(_){}return;}
+   if(!r.ok)throw Error("Das Titelbild konnte nicht geladen werden.");
+   const blob=await r.blob();if(!blob.size||!/^image\/(webp|jpeg|png)$/.test(blob.type))throw Error("Die gespeicherte Bilddatei ist ungültig.");
+   if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=URL.createObjectURL(blob);apply(objectUrl);
+  }catch(e){console.warn("Titelbild:",e);}
+ }
+ function base64(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(Error("Bild konnte nicht gelesen werden."));reader.onload=()=>{const bytes=new Uint8Array(reader.result);let bin="";for(let i=0;i<bytes.length;i+=32768)bin+=String.fromCharCode(...bytes.subarray(i,Math.min(i+32768,bytes.length)));resolve(btoa(bin));};reader.readAsArrayBuffer(blob);});}
+ async function compress(file){
+  let image;
+  try{
+   image=await createImageBitmap(file);
+   let width=image.width,height=image.height,scale=Math.min(1,2200/Math.max(width,height));width=Math.round(width*scale);height=Math.round(height*scale);
+   for(const quality of [.86,.78,.70,.62,.54,.46,.38]){
+    const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+    const ctx=canvas.getContext("2d");if(!ctx)throw Error("Bildverarbeitung ist nicht verfügbar.");ctx.drawImage(image,0,0,width,height);
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",quality));
+    if(!blob)throw Error("Das Bild konnte nicht komprimiert werden.");
+    if(blob.size<=5*1024*1024&&/^image\/(webp|jpeg|png)$/.test(blob.type))return {blob,mimeType:blob.type,filename:"titelbild."+(blob.type==="image/webp"?"webp":blob.type==="image/png"?"png":"jpg")};
+    width=Math.max(480,Math.round(width*.82));height=Math.max(320,Math.round(height*.82));
+   }
+   throw Error("Das Bild lässt sich nicht auf höchstens 5 MB verkleinern. Bitte ein anderes Bild wählen.");
+  }finally{if(image&&image.close)image.close();}
+ }
+ button.addEventListener("click",()=>{picker.value="";picker.click();});
+ picker.addEventListener("change",async()=>{
+  const file=picker.files&&picker.files[0];if(!file)return;
+  if(!file.type.startsWith("image/")){alert("Bitte wähle eine Bilddatei aus.");return;}
+  try{
+   const password=await askAdminPassword("Bitte Admin-Passwort eingeben, um das Titelbild zu ändern.");
+   if(!password)return;
+   button.disabled=true;button.textContent="Bild wird gespeichert …";
+   const ready=await compress(file),encoded=await base64(ready.blob);
+   const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"uploadTitleImage",filename:ready.filename,mimeType:ready.mimeType,base64:encoded})});
+   let data={};try{data=await response.json();}catch(_){}
+   if(!response.ok||data.success!==true||data.verified!==true)throw Error(data.error||"Titelbild konnte nicht sicher gespeichert werden.");
+   alert("Titelbild zentral gespeichert. Alle Besucher sehen es nach dem Aktualisieren der App.");await load();
+  }catch(e){alert(e.message||"Titelbild konnte nicht gespeichert werden.");}
+  finally{button.disabled=false;button.textContent="Titelbild ändern";picker.value="";}
+ });
+ load();
 })();
 
 </script>
