@@ -4248,7 +4248,7 @@ async function loadCardEditor(restaurantId){
     const response = await fetch(API_URL + "?action=cards&restaurantId=" + encodeURIComponent(restaurantId) + "&t=" + Date.now(), {cache:"no-store"});
     const data = await response.json();
     if(!response.ok) throw new Error(data.error || "Kartenlinks konnten nicht geladen werden.");
-    for(const kind of ["speisekarte","getraenkekarte"]){
+    for(const kind of ["speisekarte","getraenkekarte","dessertkarte","brotzeitkarte","saisonkarte"]){
       const card = (data.cards || {})[kind] || {};
       const urlInput = document.getElementById("f_" + kind + "_url");
       const status = document.getElementById(statusIds[kind]);
@@ -4291,7 +4291,7 @@ function setupCardPdfInput(kind){
 ["speisekarte","getraenkekarte","dessertkarte","brotzeitkarte","saisonkarte"].forEach(setupCardPdfInput);
 function fileToBase64(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error("PDF konnte nicht gelesen werden."));reader.onload=()=>{const bytes=new Uint8Array(reader.result);let binary="";for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+0x8000,bytes.length)));resolve(btoa(binary));};reader.readAsArrayBuffer(file);});}
 async function uploadPendingCardFiles(restaurantId,password,selectedFiles){
- for(const kind of ["speisekarte","getraenkekarte"]){
+ for(const kind of ["speisekarte","getraenkekarte","dessertkarte","brotzeitkarte","saisonkarte"]){
   const input=document.getElementById("f_"+kind+"_pdf"),status=document.getElementById("f_"+kind+"_pdf_status");
   const file=selectedFiles ? selectedFiles[kind] : (input&&input.files&&input.files[0]);
   if(!file)continue;const limit=CARD_PDF_LIMITS[kind]||MAX_CARD_PDF_BYTES;if(file.size>limit)throw new Error(file.name+" ist größer als "+(limit/1048576)+" MB.");
@@ -4318,8 +4318,7 @@ async function saveOneRestaurantCard(restaurantId, kind, password){
 }
 
 async function syncRestaurantCards(restaurantId,password){
-  await saveOneRestaurantCard(restaurantId,"speisekarte",password);
-  await saveOneRestaurantCard(restaurantId,"getraenkekarte",password);
+  for(const kind of ["speisekarte","getraenkekarte","dessertkarte","brotzeitkarte","saisonkarte"]) await saveOneRestaurantCard(restaurantId,kind,password);
 }
 
 /* --------------------------------------------------
