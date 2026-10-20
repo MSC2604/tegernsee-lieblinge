@@ -815,10 +815,13 @@ a{
 
 <main id="home">
 
-  <div class="sectionhead">
-    <h2>❤️ Meine Favoriten</h2>
-    <span class="count" id="count">0</span>
-  </div>
+  <section class="welcome-hero" id="welcomeHero" aria-label="Willkommen am Tegernsee">
+    <div class="welcome-copy">
+      <h2 id="welcomeHeroTitle">Tegernsee</h2>
+      <p id="welcomeHeroSubtitle">Entdecken. Genießen. Wohlfühlen.</p>
+    </div>
+    <input type="file" id="heroImagePicker" accept="image/*" hidden>
+  </section>
 
   <div class="home-actions" aria-label="App-Aktionen">
     <div class="primary-actions">
@@ -838,13 +841,12 @@ a{
     Daten werden geladen …
   </div>
 
-  <section class="welcome-hero" id="welcomeHero" aria-label="Willkommen am Tegernsee">
-    <div class="welcome-copy">
-      <h2 id="welcomeHeroTitle">Tegernsee</h2>
-      <p id="welcomeHeroSubtitle">Entdecken. Genießen. Wohlfühlen.</p>
-    </div>
-    <input type="file" id="heroImagePicker" accept="image/*" hidden>
-  </section>
+
+
+  <div class="sectionhead">
+    <h2>❤️ Meine Favoriten</h2>
+    <span class="count" id="count">0</span>
+  </div>
 
   <div class="sectionhead">
     <h2>Restaurants entdecken</h2>
