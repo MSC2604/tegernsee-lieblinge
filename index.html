@@ -2749,11 +2749,15 @@ async function loadOneTileCardLink(place){
     const drinkPdf = cards && cards.getraenkekarte && cards.getraenkekarte.fileAvailable
       ? API_URL + "?action=cardFile&restaurantId=" + encodeURIComponent(id) + "&kind=getraenkekarte"
       : "";
+    const extraLabels = {dessertkarte:"Dessertkarte",brotzeitkarte:"Brotzeitkarte",saisonkarte:"Saisonkarte"};
+    const extraPdfLinks = Object.keys(extraLabels).filter(kind => cards && cards[kind] && cards[kind].fileAvailable)
+      .map(kind => '<a href="' + API_URL + '?action=cardFile&restaurantId=' + encodeURIComponent(id) + '&kind=' + kind + '" target="_blank" rel="noopener noreferrer">📄 ' + extraLabels[kind] + ' öffnen</a>').join("");
     current.innerHTML =
       (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarten-Link</a>' : '') +
       (menuPdf ? '<a href="' + escapeAttr(menuPdf) + '" target="_blank" rel="noopener noreferrer">📄 Speisekarte als PDF öffnen</a>' : '') +
       (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarten-Link</a>' : '') +
-      (drinkPdf ? '<a href="' + escapeAttr(drinkPdf) + '" target="_blank" rel="noopener noreferrer">📄 Getränkekarte als PDF öffnen</a>' : '');
+      (drinkPdf ? '<a href="' + escapeAttr(drinkPdf) + '" target="_blank" rel="noopener noreferrer">📄 Getränkekarte als PDF öffnen</a>' : '') +
+      extraPdfLinks;
     // Links und zentral gespeicherte PDFs werden gemeinsam angezeigt.
     current.style.display = current.innerHTML.trim() ? "flex" : "none";
   };
