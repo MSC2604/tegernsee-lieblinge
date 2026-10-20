@@ -1320,6 +1320,9 @@ a{
         </div>
         <div class="card-edit-box"><label for="f_speisekarte_pdf">Speisekarte als PDF (max. 7 MB)</label><input id="f_speisekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_speisekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
         <div class="card-edit-box"><label for="f_getraenkekarte_pdf">Getränkekarte als PDF (max. 7 MB)</label><input id="f_getraenkekarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_getraenkekarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
+        <div class="card-edit-box"><label for="f_dessertkarte_pdf">Dessertkarte als PDF (max. 4 MB)</label><input id="f_dessertkarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_dessertkarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
+        <div class="card-edit-box"><label for="f_brotzeitkarte_pdf">Brotzeitkarte als PDF (max. 4 MB)</label><input id="f_brotzeitkarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_brotzeitkarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
+        <div class="card-edit-box"><label for="f_saisonkarte_pdf">Saisonkarte als PDF (max. 4 MB)</label><input id="f_saisonkarte_pdf" type="file" accept="application/pdf,.pdf"><small id="f_saisonkarte_pdf_status">Keine neue PDF ausgewählt.</small></div>
       </div>
 
       <!-- Bild nur beim Bearbeiten -->
@@ -4063,8 +4066,8 @@ function editPlace(){
 function clearForm(){
 
   cardEditorState = {restaurantId:null,status:"idle"};
-  ["f_speisekarte_pdf","f_getraenkekarte_pdf"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
-  ["f_speisekarte_pdf_status","f_getraenkekarte_pdf_status"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent="Keine neue PDF ausgewählt.";});
+  ["f_speisekarte_pdf","f_getraenkekarte_pdf","f_dessertkarte_pdf","f_brotzeitkarte_pdf","f_saisonkarte_pdf"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+  ["f_speisekarte_pdf_status","f_getraenkekarte_pdf_status","f_dessertkarte_pdf_status","f_brotzeitkarte_pdf_status","f_saisonkarte_pdf_status"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent="Keine neue PDF ausgewählt.";});
   ["f_speisekarte_url","f_getraenkekarte_url"].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.value = "";
@@ -4268,9 +4271,10 @@ async function loadCardEditor(restaurantId){
 }
 
 const MAX_CARD_PDF_BYTES = 7 * 1024 * 1024;
+const CARD_PDF_LIMITS = {dessertkarte:4*1024*1024,brotzeitkarte:4*1024*1024,saisonkarte:4*1024*1024};
 // FileList in Android-WebViews kann beim Öffnen/Schließen von Dialogen verloren gehen.
  // Deshalb die ausgewählte Datei zusätzlich direkt beim Auswählen im Speicher halten.
- const pendingCardPdfFiles = {speisekarte:null,getraenkekarte:null};
+ const pendingCardPdfFiles = {speisekarte:null,getraenkekarte:null,dessertkarte:null,brotzeitkarte:null,saisonkarte:null};
 function setupCardPdfInput(kind){
  const input=document.getElementById("f_"+kind+"_pdf"), status=document.getElementById("f_"+kind+"_pdf_status");
  if(!input||!status)return;
@@ -4278,18 +4282,19 @@ function setupCardPdfInput(kind){
   const file=input.files&&input.files[0];
   if(!file){pendingCardPdfFiles[kind]=null;status.textContent="Keine neue PDF ausgewählt.";return;}
   if(!(file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf"))){input.value="";pendingCardPdfFiles[kind]=null;alert("Bitte wähle eine PDF-Datei aus.");return;}
-  if(file.size>MAX_CARD_PDF_BYTES){input.value="";pendingCardPdfFiles[kind]=null;status.textContent="Datei zu groß – maximal 7 MB.";alert("Die PDF-Datei ist größer als 7 MB.");return;}
+  const limit=CARD_PDF_LIMITS[kind]||MAX_CARD_PDF_BYTES;
+  if(file.size>limit){input.value="";pendingCardPdfFiles[kind]=null;status.textContent="Datei zu groß – maximal "+(limit/1048576)+" MB.";alert("Die PDF-Datei darf höchstens "+(limit/1048576)+" MB groß sein.");return;}
   pendingCardPdfFiles[kind]=file;
   status.textContent=file.name+" ("+(file.size/1048576).toFixed(2)+" MB) – wird beim Speichern hochgeladen.";
  });
 }
-setupCardPdfInput("speisekarte"); setupCardPdfInput("getraenkekarte");
+["speisekarte","getraenkekarte","dessertkarte","brotzeitkarte","saisonkarte"].forEach(setupCardPdfInput);
 function fileToBase64(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error("PDF konnte nicht gelesen werden."));reader.onload=()=>{const bytes=new Uint8Array(reader.result);let binary="";for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,Math.min(i+0x8000,bytes.length)));resolve(btoa(binary));};reader.readAsArrayBuffer(file);});}
 async function uploadPendingCardFiles(restaurantId,password,selectedFiles){
  for(const kind of ["speisekarte","getraenkekarte"]){
   const input=document.getElementById("f_"+kind+"_pdf"),status=document.getElementById("f_"+kind+"_pdf_status");
   const file=selectedFiles ? selectedFiles[kind] : (input&&input.files&&input.files[0]);
-  if(!file)continue;if(file.size>MAX_CARD_PDF_BYTES)throw new Error(file.name+" ist größer als 7 MB.");
+  if(!file)continue;const limit=CARD_PDF_LIMITS[kind]||MAX_CARD_PDF_BYTES;if(file.size>limit)throw new Error(file.name+" ist größer als "+(limit/1048576)+" MB.");
   const base64=await fileToBase64(file);
   const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"uploadCardFile",restaurantId:String(restaurantId),kind,filename:file.name,base64})});
   let data={};try{data=await response.json();}catch(_){throw new Error("Der Server hat keine gültige Antwort zum PDF-Upload geliefert (HTTP "+response.status+").");}
@@ -4326,8 +4331,7 @@ async function savePlace(){
 
   // Dateiobjekte sichern, bevor das Formular geschlossen oder neu geladen wird.
   const selectedCardFiles = {
-    speisekarte: pendingCardPdfFiles.speisekarte || document.getElementById("f_speisekarte_pdf")?.files?.[0] || null,
-    getraenkekarte: pendingCardPdfFiles.getraenkekarte || document.getElementById("f_getraenkekarte_pdf")?.files?.[0] || null
+    ...Object.fromEntries(["speisekarte","getraenkekarte","dessertkarte","brotzeitkarte","saisonkarte"].map(kind => [kind, pendingCardPdfFiles[kind] || document.getElementById("f_"+kind+"_pdf")?.files?.[0] || null]))
   };
   const restaurant = getFormData();
 
@@ -4347,7 +4351,7 @@ async function savePlace(){
   }
 
   const hasSelectedPdf = Object.values(selectedCardFiles).some(Boolean);
-  if(hasSelectedPdf && Object.values(selectedCardFiles).some(file => file && file.size > MAX_CARD_PDF_BYTES)){
+  if(hasSelectedPdf && Object.entries(selectedCardFiles).some(([kind,file]) => file && file.size > (CARD_PDF_LIMITS[kind]||MAX_CARD_PDF_BYTES))){
     alert("Die PDF-Datei darf höchstens 7 MB groß sein. Bitte wähle eine kleinere Datei aus.");
     return;
   }
