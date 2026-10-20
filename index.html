@@ -179,24 +179,20 @@ main{
 }
 
 .cardtop{
-  display:flex;
-  align-items:flex-start;
-  gap:12px;
-  padding:12px 14px 10px;
+  display:block;
+  padding:0;
   position:relative;
 }
 
 .icon{
-  width:110px;
-  height:110px;
-  flex:0 0 110px;
-  border-radius:14px;
+  width:100%;
+  height:220px;
+  border-radius:0;
   background:linear-gradient(145deg,#e5eee9,#cbded6);
   display:grid;
   place-items:center;
   font-size:32px;
   overflow:hidden;
-  box-shadow:0 3px 9px rgba(23,53,45,.10);
 }
 
 .icon img{
@@ -208,12 +204,11 @@ main{
 
 .cardmain{
   min-width:0;
-  flex:1;
-  padding:3px 38px 2px 0;
+  padding:14px 18px 10px;
 }
 
 .cardname{
-  font-size:18px;
+  font-size:21px;
   font-weight:800;
   line-height:1.2;
   letter-spacing:-.2px;
@@ -223,22 +218,14 @@ main{
 
 .place{
   color:var(--muted);
-  font-size:12px;
-  margin-top:4px;
-}
-
-.fav{
-  top:10px;
-  right:10px;
-  width:34px;
-  height:34px;
-  font-size:19px;
+  font-size:13px;
+  margin-top:5px;
 }
 
 .status{
   display:inline-block;
-  margin-top:7px;
-  font-size:11px;
+  margin-top:9px;
+  font-size:12px;
   font-weight:750;
 }
 
@@ -269,10 +256,9 @@ main{
   overflow-wrap:anywhere;
 }
 @media(max-width:360px){
-  .cardtop{gap:9px;padding:10px 11px 9px}
-  .icon{width:88px;height:88px;flex-basis:88px}
-  .cardmain{padding-right:32px}
-  .cardname{font-size:16px}
+  .icon{height:180px}
+  .cardmain{padding:12px 14px 9px}
+  .cardname{font-size:19px}
 }
 
 .cardname{
