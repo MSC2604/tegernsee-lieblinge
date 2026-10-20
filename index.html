@@ -3024,8 +3024,13 @@ function openDetail(
   id
 ){
 
-  // Position der Restaurantliste vor dem Öffnen der Details merken.
-  detailReturnScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  // Tatsächliche Listenposition vor dem Öffnen der Details merken.
+  detailReturnScrollY = Math.max(
+    window.scrollY || 0,
+    window.pageYOffset || 0,
+    document.documentElement.scrollTop || 0,
+    document.body.scrollTop || 0
+  );
 
   document.getElementById("incompleteView").style.display = "none";
 
@@ -3213,11 +3218,11 @@ function openDetail(
    STARTSEITE
 -------------------------------------------------- */
 
-function showHome(){
+function showHome(fromPhoneBack = false){
 
-  // Bei aktivem Detail zuerst den Verlauf zurückgehen lassen.
-  // Der popstate-Handler zeigt anschließend die Liste an.
-  if(currentPlace && history.state && history.state.tegernseeRestaurantDetail){
+  // Bei normalem Zurück-Button den Verlauf zurückgehen lassen.
+  // Bei der Handy-Rückwärtstaste kommt die Ansicht bereits aus popstate.
+  if(!fromPhoneBack && currentPlace && history.state && history.state.tegernseeRestaurantDetail){
     history.back();
     return;
   }
@@ -3246,11 +3251,15 @@ function showHome(){
 
   render();
 
-  // Nach dem erneuten Aufbau der Kacheln zur vorherigen Listenposition zurückkehren.
-  requestAnimationFrame(() => {
-    window.scrollTo({top: detailReturnScrollY, behavior: "auto"});
+  // Nach dem Aufbau der Kacheln zur vorherigen Listenposition zurückkehren.
+  const restoreRestaurantListPosition = () => {
+    window.scrollTo(0, detailReturnScrollY);
     document.documentElement.scrollTop = detailReturnScrollY;
     document.body.scrollTop = detailReturnScrollY;
+  };
+  requestAnimationFrame(() => {
+    restoreRestaurantListPosition();
+    requestAnimationFrame(restoreRestaurantListPosition);
   });
 
 }
@@ -3258,7 +3267,7 @@ function showHome(){
 // Reagiert auf die Handy-/Browser-Rückwärtstaste, wenn Restaurantdetails offen sind.
 window.addEventListener("popstate", () => {
   if(currentPlace){
-    showHome();
+    showHome(true);
   }
 });
 
