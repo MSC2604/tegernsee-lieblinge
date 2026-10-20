@@ -3176,6 +3176,18 @@ function closeSearch(){
   document.body.style.overflow = "";
 }
 
+// Enter bestätigt die Suche, blendet das Suchfenster aus und schließt die Bildschirmtastatur.
+const restaurantSearchInput = document.getElementById("search");
+if (restaurantSearchInput) {
+  restaurantSearchInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      restaurantSearchInput.blur();
+      closeSearch();
+    }
+  });
+}
+
 function focusSearch(){
   showHome();
   closeAppMenu();
