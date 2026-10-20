@@ -1197,9 +1197,9 @@ console.log("Tavily usage account:", {
           const filename=String(body.filename||"").trim().slice(0,120), base64=String(body.base64||"");
           if(!restaurantId||!["speisekarte","getraenkekarte"].includes(kind)) return json({error:"Restaurant oder Kartenart ist ungültig."},400);
           if(!filename.toLowerCase().endsWith(".pdf")||!base64) return json({error:"Bitte eine gültige PDF-Datei auswählen."},400);
-          if(base64.length>7_100_000) return json({error:"Die PDF-Datei darf höchstens 5 MB groß sein."},413);
+          if(base64.length>9_600_000) return json({error:"Die PDF-Datei darf höchstens 7 MB groß sein."},413);
           let binary; try{binary=atob(base64)}catch{return json({error:"Die PDF-Datei ist ungültig kodiert."},400)}
-          if(binary.length>5*1024*1024) return json({error:"Die PDF-Datei darf höchstens 5 MB groß sein."},413);
+          if(binary.length>7*1024*1024) return json({error:"Die PDF-Datei darf höchstens 7 MB groß sein."},413);
           if(binary.length<5||binary.slice(0,5)!=="%PDF-") return json({error:"Die Datei scheint keine gültige PDF-Datei zu sein."},400);
           try {
             // Ensure the metadata row exists too: the cards endpoint starts from restaurant_cards
