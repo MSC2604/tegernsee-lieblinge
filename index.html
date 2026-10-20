@@ -231,29 +231,42 @@ main{
 
 .tile-hours{
   display:grid;
-  gap:6px;
+  gap:8px;
   padding:10px 16px 12px;
   border-top:1px solid #edf0ed;
   color:var(--ink);
+}
+.tile-hours-heading{
+  font-size:12px;
+  font-weight:800;
+  color:var(--accent);
+  margin-bottom:2px;
 }
 .tile-hours-row{
   display:flex;
   align-items:flex-start;
   gap:8px;
   min-width:0;
-  font-size:12px;
-  line-height:1.4;
+  font-size:14px;
+  line-height:1.45;
 }
 .tile-hours-icon{
   flex:0 0 16px;
   width:16px;
   color:var(--accent);
-  font-size:13px;
+  font-size:14px;
   text-align:center;
 }
 .tile-hours-text{
   min-width:0;
   overflow-wrap:anywhere;
+}
+.tile-hours-rest,
+.tile-hours-rest .tile-hours-icon{
+  color:#a65335;
+}
+.tile-hours-rest .tile-hours-text{
+  font-weight:700;
 }
 @media(max-width:360px){
   .icon{height:180px}
@@ -2866,11 +2879,12 @@ function render(){
 
 
             <div class="tile-hours" aria-label="Öffnungszeiten und Ruhetag">
+              <div class="tile-hours-heading">Öffnungszeiten</div>
               <div class="tile-hours-row">
                 <span class="tile-hours-icon" aria-hidden="true">◷</span>
                 <div class="tile-hours-text">${formatTileHours(place.oeffnungszeiten)}</div>
               </div>
-              <div class="tile-hours-row">
+              <div class="tile-hours-row tile-hours-rest">
                 <span class="tile-hours-icon" aria-hidden="true">▦</span>
                 <div class="tile-hours-text">${formatTileRestDay(place.ruhetag)}</div>
               </div>
