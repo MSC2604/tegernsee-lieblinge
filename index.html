@@ -2749,7 +2749,7 @@ async function loadOneTileCardLink(place){
     const drinkPdf = cards && cards.getraenkekarte && cards.getraenkekarte.fileAvailable
       ? API_URL + "?action=cardFile&restaurantId=" + encodeURIComponent(id) + "&kind=getraenkekarte"
       : "";
-    const extraLabels = {dessertkarte:"Dessertkarte",brotzeitkarte:"Brotzeitkarte",saisonkarte:"Saisonkarte"};
+    const extraLabels = {dessertkarte:"Dessertkarte als PDF",brotzeitkarte:"Brotzeitkarte als PDF",saisonkarte:"Saisonkarte als PDF"};
     const extraPdfLinks = Object.keys(extraLabels).filter(kind => cards && cards[kind] && cards[kind].fileAvailable)
       .map(kind => '<a href="' + API_URL + '?action=cardFile&restaurantId=' + encodeURIComponent(id) + '&kind=' + kind + '" target="_blank" rel="noopener noreferrer">📄 ' + extraLabels[kind] + ' öffnen</a>').join("");
     current.innerHTML =
