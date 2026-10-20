@@ -975,7 +975,7 @@ console.log("Tavily usage account:", {
         if (action === "cardFile") {
           const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
           const kind = (url.searchParams.get("kind") || "").trim();
-          if (!restaurantId || !["speisekarte", "getraenkekarte"].includes(kind)) return json({error:"Restaurant oder Kartenart ist ungültig."},400);
+          if (!restaurantId || !["speisekarte", "getraenkekarte", "dessertkarte", "brotzeitkarte", "saisonkarte"].includes(kind)) return json({error:"Restaurant oder Kartenart ist ungültig."},400);
           const result = await turso("SELECT filename, mime_type, file_data FROM restaurant_card_files WHERE restaurant_id = ? AND kind = ?",[textArg(restaurantId),textArg(kind)],true);
           const row = result?.results?.[0]?.response?.result?.rows?.[0];
           if (!row) return json({error:"Für diese Karte ist keine PDF-Datei gespeichert."},404);
@@ -1040,7 +1040,7 @@ console.log("Tavily usage account:", {
           const cards = {};
           for (const row of rows) {
             const kind = String(rowValue(row[0]) || "");
-            if (!["speisekarte", "getraenkekarte"].includes(kind)) continue;
+            if (!["speisekarte", "getraenkekarte", "dessertkarte", "brotzeitkarte", "saisonkarte"].includes(kind)) continue;
             const cardUrl = rowValue(row[1]) || "";
             const checkedUrl = rowValue(row[6]) || "";
             // A LEFT JOIN can return a wrapped NULL for the file columns in some
@@ -1195,11 +1195,12 @@ console.log("Tavily usage account:", {
         if (body.action === "uploadCardFile") {
           const restaurantId=String(body.restaurantId||"").trim(), kind=String(body.kind||"").trim();
           const filename=String(body.filename||"").trim().slice(0,120), base64=String(body.base64||"");
-          if(!restaurantId||!["speisekarte","getraenkekarte"].includes(kind)) return json({error:"Restaurant oder Kartenart ist ungültig."},400);
+          if(!restaurantId||!["speisekarte","getraenkekarte","dessertkarte","brotzeitkarte","saisonkarte"].includes(kind)) return json({error:"Restaurant oder Kartenart ist ungültig."},400);
           if(!filename.toLowerCase().endsWith(".pdf")||!base64) return json({error:"Bitte eine gültige PDF-Datei auswählen."},400);
           if(base64.length>9_600_000) return json({error:"Die PDF-Datei darf höchstens 7 MB groß sein."},413);
           let binary; try{binary=atob(base64)}catch{return json({error:"Die PDF-Datei ist ungültig kodiert."},400)}
-          if(binary.length>7*1024*1024) return json({error:"Die PDF-Datei darf höchstens 7 MB groß sein."},413);
+          const pdfLimit=["dessertkarte","brotzeitkarte","saisonkarte"].includes(kind)?4*1024*1024:7*1024*1024;
+          if(binary.length>pdfLimit) return json({error:"Die PDF-Datei darf höchstens "+(pdfLimit/1024/1024)+" MB groß sein."},413);
           if(binary.length<5||binary.slice(0,5)!=="%PDF-") return json({error:"Die Datei scheint keine gültige PDF-Datei zu sein."},400);
           try {
             // Ensure the metadata row exists too: the cards endpoint starts from restaurant_cards
@@ -1230,7 +1231,7 @@ console.log("Tavily usage account:", {
           const restaurantId = String(body.restaurantId || "").trim();
           const kind = String(body.kind || "").trim();
           const cardUrl = String(body.url || "").trim();
-          if (!restaurantId || !["speisekarte", "getraenkekarte"].includes(kind)) {
+          if (!restaurantId || !["speisekarte", "getraenkekarte", "dessertkarte", "brotzeitkarte", "saisonkarte"].includes(kind)) {
             return json({ error: "Restaurant oder Kartenart ist ungültig." }, 400);
           }
           if (cardUrl && !/^https?:\/\//i.test(cardUrl)) {
