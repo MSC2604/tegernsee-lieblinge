@@ -2046,7 +2046,11 @@ function formatTileWeekdays(value){
 function formatTileHours(value){
   const text = cleanValue(value);
   if(!text) return "Öffnungszeiten nicht hinterlegt";
-  return escapeHtml(formatTileWeekdays(text));
+  // Jeder Öffnungszeiten-Eintrag nach einem Komma beginnt in der nächsten Zeile.
+  return text
+    .split(",")
+    .map(entry => escapeHtml(formatTileWeekdays(entry.trim())))
+    .join(",<br>");
 }
 
 function formatTileRestDay(value){
