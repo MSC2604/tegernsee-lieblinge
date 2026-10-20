@@ -1227,6 +1227,31 @@ console.log("Tavily usage account:", {
           }
         }
 
+        if (body.action === "deleteCardFile") {
+          const restaurantId = String(body.restaurantId || "").trim();
+          const kind = String(body.kind || "").trim();
+          if (!restaurantId || !["speisekarte", "getraenkekarte", "dessertkarte", "brotzeitkarte", "saisonkarte"].includes(kind)) {
+            return json({ error: "Restaurant oder Kartenart ist ungültig." }, 400);
+          }
+          const existing = await turso(
+            "SELECT filename FROM restaurant_card_files WHERE restaurant_id = ? AND kind = ?",
+            [textArg(restaurantId), textArg(kind)], true
+          );
+          const row = existing?.results?.[0]?.response?.result?.rows?.[0];
+          if (!row) return json({ error: "Für diese Kartenart ist keine PDF gespeichert." }, 404);
+          await turso(
+            "DELETE FROM restaurant_card_files WHERE restaurant_id = ? AND kind = ?",
+            [textArg(restaurantId), textArg(kind)]
+          );
+          const verify = await turso(
+            "SELECT filename FROM restaurant_card_files WHERE restaurant_id = ? AND kind = ?",
+            [textArg(restaurantId), textArg(kind)], true
+          );
+          const remaining = verify?.results?.[0]?.response?.result?.rows?.[0];
+          if (remaining) return json({ error: "Die PDF wurde nicht vollständig gelöscht. Bitte erneut versuchen." }, 500);
+          return json({ success: true, action: "deleteCardFile", restaurantId, kind });
+        }
+
         if (body.action === "saveCard") {
           const restaurantId = String(body.restaurantId || "").trim();
           const kind = String(body.kind || "").trim();
