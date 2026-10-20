@@ -755,7 +755,6 @@ a{
 @media(max-width:560px){#restaurantMap{height:62vh;min-height:340px}.app-menu{padding-top:calc(18px + env(safe-area-inset-top))}}
 .secondary-action{background:#fff!important;color:var(--accent)!important;border:1px solid #d8e4df!important;box-shadow:none!important}
 .welcome-hero{position:relative;min-height:260px;margin:22px 0 24px;border-radius:22px;overflow:hidden;background-image:linear-gradient(0deg,rgba(11,48,60,.78),rgba(11,48,60,.02) 75%),var(--welcome-image,url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=85'));background-position:center;background-size:cover;background-repeat:no-repeat;box-shadow:var(--shadow);display:flex;align-items:flex-end}
-.change-hero-image{position:absolute;right:12px;top:12px;border:1px solid rgba(255,255,255,.85);border-radius:999px;background:rgba(255,255,255,.93);color:#1f5747;padding:9px 13px;font-weight:750;font-size:12px;cursor:pointer}
 .welcome-copy h2{letter-spacing:.02em}
 .welcome-copy{padding:24px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.25)}
 .welcome-copy h2{margin:0 0 6px;font-size:clamp(25px,4vw,36px);font-weight:850}
@@ -794,6 +793,7 @@ a{
     <button class="app-menu-item" onclick="showIncompleteEntries()"><span>📋</span><span>Unvollständige Einträge <span id="incompleteMenuCount" style="font-size:12px;color:#805716;width:auto">…</span></span></button>
     <button class="app-menu-item" onclick="closeAppMenu();focusSearch()"><span>🔎</span><span>Restaurants suchen</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();showFavorites()"><span>♥</span><span>Meine Favoriten</span></button>
+    <button class="app-menu-item" type="button" id="changeHeroImage"><span>🖼️</span><span id="changeHeroImageLabel">Titelbild ändern</span></button>
     <button type="button" id="toggleTavilyUsage" aria-expanded="false" aria-controls="tavilyUsageCard" class="app-menu-item"><span>📊</span><span id="toggleTavilyUsageLabel">Suchkontingent anzeigen</span></button>
     <section class="tavily-usage" id="tavilyUsageCard" aria-live="polite" hidden>
       <div class="tavily-usage-head">
@@ -841,7 +841,6 @@ a{
       <h2>Tegernsee</h2>
       <p>Entdecken. Genießen. Wohlfühlen.</p>
     </div>
-    <button class="change-hero-image" type="button" id="changeHeroImage">Titelbild ändern</button>
     <input type="file" id="heroImagePicker" accept="image/*" hidden>
   </section>
 
@@ -4563,8 +4562,8 @@ if (toggleTavilyUsage && tavilyUsageCard) {
 
 // Zentrales Titelbild: Auswahl aus der Handy-Galerie, Komprimierung und Admin-Passwort.
 (function setupWelcomeHeroImage(){
- const hero=document.getElementById("welcomeHero"),picker=document.getElementById("heroImagePicker"),button=document.getElementById("changeHeroImage");
- if(!hero||!picker||!button)return;
+ const hero=document.getElementById("welcomeHero"),picker=document.getElementById("heroImagePicker"),button=document.getElementById("changeHeroImage"),buttonLabel=document.getElementById("changeHeroImageLabel");
+ if(!hero||!picker||!button||!buttonLabel)return;
  let objectUrl=null;
  function apply(url){hero.style.setProperty("--welcome-image","url("+JSON.stringify(url).slice(1,-1)+")");}
  async function load(){
@@ -4600,14 +4599,14 @@ if (toggleTavilyUsage && tavilyUsageCard) {
   try{
    const password=await askAdminPassword("Bitte Admin-Passwort eingeben, um das Titelbild zu ändern.");
    if(!password)return;
-   button.disabled=true;button.textContent="Bild wird gespeichert …";
+   button.disabled=true;buttonLabel.textContent="Bild wird gespeichert …";
    const ready=await compress(file),encoded=await base64(ready.blob);
    const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"uploadTitleImage",filename:ready.filename,mimeType:ready.mimeType,base64:encoded})});
    let data={};try{data=await response.json();}catch(_){}
    if(!response.ok||data.success!==true||data.verified!==true)throw Error(data.error||"Titelbild konnte nicht sicher gespeichert werden.");
    alert("Titelbild zentral gespeichert. Alle Besucher sehen es nach dem Aktualisieren der App.");await load();
   }catch(e){alert(e.message||"Titelbild konnte nicht gespeichert werden.");}
-  finally{button.disabled=false;button.textContent="Titelbild ändern";picker.value="";}
+  finally{button.disabled=false;buttonLabel.textContent="Titelbild ändern";picker.value="";}
  });
  load();
 })();
