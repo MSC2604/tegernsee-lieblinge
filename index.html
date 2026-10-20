@@ -793,6 +793,20 @@ a{
     <button class="app-menu-item" onclick="showIncompleteEntries()"><span>📋</span><span>Unvollständige Einträge <span id="incompleteMenuCount" style="font-size:12px;color:#805716;width:auto">…</span></span></button>
     <button class="app-menu-item" onclick="closeAppMenu();focusSearch()"><span>🔎</span><span>Restaurants suchen</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();showFavorites()"><span>♥</span><span>Meine Favoriten</span></button>
+    <button type="button" id="toggleTavilyUsage" aria-expanded="false" aria-controls="tavilyUsageCard" class="app-menu-item"><span>📊</span><span id="toggleTavilyUsageLabel">Suchkontingent anzeigen</span></button>
+    <section class="tavily-usage" id="tavilyUsageCard" aria-live="polite" hidden>
+      <div class="tavily-usage-head">
+        <span>🔎 Kontingent der automatischen Suche</span>
+        <span id="tavilyUsagePercent">Lade …</span>
+      </div>
+      <div class="tavily-usage-values">
+        <span>Verbraucht: <strong id="tavilyUsageUsed">–</strong></span>
+        <span>Verbleibend: <strong id="tavilyUsageRemaining">–</strong></span>
+        <span>Gesamtlimit: <strong id="tavilyUsageLimit">–</strong></span>
+      </div>
+      <progress id="tavilyUsageProgress" max="100" value="0" aria-label="Verbrauchte Tavily-Credits"></progress>
+      <div class="tavily-usage-note" id="tavilyUsageNote">Kontingent wird abgerufen …</div>
+    </section>
   </nav>
 </div>
 
@@ -811,23 +825,8 @@ a{
     </div>
     <div class="secondary-actions">
       <button class="secondary-action contactbtn" onclick="window.location.href='mailto:msc4021@arcor.de?subject=Vorschlag%20f%C3%BCr%20Meine%20Lieblings-Restaurants%20am%20Tegernsee'">✉️ Kontakt für Vorschläge</button>
-      <button type="button" id="toggleTavilyUsage" aria-expanded="false" aria-controls="tavilyUsageCard" class="secondary-action">▥ Suchkontingent anzeigen</button>
     </div>
   </div>
-
-  <section class="tavily-usage" id="tavilyUsageCard" aria-live="polite" hidden>
-    <div class="tavily-usage-head">
-      <span>🔎 Kontingent der automatischen Suche</span>
-      <span id="tavilyUsagePercent">Lade …</span>
-    </div>
-    <div class="tavily-usage-values">
-      <span>Verbraucht: <strong id="tavilyUsageUsed">–</strong></span>
-      <span>Verbleibend: <strong id="tavilyUsageRemaining">–</strong></span>
-      <span>Gesamtlimit: <strong id="tavilyUsageLimit">–</strong></span>
-    </div>
-    <progress id="tavilyUsageProgress" max="100" value="0" aria-label="Verbrauchte Tavily-Credits"></progress>
-    <div class="tavily-usage-note" id="tavilyUsageNote">Kontingent wird abgerufen …</div>
-  </section>
 
   <div
     class="small"
@@ -4546,13 +4545,16 @@ const toggleTavilyUsage = document.getElementById("toggleTavilyUsage");
 const tavilyUsageCard = document.getElementById("tavilyUsageCard");
 
 if (toggleTavilyUsage && tavilyUsageCard) {
+  const toggleTavilyUsageLabel = document.getElementById("toggleTavilyUsageLabel");
   toggleTavilyUsage.addEventListener("click", () => {
     const isOpening = tavilyUsageCard.hidden;
     tavilyUsageCard.hidden = !isOpening;
     toggleTavilyUsage.setAttribute("aria-expanded", String(isOpening));
-    toggleTavilyUsage.textContent = isOpening
-      ? "📊 Suchkontingent ausblenden"
-      : "📊 Suchkontingent anzeigen";
+    if (toggleTavilyUsageLabel) {
+      toggleTavilyUsageLabel.textContent = isOpening
+        ? "Suchkontingent ausblenden"
+        : "Suchkontingent anzeigen";
+    }
     if (isOpening) loadTavilyUsage();
   });
 }
