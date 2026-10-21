@@ -1050,13 +1050,20 @@ main#home{
 }
 .chip{
   flex:0 0 auto;
-  min-height:38px;
+  min-height:42px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   scroll-margin-inline:8px;
+  -webkit-tap-highlight-color:transparent;
 }
 .chip:active{transform:scale(.98)}
+.chip:focus-visible{
+  outline:3px solid rgba(198,154,59,.8);
+  outline-offset:2px;
+  position:relative;
+  z-index:1;
+}
 @media(prefers-reduced-motion:reduce){
   .chip:active{transform:none}
 }
