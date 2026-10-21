@@ -916,6 +916,128 @@ a{
   .icon{height:170px}
   .cardmain{padding:12px 13px 9px}
 }
+
+/* Sichtbarer Designentwurf v2: klarere Startseite, nur CSS */
+:root{
+  --bg:#f7f8f5;
+  --card:#ffffff;
+  --ink:#183b31;
+  --muted:#687a72;
+  --accent:#24664f;
+  --accent2:#174b3a;
+  --line:#dfe8e1;
+  --gold:#c8a04b;
+  --shadow:0 8px 24px rgba(24,59,49,.07);
+}
+header{
+  background:linear-gradient(130deg,#123f32 0%,#24664f 58%,#47816a 100%);
+  box-shadow:0 10px 30px rgba(18,63,50,.16);
+}
+main#home{
+  max-width:1180px;
+  margin:0 auto;
+  padding-left:clamp(14px,3vw,30px);
+  padding-right:clamp(14px,3vw,30px);
+}
+.welcome-hero{
+  min-height:290px;
+  margin:18px 0 20px;
+  border-radius:26px;
+  background-image:linear-gradient(90deg,rgba(9,43,33,.78) 0%,rgba(9,43,33,.36) 52%,rgba(9,43,33,.06) 100%),var(--welcome-image,url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=85'));
+  background-position:center 54%;
+  box-shadow:0 16px 38px rgba(17,57,44,.18);
+}
+.welcome-copy{padding:clamp(22px,4vw,38px);max-width:620px}
+.welcome-copy h2{
+  font-size:clamp(32px,5vw,48px);
+  line-height:1.05;
+  letter-spacing:-.035em;
+  margin-bottom:10px;
+}
+.welcome-copy p{font-size:clamp(16px,2vw,21px);line-height:1.45}
+.home-actions{
+  padding:16px;
+  border:1px solid #e3ebe4;
+  border-radius:22px;
+  background:linear-gradient(145deg,#fff,#f5f8f4);
+  box-shadow:0 8px 22px rgba(24,59,49,.055);
+  gap:12px;
+}
+.primary-actions{gap:10px}
+.addbtn{
+  background:linear-gradient(135deg,#24664f,#174b3a)!important;
+  box-shadow:0 6px 15px rgba(36,102,79,.2);
+  font-weight:750;
+}
+.secondary-action{
+  background:#fff!important;
+  border-color:#d8e5da!important;
+  color:#245d49!important;
+}
+.sectionhead{
+  align-items:center;
+  margin-top:26px;
+  margin-bottom:12px;
+  padding:0 2px 10px;
+  border-bottom:1px solid #dfe8e1;
+}
+.sectionhead h2{
+  font-size:clamp(19px,2.5vw,24px);
+  letter-spacing:-.025em;
+}
+.count{
+  background:#e6f0e8;
+  color:#20583f;
+  border:1px solid #d2e4d6;
+  font-weight:750;
+}
+.filters{gap:8px;margin:12px 0 18px}
+.chip{
+  border:1px solid #dce6dd;
+  background:#fff;
+  color:#365a4c;
+  padding:9px 14px;
+  font-weight:650;
+}
+.chip.active{
+  background:#24664f!important;
+  color:#fff!important;
+  border-color:#24664f!important;
+  box-shadow:0 4px 12px rgba(36,102,79,.18);
+}
+.card{
+  border:1px solid #e4ebe4;
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:0 5px 18px rgba(24,59,49,.055);
+}
+.card .icon{background:#eaf0e9}
+@media(max-width:560px){
+  header{padding:16px 13px 13px;border-radius:0 0 22px 22px}
+  .welcome-hero{
+    min-height:230px;
+    margin:12px 0 14px;
+    border-radius:20px;
+    background-image:linear-gradient(0deg,rgba(9,43,33,.78) 0%,rgba(9,43,33,.10) 100%),var(--welcome-image,url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=85'));
+    background-position:center;
+  }
+  .welcome-copy{padding:20px}
+  .welcome-copy h2{font-size:32px}
+  .home-actions{padding:12px;border-radius:18px}
+  .primary-actions{display:grid;grid-template-columns:1fr 1fr}
+  .primary-actions .addbtn{grid-column:1/-1;width:100%}
+  .primary-actions .sync{min-width:0}
+  .primary-actions .sync button{width:100%;min-height:42px;padding:9px 8px;font-size:13px}
+  .secondary-actions .secondary-action{width:100%}
+  .sectionhead{margin-top:22px}
+  .filters{gap:7px}
+  .chip{padding:8px 11px;font-size:13px}
+}
+@media(max-width:360px){
+  .primary-actions{grid-template-columns:1fr}
+  .primary-actions .addbtn{grid-column:auto}
+}
+
 </style>
 </head>
 
