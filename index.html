@@ -940,7 +940,7 @@ main#home{
   padding-right:clamp(14px,3vw,30px);
 }
 .welcome-hero{
-  min-height:290px;
+  min-height:340px;
   margin:18px 0 20px;
   border-radius:26px;
   background-image:linear-gradient(90deg,rgba(9,43,33,.78) 0%,rgba(9,43,33,.36) 52%,rgba(9,43,33,.06) 100%),var(--welcome-image,url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=85'));
@@ -963,7 +963,9 @@ main#home{
   box-shadow:0 8px 22px rgba(24,59,49,.055);
   gap:12px;
 }
-.primary-actions{gap:10px}
+.primary-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch}
+.primary-actions>.addbtn,.primary-actions>.sync{width:100%;min-width:0}
+.primary-actions .sync button{width:100%;min-width:0;white-space:normal;line-height:1.2;min-height:46px;padding:10px 8px;}
 .addbtn{
   background:linear-gradient(135deg,#24664f,#174b3a)!important;
   box-shadow:0 6px 15px rgba(36,102,79,.2);
@@ -1015,7 +1017,7 @@ main#home{
 @media(max-width:560px){
   header{padding:16px 13px 13px;border-radius:0 0 22px 22px}
   .welcome-hero{
-    min-height:230px;
+    min-height:280px;
     margin:12px 0 14px;
     border-radius:20px;
     background-image:linear-gradient(0deg,rgba(9,43,33,.78) 0%,rgba(9,43,33,.10) 100%),var(--welcome-image,url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=85'));
@@ -1024,18 +1026,18 @@ main#home{
   .welcome-copy{padding:20px}
   .welcome-copy h2{font-size:32px}
   .home-actions{padding:12px;border-radius:18px}
-  .primary-actions{display:grid;grid-template-columns:1fr 1fr}
-  .primary-actions .addbtn{grid-column:1/-1;width:100%}
-  .primary-actions .sync{min-width:0}
-  .primary-actions .sync button{width:100%;min-height:42px;padding:9px 8px;font-size:13px}
+  .primary-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .primary-actions .addbtn{grid-column:auto;width:100%;min-width:0;white-space:normal;line-height:1.2;padding:9px 5px;font-size:12px}
+  .primary-actions .sync{min-width:0;width:100%}
+  .primary-actions .sync button{width:100%;min-width:0;min-height:48px;padding:8px 4px;font-size:11px;white-space:normal;line-height:1.2}
   .secondary-actions .secondary-action{width:100%}
   .sectionhead{margin-top:22px}
   .filters{gap:7px}
   .chip{padding:8px 11px;font-size:13px}
 }
 @media(max-width:360px){
-  .primary-actions{grid-template-columns:1fr}
-  .primary-actions .addbtn{grid-column:auto}
+  .primary-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+  .primary-actions .addbtn,.primary-actions .sync button{font-size:10px;padding-left:3px;padding-right:3px}
 }
 
 </style>
