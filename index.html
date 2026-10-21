@@ -1040,6 +1040,27 @@ main#home{
   .primary-actions .addbtn,.primary-actions .sync button{font-size:10px;padding-left:3px;padding-right:3px}
 }
 
+
+/* Premium-Feinschliff 4: Filterchips auf dem Handy besser bedienbar */
+.filters{
+  flex-wrap:nowrap;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  scroll-padding-inline:8px;
+}
+.chip{
+  flex:0 0 auto;
+  min-height:38px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  scroll-margin-inline:8px;
+}
+.chip:active{transform:scale(.98)}
+@media(prefers-reduced-motion:reduce){
+  .chip:active{transform:none}
+}
+
 </style>
 </head>
 
