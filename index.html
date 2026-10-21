@@ -881,6 +881,28 @@ a{
   .card,.addbtn,.sync button,.secondary-action,.chip{transition:none}
   .card:hover{transform:none}
 }
+
+
+/* Premium-Feinschliff 2: einheitliche, dezente Schaltflächen */
+.addbtn,.sync button,.secondary-action{
+  border-radius:15px;
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+@media(hover:hover){
+  .addbtn:hover,.sync button:hover{
+    box-shadow:0 8px 18px rgba(23,53,45,.16);
+    filter:brightness(1.04);
+    transform:translateY(-1px);
+  }
+  .secondary-action:hover{
+    background:#f6faf7!important;
+    border-color:rgba(45,106,86,.35)!important;
+  }
+}
+.addbtn:active,.sync button:active,.secondary-action:active{transform:translateY(0)}
+@media(prefers-reduced-motion:reduce){
+  .addbtn,.sync button,.secondary-action{transition:none}
+}
 </style>
 </head>
 
