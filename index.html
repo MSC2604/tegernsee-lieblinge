@@ -5277,19 +5277,64 @@ if (toggleTavilyUsage && tavilyUsageCard) {
 }
 
 
-// Zentrales Titelbild: Auswahl aus der Handy-Galerie, Komprimierung und Admin-Passwort.
+// Zentrales Titelbild: IndexedDB-Zwischenspeicher plus Prüfung der zentralen Version.
 (function setupWelcomeHeroImage(){
  const hero=document.getElementById("welcomeHero"),picker=document.getElementById("heroImagePicker"),button=document.getElementById("changeHeroImage"),buttonLabel=document.getElementById("changeHeroImageLabel");
  if(!hero||!picker||!button||!buttonLabel)return;
  let objectUrl=null;
+ const cacheDbName="tegernsee-title-image-cache";
+ const cacheStoreName="images";
  function apply(url){hero.style.setProperty("--welcome-image","url("+JSON.stringify(url).slice(1,-1)+")");}
- async function load(){
+ function setBlob(blob){
+  if(objectUrl)URL.revokeObjectURL(objectUrl);
+  objectUrl=URL.createObjectURL(blob);
+  apply(objectUrl);
+ }
+ function openCacheDb(){
+  return new Promise((resolve,reject)=>{
+   if(!("indexedDB" in window)){reject(Error("IndexedDB nicht verfügbar."));return;}
+   const request=indexedDB.open(cacheDbName,1);
+   request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains(cacheStoreName))request.result.createObjectStore(cacheStoreName);};
+   request.onsuccess=()=>resolve(request.result);
+   request.onerror=()=>reject(request.error||Error("Bildcache konnte nicht geöffnet werden."));
+  });
+ }
+ async function readCachedBlob(){
+  const db=await openCacheDb();
+  try{return await new Promise((resolve,reject)=>{
+   const request=db.transaction(cacheStoreName,"readonly").objectStore(cacheStoreName).get("current");
+   request.onsuccess=()=>resolve(request.result instanceof Blob?request.result:null);
+   request.onerror=()=>reject(request.error||Error("Zwischengespeichertes Bild konnte nicht gelesen werden."));
+  });}finally{db.close();}
+ }
+ async function saveCachedBlob(blob){
+  const db=await openCacheDb();
+  try{await new Promise((resolve,reject)=>{
+   const request=db.transaction(cacheStoreName,"readwrite").objectStore(cacheStoreName).put(blob,"current");
+   request.onsuccess=()=>resolve();
+   request.onerror=()=>reject(request.error||Error("Bildcache konnte nicht aktualisiert werden."));
+  });}finally{db.close();}
+ }
+ async function load(skipCache=false){
+  // Den Serverabruf sofort starten; parallel das zuletzt bekannte Bild lokal lesen.
+  const networkPromise=fetch(API_URL+"?action=titleImage&_="+Date.now(),{cache:"no-store"});
+  if(!skipCache&&!objectUrl){
+   try{
+    const cached=await readCachedBlob();
+    if(cached&&!objectUrl)setBlob(cached);
+   }catch(e){console.info("Lokaler Titelbild-Cache nicht verfügbar:",e);}
+  }
   try{
-   const r=await fetch(API_URL+"?action=titleImage&_="+Date.now(),{cache:"no-store"});
-   if(r.status===404){try{const old=localStorage.getItem("tegernseeWelcomeHeroImage");if(old)apply(old);}catch(_){}return;}
+   const r=await networkPromise;
+   if(r.status===404){
+    if(!objectUrl){try{const old=localStorage.getItem("tegernseeWelcomeHeroImage");if(old)apply(old);}catch(_){}}
+    return;
+   }
    if(!r.ok)throw Error("Das Titelbild konnte nicht geladen werden.");
-   const blob=await r.blob();if(!blob.size||!/^image\/(webp|jpeg|png)$/.test(blob.type))throw Error("Die gespeicherte Bilddatei ist ungültig.");
-   if(objectUrl)URL.revokeObjectURL(objectUrl);objectUrl=URL.createObjectURL(blob);apply(objectUrl);
+   const blob=await r.blob();
+   if(!blob.size||!/^image\/(webp|jpeg|png)$/.test(blob.type))throw Error("Die gespeicherte Bilddatei ist ungültig.");
+   setBlob(blob);
+   try{await saveCachedBlob(blob);}catch(e){console.info("Titelbild konnte nicht zwischengespeichert werden:",e);}
   }catch(e){console.warn("Titelbild:",e);}
  }
  function base64(blob){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(Error("Bild konnte nicht gelesen werden."));reader.onload=()=>{const bytes=new Uint8Array(reader.result);let bin="";for(let i=0;i<bytes.length;i+=32768)bin+=String.fromCharCode(...bytes.subarray(i,Math.min(i+32768,bytes.length)));resolve(btoa(bin));};reader.readAsArrayBuffer(blob);});}
@@ -5321,13 +5366,12 @@ if (toggleTavilyUsage && tavilyUsageCard) {
    const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"uploadTitleImage",filename:ready.filename,mimeType:ready.mimeType,base64:encoded})});
    let data={};try{data=await response.json();}catch(_){}
    if(!response.ok||data.success!==true||data.verified!==true)throw Error(data.error||"Titelbild konnte nicht sicher gespeichert werden.");
-   alert("Titelbild zentral gespeichert. Alle Besucher sehen es nach dem Aktualisieren der App.");await load();
+   alert("Titelbild zentral gespeichert. Alle Besucher sehen es nach dem Aktualisieren der App.");await load(true);
   }catch(e){alert(e.message||"Titelbild konnte nicht gespeichert werden.");}
   finally{button.disabled=false;buttonLabel.textContent="Titelbild ändern";picker.value="";}
  });
  load();
 })();
-
 
  
 // Überschrift und Untertitel werden zentral gespeichert und allen Besuchern angezeigt.
