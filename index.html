@@ -1109,6 +1109,42 @@ main#home{
   .cardbottom{padding:10px 12px 13px}
 }
 
+
+/* Premium-Feinschliff 6: Bildbereich und Favoritenknopf veredelt */
+.card .icon img{
+  object-position:center;
+}
+.card .fav{
+  border:1px solid rgba(255,255,255,.82);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  transition:background-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.card .fav:focus-visible{
+  outline:3px solid #c8a04b;
+  outline-offset:3px;
+}
+@media(hover:hover){
+  .card .fav:hover{
+    background:#fff;
+    box-shadow:0 5px 14px rgba(0,0,0,.2);
+    transform:scale(1.04);
+  }
+  .card .icon img{
+    transition:transform .28s ease;
+  }
+  .card:hover .icon img{
+    transform:scale(1.025);
+  }
+}
+@media(max-width:560px){
+  .card .fav{top:12px;right:12px;width:42px;height:42px}
+}
+@media(prefers-reduced-motion:reduce){
+  .card .fav,.card .icon img{transition:none}
+  .card:hover .icon img,.card .fav:hover{transform:none}
+}
+
 </style>
 </head>
 
