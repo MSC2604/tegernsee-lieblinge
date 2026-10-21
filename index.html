@@ -1145,6 +1145,51 @@ main#home{
   .card:hover .icon img,.card .fav:hover{transform:none}
 }
 
+
+/* Premium-Feinschliff 7: Aktionsknöpfe in Restaurantkarten klarer */
+.cardbottom button{
+  min-height:42px;
+  border-color:#dce7df;
+  background:linear-gradient(180deg,#fff 0%,#f8fbf8 100%);
+  line-height:1.25;
+  overflow-wrap:anywhere;
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.cardbottom button:focus-visible,
+.tile-card-links a:focus-visible{
+  outline:3px solid rgba(200,160,75,.82);
+  outline-offset:2px;
+}
+.tile-card-links a{
+  border-color:#cbded2;
+  background:linear-gradient(135deg,#f7fbf7,#edf5ef);
+  line-height:1.35;
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+@media(hover:hover){
+  .cardbottom button:hover{
+    border-color:#b9d0c0;
+    background:#f1f7f2;
+    box-shadow:0 4px 10px rgba(23,53,45,.09);
+    transform:translateY(-1px);
+  }
+  .tile-card-links a:hover{
+    border-color:#a9c8b5;
+    background:#e8f3eb;
+    box-shadow:0 4px 10px rgba(23,53,45,.08);
+    transform:translateY(-1px);
+  }
+}
+@media(max-width:560px){
+  .cardbottom{gap:7px}
+  .cardbottom button{min-height:44px;padding:10px 5px;font-size:12px}
+  .tile-card-links{padding-left:15px;padding-right:15px}
+}
+@media(prefers-reduced-motion:reduce){
+  .cardbottom button,.tile-card-links a{transition:none}
+  .cardbottom button:hover,.tile-card-links a:hover{transform:none}
+}
+
 </style>
 </head>
 
