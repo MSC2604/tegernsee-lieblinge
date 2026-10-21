@@ -903,6 +903,19 @@ a{
 @media(prefers-reduced-motion:reduce){
   .addbtn,.sync button,.secondary-action{transition:none}
 }
+
+
+/* Premium-Feinschliff 3: Karten auf schmalen Displays ausgewogener */
+@media(max-width:560px){
+  .icon{height:190px}
+  .cardmain{padding:13px 15px 10px}
+  .cardname{font-size:20px;line-height:1.24}
+  .grid{gap:14px}
+}
+@media(max-width:360px){
+  .icon{height:170px}
+  .cardmain{padding:12px 13px 9px}
+}
 </style>
 </head>
 
