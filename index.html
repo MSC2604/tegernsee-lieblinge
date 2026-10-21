@@ -857,6 +857,30 @@ a{
 #home .sectionhead{margin-top:24px}
 @media(max-width:560px){header{padding:20px 14px 14px;border-radius:0 0 24px 24px}.brandrow{gap:8px}.app-logo{width:54px;height:54px;border-radius:14px}.brandcopy .title{font-size:20px}.brandcopy .sub{font-size:12px}.menu-mark{font-size:27px;padding:2px}.search-toggle{font-size:23px;padding:4px}.welcome-hero{min-height:340px;margin:6px 0}.welcome-copy{padding:18px}main{padding-top:4px}}
 
+
+
+/* Premium-Feinschliff: dezente Rückmeldungen, ohne App-Logik zu verändern */
+.card{
+  box-shadow:0 10px 28px rgba(23,53,45,.08);
+  border-color:rgba(45,106,86,.12);
+  transition:box-shadow .18s ease,transform .18s ease;
+}
+@media(hover:hover){
+  .card:hover{box-shadow:0 14px 32px rgba(23,53,45,.13);transform:translateY(-2px)}
+  .chip:not(.active):hover{border-color:rgba(45,106,86,.35);background:#f8faf8}
+}
+.addbtn,.sync button,.secondary-action,.chip{
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.addbtn:focus-visible,.sync button:focus-visible,.secondary-action:focus-visible,
+.chip:focus-visible,.card button:focus-visible,.card a:focus-visible{
+  outline:3px solid rgba(198,154,59,.75);
+  outline-offset:2px;
+}
+@media(prefers-reduced-motion:reduce){
+  .card,.addbtn,.sync button,.secondary-action,.chip{transition:none}
+  .card:hover{transform:none}
+}
 </style>
 </head>
 
