@@ -949,12 +949,12 @@ main#home{
 }
 .welcome-copy{padding:clamp(22px,4vw,38px);max-width:620px}
 .welcome-copy h2{
-  font-size:clamp(26px,3.8vw,38px);
+  font-size:clamp(32px,5vw,48px);
   line-height:1.05;
   letter-spacing:-.035em;
-  margin-bottom:8px;
+  margin-bottom:10px;
 }
-.welcome-copy p{font-size:clamp(14px,1.5vw,17px);line-height:1.4}
+.welcome-copy p{font-size:clamp(16px,2vw,21px);line-height:1.45}
 .home-actions{
   padding:16px;
   border:1px solid #e3ebe4;
@@ -987,6 +987,10 @@ main#home{
   font-size:clamp(19px,2.5vw,24px);
   letter-spacing:-.025em;
 }
+/* Dezente, kleinere Überschriften für Favoriten und Restaurantübersicht */
+#favoritesSectionHead h2,#discoverSectionHead h2{font-size:clamp(16px,1.8vw,19px)}
+#favoritesSectionHead .count,#discoverSectionHead .count{font-size:13px;padding:3px 8px;min-width:24px}
+#favoritesSectionHead,#discoverSectionHead{margin-top:18px;margin-bottom:8px;padding-bottom:7px}
 .count{
   background:#e6f0e8;
   color:#20583f;
@@ -1391,12 +1395,12 @@ main#home{
 
 
 
-  <div class="sectionhead">
+  <div class="sectionhead" id="favoritesSectionHead">
     <h2>❤️ Meine Favoriten</h2>
     <span class="count" id="count">0</span>
   </div>
 
-  <div class="sectionhead">
+  <div class="sectionhead" id="discoverSectionHead">
     <h2>Restaurants entdecken</h2>
     <span class="count" id="restaurantCount">0</span>
   </div>
