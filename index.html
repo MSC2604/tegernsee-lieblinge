@@ -1313,6 +1313,9 @@ main#home{
 }
 
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Dancing+Script:wght@400;700&family=Libre+Baskerville:wght@400;700&family=Lora:wght@400;700&family=Merriweather:wght@400;700&family=Montserrat:wght@400;700&family=Open+Sans:wght@400;700&family=Oswald:wght@400;700&family=Playfair+Display:wght@400;700&family=Poppins:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
@@ -5399,45 +5402,63 @@ async function loadWelcomeHeroText() {
   }
 }
 
-async function editWelcomeHeroText() {
-  closeAppMenu();
-  const password = await askAdminPassword("Bitte Admin-Passwort eingeben, um den Titelbild-Text zu ändern.");
-  if (!password) return;
-
-  const title = prompt("Neue große Überschrift (max. 120 Zeichen):", welcomeHeroText.title);
-  if (title === null) return;
-  const subtitle = prompt("Neuer Untertitel (max. 240 Zeichen):", welcomeHeroText.subtitle);
-  if (subtitle === null) return;
-  if (!title.trim() || !subtitle.trim()) {
-    alert("Bitte Überschrift und Untertitel ausfüllen. Beide Texte müssen mindestens ein Zeichen enthalten.");
-    return;
-  }
-
-  try {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + password },
-      body: JSON.stringify({
-        action: "saveTitleText",
-        title: title.trim().slice(0, 120),
-        subtitle: subtitle.trim().slice(0, 240)
-      })
-    });
-    let data = {};
-    try { data = await response.json(); } catch (_) {}
-    if (!response.ok || data.success !== true || data.verified !== true) {
-      throw new Error(data.error || "Der Titelbild-Text konnte nicht sicher gespeichert werden.");
-    }
-    welcomeHeroText = { title: data.title, subtitle: data.subtitle };
-    const titleElement = document.getElementById("welcomeHeroTitle");
-    const subtitleElement = document.getElementById("welcomeHeroSubtitle");
-    if (titleElement) titleElement.textContent = welcomeHeroText.title;
-    if (subtitleElement) subtitleElement.textContent = welcomeHeroText.subtitle;
-    alert("Titelbild-Text zentral gespeichert. Alle Besucher sehen die Änderung nach dem Aktualisieren der App.");
-  } catch (error) {
-    alert(error.message || "Der Titelbild-Text konnte nicht gespeichert werden.");
-  }
+function getWelcomeTextStyles() {
+  const defaults={title:{size:40,font:"system-ui",color:"#ffffff",weight:"700",italic:false,align:"left"},subtitle:{size:20,font:"system-ui",color:"#ffffff",weight:"400",italic:false,align:"left"}};
+  try { const saved=JSON.parse(localStorage.getItem("tegernseeWelcomeTextStyles")||"null"); return {title:{...defaults.title,...(saved&&saved.title||{})},subtitle:{...defaults.subtitle,...(saved&&saved.subtitle||{})}}; } catch(_){return defaults;}
 }
+function applyWelcomeTextStyles() {
+  const styles=getWelcomeTextStyles();
+  ["title","subtitle"].forEach(kind=>{const el=document.getElementById(kind==="title"?"welcomeHeroTitle":"welcomeHeroSubtitle"),st=styles[kind];if(!el)return;
+    el.style.fontSize=Math.max(12,Math.min(72,Number(st.size)||20))+"px";el.style.fontFamily=st.font||"system-ui";
+    el.style.color=/^#[0-9a-f]{6}$/i.test(st.color||"")?st.color:"#ffffff";el.style.fontWeight=st.weight==="700"?"700":"400";
+    el.style.fontStyle=st.italic?"italic":"normal";el.style.textAlign=["left","center","right"].includes(st.align)?st.align:"left";
+  });
+}
+function editWelcomeHeroText() {
+  closeAppMenu();
+  askAdminPassword("Bitte Admin-Passwort eingeben, um den Titeltext zu gestalten.").then(password=>{
+    if(!password)return;
+    const overlay=document.createElement("div"),styles=getWelcomeTextStyles();let working=JSON.parse(JSON.stringify(styles)),active="title";
+    overlay.id="welcomeTextEditorOverlay";overlay.style.cssText="position:fixed;inset:0;z-index:10000;background:#0009;display:flex;align-items:center;justify-content:center;padding:12px;overflow:auto";
+    overlay.innerHTML = `
+      <section role="dialog" aria-modal="true" style="background:var(--card,#fff);color:var(--text,#17211d);width:min(560px,100%);max-height:94dvh;overflow:auto;border-radius:18px;padding:18px;box-shadow:0 18px 60px #0005">
+      <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:22px;margin:0">Titeltext gestalten</h2><button id="wteClose" type="button" style="font-size:26px;border:0;background:transparent;color:inherit">×</button></div>
+      <label style="display:block;font-weight:700;margin:12px 0 5px" for="wteTitle">Große Überschrift</label><input id="wteTitle" maxlength="120" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #bbb;border-radius:8px">
+      <label style="display:block;font-weight:700;margin:12px 0 5px" for="wteSubtitle">Untertitel</label><input id="wteSubtitle" maxlength="240" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #bbb;border-radius:8px">
+      <div style="display:flex;gap:8px;margin:15px 0 10px"><button id="wteTitleTab" type="button" style="flex:1;padding:10px;border:1px solid #2d6a56;border-radius:8px">Überschrift gestalten</button><button id="wteSubtitleTab" type="button" style="flex:1;padding:10px;border:1px solid #2d6a56;border-radius:8px">Untertitel gestalten</button></div>
+      <div style="border:1px solid #ddd;border-radius:10px;padding:12px">
+      <label for="wteSize" style="font-weight:700">Schriftgröße: <output id="wteSizeOut">40 px</output></label><input id="wteSize" type="range" min="12" max="72" style="width:100%;margin:8px 0 14px">
+      <label for="wteFont" style="display:block;font-weight:700;margin-bottom:6px">Schriftart</label><select id="wteFont" style="width:100%;padding:10px;border:1px solid #bbb;border-radius:8px">
+      <option value="system-ui">Systemschrift – schlicht</option><option value="Arial,sans-serif">Arial – modern</option><option value="Verdana,sans-serif">Verdana – gut lesbar</option><option value="Georgia,serif">Georgia – klassisch</option><option value="'Times New Roman',serif">Times New Roman</option><option value="'Playfair Display',Georgia,serif">Playfair Display – elegant</option><option value="Montserrat,sans-serif">Montserrat</option><option value="Lora,Georgia,serif">Lora</option><option value="Merriweather,Georgia,serif">Merriweather</option><option value="'Dancing Script',cursive">Dancing Script – Handschrift</option><option value="Roboto,sans-serif">Roboto</option><option value="'Open Sans',sans-serif">Open Sans</option><option value="Poppins,sans-serif">Poppins</option><option value="Oswald,sans-serif">Oswald – schmal</option><option value="Cinzel,serif">Cinzel – feierlich</option><option value="'Libre Baskerville',Georgia,serif">Libre Baskerville</option></select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px"><div><label for="wteColor" style="display:block;font-weight:700">Schriftfarbe</label><input id="wteColor" type="color" style="width:100%;height:42px"></div><div><label for="wteWeight" style="display:block;font-weight:700">Schriftschnitt</label><select id="wteWeight" style="width:100%;padding:9px"><option value="400">Normal</option><option value="700">Fett</option></select></div></div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input id="wteItalic" type="checkbox"> Kursiv</label>
+      <label for="wteAlign" style="display:block;font-weight:700;margin:12px 0 5px">Ausrichtung</label><select id="wteAlign" style="width:100%;padding:9px"><option value="left">Links</option><option value="center">Mittig</option><option value="right">Rechts</option></select>
+      <div style="font-weight:700;margin-top:14px">Live-Vorschau</div><div id="wtePreview" style="background:#2d6a56;color:white;border-radius:9px;padding:14px;margin-top:6px"></div></div>
+      <p style="font-size:12px;line-height:1.45;color:var(--muted,#666)">Texte werden zentral gespeichert. Die Schriftgestaltung wird vorerst nur auf diesem Gerät gespeichert. Zusätzliche Web-Schriften benötigen eine Internetverbindung.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="wteReset" type="button" style="padding:10px;border:1px solid #aaa;border-radius:8px;background:transparent;color:inherit">Zurücksetzen</button><span style="flex:1"></span><button id="wteCancel" type="button" style="padding:10px;border:1px solid #aaa;border-radius:8px;background:transparent;color:inherit">Abbrechen</button><button id="wteSave" type="button" style="padding:10px 14px;border:0;border-radius:8px;background:#2d6a56;color:white;font-weight:700">Speichern</button></div>
+      </section>`;
+    document.body.appendChild(overlay);const $=id=>overlay.querySelector("#"+id),fields={size:$("wteSize"),font:$("wteFont"),color:$("wteColor"),weight:$("wteWeight"),italic:$("wteItalic"),align:$("wteAlign")};
+    $("wteTitle").value=welcomeHeroText.title;$("wteSubtitle").value=welcomeHeroText.subtitle;
+    function render(){const st=working[active];fields.size.value=st.size;$("wteSizeOut").textContent=st.size+" px";fields.font.value=st.font;fields.color.value=st.color;fields.weight.value=st.weight;fields.italic.checked=!!st.italic;fields.align.value=st.align;
+      $("wteTitleTab").style.background=active==="title"?"#2d6a56":"transparent";$("wteTitleTab").style.color=active==="title"?"white":"inherit";$("wteSubtitleTab").style.background=active==="subtitle"?"#2d6a56":"transparent";$("wteSubtitleTab").style.color=active==="subtitle"?"white":"inherit";
+      const p=$("wtePreview");p.replaceChildren();[["wteTitle","title"],["wteSubtitle","subtitle"]].forEach(([input,key])=>{const d=document.createElement("div"),x=working[key];d.textContent=$(input).value|| (key==="title"?"Tegernsee":"Entdecken. Genießen. Wohlfühlen.");Object.assign(d.style,{fontSize:x.size+"px",fontFamily:x.font,color:x.color,fontWeight:x.weight,fontStyle:x.italic?"italic":"normal",textAlign:x.align,lineHeight:"1.25",overflowWrap:"anywhere",marginTop:key==="subtitle"?"6px":"0"});p.appendChild(d);});
+    }
+    function update(){const st=working[active];st.size=Number(fields.size.value);st.font=fields.font.value;st.color=fields.color.value;st.weight=fields.weight.value;st.italic=fields.italic.checked;st.align=fields.align.value;render();}
+    Object.values(fields).forEach(el=>{el.addEventListener("input",update);el.addEventListener("change",update);});
+    $("wteTitle").addEventListener("input",render);$("wteSubtitle").addEventListener("input",render);
+    $("wteTitleTab").onclick=()=>{active="title";render();};$("wteSubtitleTab").onclick=()=>{active="subtitle";render();};
+    const close=()=>overlay.remove();$("wteClose").onclick=close;$("wteCancel").onclick=close;overlay.addEventListener("click",e=>{if(e.target===overlay)close();});
+    $("wteReset").onclick=()=>{working={title:{size:40,font:"system-ui",color:"#ffffff",weight:"700",italic:false,align:"left"},subtitle:{size:20,font:"system-ui",color:"#ffffff",weight:"400",italic:false,align:"left"}};render();};
+    $("wteSave").onclick=async()=>{const title=$("wteTitle").value.trim().slice(0,120),subtitle=$("wteSubtitle").value.trim().slice(0,240);if(!title||!subtitle){alert("Bitte Überschrift und Untertitel ausfüllen.");return;}const b=$("wteSave");b.disabled=true;b.textContent="Speichert …";
+      try{const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"saveTitleText",title,subtitle})});let data={};try{data=await response.json();}catch(_){}
+        if(!response.ok||data.success!==true||data.verified!==true)throw new Error(data.error||"Titeltext konnte nicht zentral gespeichert werden.");
+        welcomeHeroText={title:data.title,subtitle:data.subtitle};const te=document.getElementById("welcomeHeroTitle"),se=document.getElementById("welcomeHeroSubtitle");if(te)te.textContent=welcomeHeroText.title;if(se)se.textContent=welcomeHeroText.subtitle;
+        localStorage.setItem("tegernseeWelcomeTextStyles",JSON.stringify(working));applyWelcomeTextStyles();close();alert("Titel und Untertitel zentral gespeichert. Die Schriftgestaltung wurde auf diesem Gerät gespeichert.");
+      }catch(e){b.disabled=false;b.textContent="Speichern";alert(e.message||"Speichern fehlgeschlagen.");}
+    };render();
+  });
+}
+applyWelcomeTextStyles();
 
 loadWelcomeHeroText();
 
