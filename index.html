@@ -849,13 +849,464 @@ a{
 .leaflet-tooltip.restaurant-map-label:before{border-right-color:#fff}
 @media(max-width:560px){#restaurantMap{height:62vh;min-height:340px}.app-menu{padding-top:calc(18px + env(safe-area-inset-top))}}
 .secondary-action{background:#fff!important;color:var(--accent)!important;border:1px solid #d8e4df!important;box-shadow:none!important}
-.welcome-hero{position:relative;min-height:480px;margin:8px 0 24px;border-radius:22px;overflow:hidden;background-image:linear-gradient(0deg,rgba(11,48,60,.78),rgba(11,48,60,.02) 75%),var(--welcome-image,url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=85'));background-position:center;background-size:cover;background-repeat:no-repeat;box-shadow:var(--shadow);display:flex;align-items:flex-end}
+.welcome-hero{position:relative;min-height:400px;margin:8px 0 24px;border-radius:22px;overflow:hidden;background-image:linear-gradient(0deg,rgba(11,48,60,.78),rgba(11,48,60,.02) 75%),var(--welcome-image,url('https://images.unsplash.com/photo-1657041111073-3eb4ba3b4a62?auto=format&fit=crop&w=1800&q=85'));background-position:center;background-size:cover;background-repeat:no-repeat;box-shadow:var(--shadow);display:flex;align-items:flex-end}
 .welcome-copy h2{letter-spacing:.02em}
 .welcome-copy{padding:24px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.25)}
 .welcome-copy h2{margin:0 0 6px;font-size:clamp(25px,4vw,36px);font-weight:850}
 .welcome-copy p{margin:0;font-size:clamp(16px,2vw,22px);font-style:italic}
 #home .sectionhead{margin-top:24px}
-@media(max-width:560px){header{padding:20px 14px 14px;border-radius:0 0 24px 24px}.brandrow{gap:8px}.app-logo{width:54px;height:54px;border-radius:14px}.brandcopy .title{font-size:20px}.brandcopy .sub{font-size:12px}.menu-mark{font-size:27px;padding:2px}.search-toggle{font-size:23px;padding:4px}.welcome-hero{min-height:420px;margin:6px 0}.welcome-copy{padding:18px}main{padding-top:4px}}
+@media(max-width:560px){header{padding:20px 14px 14px;border-radius:0 0 24px 24px}.brandrow{gap:8px}.app-logo{width:54px;height:54px;border-radius:14px}.brandcopy .title{font-size:20px}.brandcopy .sub{font-size:12px}.menu-mark{font-size:27px;padding:2px}.search-toggle{font-size:23px;padding:4px}.welcome-hero{min-height:340px;margin:6px 0}.welcome-copy{padding:18px}main{padding-top:4px}}
+
+
+
+/* Premium-Feinschliff: dezente Rückmeldungen, ohne App-Logik zu verändern */
+.card{
+  box-shadow:0 10px 28px rgba(23,53,45,.08);
+  border-color:rgba(45,106,86,.12);
+  transition:box-shadow .18s ease,transform .18s ease;
+}
+@media(hover:hover){
+  .card:hover{box-shadow:0 14px 32px rgba(23,53,45,.13);transform:translateY(-2px)}
+  .chip:not(.active):hover{border-color:rgba(45,106,86,.35);background:#f8faf8}
+}
+.addbtn,.sync button,.secondary-action,.chip{
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.addbtn:focus-visible,.sync button:focus-visible,.secondary-action:focus-visible,
+.chip:focus-visible,.card button:focus-visible,.card a:focus-visible{
+  outline:3px solid rgba(198,154,59,.75);
+  outline-offset:2px;
+}
+@media(prefers-reduced-motion:reduce){
+  .card,.addbtn,.sync button,.secondary-action,.chip{transition:none}
+  .card:hover{transform:none}
+}
+
+
+/* Premium-Feinschliff 2: einheitliche, dezente Schaltflächen */
+.addbtn,.sync button,.secondary-action{
+  border-radius:15px;
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+@media(hover:hover){
+  .addbtn:hover,.sync button:hover{
+    box-shadow:0 8px 18px rgba(23,53,45,.16);
+    filter:brightness(1.04);
+    transform:translateY(-1px);
+  }
+  .secondary-action:hover{
+    background:#f6faf7!important;
+    border-color:rgba(45,106,86,.35)!important;
+  }
+}
+.addbtn:active,.sync button:active,.secondary-action:active{transform:translateY(0)}
+@media(prefers-reduced-motion:reduce){
+  .addbtn,.sync button,.secondary-action{transition:none}
+}
+
+
+/* Premium-Feinschliff 3: Karten auf schmalen Displays ausgewogener */
+@media(max-width:560px){
+  .icon{height:190px}
+  .cardmain{padding:13px 15px 10px}
+  .cardname{font-size:20px;line-height:1.24}
+  .grid{gap:14px}
+}
+@media(max-width:360px){
+  .icon{height:170px}
+  .cardmain{padding:12px 13px 9px}
+}
+
+/* Sichtbarer Designentwurf v2: klarere Startseite, nur CSS */
+:root{
+  --bg:#f7f8f5;
+  --card:#ffffff;
+  --ink:#183b31;
+  --muted:#687a72;
+  --accent:#24664f;
+  --accent2:#174b3a;
+  --line:#dfe8e1;
+  --gold:#c8a04b;
+  --shadow:0 8px 24px rgba(24,59,49,.07);
+}
+header{
+  background:linear-gradient(130deg,#123f32 0%,#24664f 58%,#47816a 100%);
+  box-shadow:0 10px 30px rgba(18,63,50,.16);
+}
+main#home{
+  max-width:1180px;
+  margin:0 auto;
+  padding-left:clamp(14px,3vw,30px);
+  padding-right:clamp(14px,3vw,30px);
+}
+.welcome-hero{
+  min-height:340px;
+  margin:18px 0 20px;
+  border-radius:26px;
+  background-image:linear-gradient(90deg,rgba(9,43,33,.78) 0%,rgba(9,43,33,.36) 52%,rgba(9,43,33,.06) 100%),var(--welcome-image,url('https://images.unsplash.com/photo-1657041111073-3eb4ba3b4a62?auto=format&fit=crop&w=1800&q=85'));
+  background-position:center 54%;
+  box-shadow:0 16px 38px rgba(17,57,44,.18);
+}
+.welcome-copy{padding:clamp(22px,4vw,38px);max-width:620px}
+.welcome-copy h2{
+  font-size:clamp(32px,5vw,48px);
+  line-height:1.05;
+  letter-spacing:-.035em;
+  margin-bottom:10px;
+}
+.welcome-copy p{font-size:clamp(16px,2vw,21px);line-height:1.45}
+.home-actions{
+  padding:16px;
+  border:1px solid #e3ebe4;
+  border-radius:22px;
+  background:linear-gradient(145deg,#fff,#f5f8f4);
+  box-shadow:0 8px 22px rgba(24,59,49,.055);
+  gap:12px;
+}
+.primary-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch}
+.primary-actions>.addbtn,.primary-actions>.sync{width:100%;min-width:0}
+.primary-actions .sync button{width:100%;min-width:0;white-space:normal;line-height:1.2;min-height:46px;padding:10px 8px;}
+.addbtn{
+  background:linear-gradient(135deg,#24664f,#174b3a)!important;
+  box-shadow:0 6px 15px rgba(36,102,79,.2);
+  font-weight:750;
+}
+.secondary-action{
+  background:#fff!important;
+  border-color:#d8e5da!important;
+  color:#245d49!important;
+}
+.sectionhead{
+  align-items:center;
+  margin-top:26px;
+  margin-bottom:12px;
+  padding:0 2px 10px;
+  border-bottom:1px solid #dfe8e1;
+}
+.sectionhead h2{
+  font-size:clamp(19px,2.5vw,24px);
+  letter-spacing:-.025em;
+}
+.count{
+  background:#e6f0e8;
+  color:#20583f;
+  border:1px solid #d2e4d6;
+  font-weight:750;
+}
+.filters{gap:8px;margin:12px 0 18px}
+.chip{
+  border:1px solid #dce6dd;
+  background:#fff;
+  color:#365a4c;
+  padding:9px 14px;
+  font-weight:650;
+}
+.chip.active{
+  background:#24664f!important;
+  color:#fff!important;
+  border-color:#24664f!important;
+  box-shadow:0 4px 12px rgba(36,102,79,.18);
+}
+.card{
+  border:1px solid #e4ebe4;
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:0 5px 18px rgba(24,59,49,.055);
+}
+.card .icon{background:#eaf0e9}
+@media(max-width:560px){
+  header{padding:16px 13px 13px;border-radius:0 0 22px 22px}
+  .welcome-hero{
+    min-height:280px;
+    margin:12px 0 14px;
+    border-radius:20px;
+    background-image:linear-gradient(0deg,rgba(9,43,33,.78) 0%,rgba(9,43,33,.10) 100%),var(--welcome-image,url('https://images.unsplash.com/photo-1657041111073-3eb4ba3b4a62?auto=format&fit=crop&w=1200&q=85'));
+    background-position:center;
+  }
+  .welcome-copy{padding:20px}
+  .welcome-copy h2{font-size:32px}
+  .home-actions{padding:12px;border-radius:18px}
+  .primary-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .primary-actions .addbtn{grid-column:auto;width:100%;min-width:0;white-space:normal;line-height:1.2;padding:9px 5px;font-size:12px}
+  .primary-actions .sync{min-width:0;width:100%}
+  .primary-actions .sync button{width:100%;min-width:0;min-height:48px;padding:8px 4px;font-size:11px;white-space:normal;line-height:1.2}
+  .secondary-actions .secondary-action{width:100%}
+  .sectionhead{margin-top:22px}
+  .filters{gap:7px}
+  .chip{padding:8px 11px;font-size:13px}
+}
+@media(max-width:360px){
+  .primary-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+  .primary-actions .addbtn,.primary-actions .sync button{font-size:10px;padding-left:3px;padding-right:3px}
+}
+
+
+/* Premium-Feinschliff 4: Filterchips auf dem Handy besser bedienbar */
+.filters{
+  flex-wrap:nowrap;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+  scroll-padding-inline:8px;
+}
+.chip{
+  flex:0 0 auto;
+  min-height:42px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  scroll-margin-inline:8px;
+  -webkit-tap-highlight-color:transparent;
+}
+.chip:active{transform:scale(.98)}
+.chip:focus-visible{
+  outline:3px solid rgba(198,154,59,.8);
+  outline-offset:2px;
+  position:relative;
+  z-index:1;
+}
+@media(prefers-reduced-motion:reduce){
+  .chip:active{transform:none}
+}
+
+
+/* Premium-Feinschliff 5: Restaurantkarten ruhiger und besser lesbar */
+.cardmain{
+  padding:15px 17px 12px;
+}
+.cardname{
+  line-height:1.27;
+  letter-spacing:-.015em;
+  text-wrap:pretty;
+}
+.place{
+  margin-top:6px;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+}
+.status{
+  margin-top:10px;
+  line-height:1.4;
+}
+.tile-hours{
+  gap:9px;
+  padding:12px 16px 14px;
+}
+.tile-hours-row{
+  line-height:1.5;
+}
+.cardbottom{
+  gap:9px;
+  padding:12px 16px 15px;
+}
+@media(max-width:560px){
+  .cardmain{padding:14px 15px 11px}
+  .tile-hours{padding:11px 15px 13px}
+  .cardbottom{padding:11px 14px 14px}
+}
+@media(max-width:360px){
+  .cardmain{padding:13px 13px 10px}
+  .tile-hours{padding:10px 13px 12px}
+  .cardbottom{padding:10px 12px 13px}
+}
+
+
+/* Premium-Feinschliff 6: Bildbereich und Favoritenknopf veredelt */
+.card .icon img{
+  object-position:center;
+}
+.card .fav{
+  border:1px solid rgba(255,255,255,.82);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  transition:background-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.card .fav:focus-visible{
+  outline:3px solid #c8a04b;
+  outline-offset:3px;
+}
+@media(hover:hover){
+  .card .fav:hover{
+    background:#fff;
+    box-shadow:0 5px 14px rgba(0,0,0,.2);
+    transform:scale(1.04);
+  }
+  .card .icon img{
+    transition:transform .28s ease;
+  }
+  .card:hover .icon img{
+    transform:scale(1.025);
+  }
+}
+@media(max-width:560px){
+  .card .fav{top:12px;right:12px;width:42px;height:42px}
+}
+@media(prefers-reduced-motion:reduce){
+  .card .fav,.card .icon img{transition:none}
+  .card:hover .icon img,.card .fav:hover{transform:none}
+}
+
+
+/* Premium-Feinschliff 7: Aktionsknöpfe in Restaurantkarten klarer */
+.cardbottom button{
+  min-height:42px;
+  border-color:#dce7df;
+  background:linear-gradient(180deg,#fff 0%,#f8fbf8 100%);
+  line-height:1.25;
+  overflow-wrap:anywhere;
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.cardbottom button:focus-visible,
+.tile-card-links a:focus-visible{
+  outline:3px solid rgba(200,160,75,.82);
+  outline-offset:2px;
+}
+.tile-card-links a{
+  border-color:#cbded2;
+  background:linear-gradient(135deg,#f7fbf7,#edf5ef);
+  line-height:1.35;
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+@media(hover:hover){
+  .cardbottom button:hover{
+    border-color:#b9d0c0;
+    background:#f1f7f2;
+    box-shadow:0 4px 10px rgba(23,53,45,.09);
+    transform:translateY(-1px);
+  }
+  .tile-card-links a:hover{
+    border-color:#a9c8b5;
+    background:#e8f3eb;
+    box-shadow:0 4px 10px rgba(23,53,45,.08);
+    transform:translateY(-1px);
+  }
+}
+@media(max-width:560px){
+  .cardbottom{gap:7px}
+  .cardbottom button{min-height:44px;padding:10px 5px;font-size:12px}
+  .tile-card-links{padding-left:15px;padding-right:15px}
+}
+@media(prefers-reduced-motion:reduce){
+  .cardbottom button,.tile-card-links a{transition:none}
+  .cardbottom button:hover,.tile-card-links a:hover{transform:none}
+}
+
+
+ 
+/* Premium-Feinschliff 8: Detailansicht ruhiger und übersichtlicher */
+#detail{
+  max-width:900px;
+  margin:0 auto;
+  padding:clamp(14px,3vw,28px);
+}
+#detail .back{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  min-height:42px;
+  padding:8px 12px 8px 0;
+  margin-bottom:8px;
+  border-radius:10px;
+}
+#detail .hero{
+  height:clamp(220px,38vw,360px);
+  margin-bottom:20px;
+  border:1px solid rgba(45,106,86,.12);
+  box-shadow:0 12px 30px rgba(24,59,49,.10);
+}
+#detail h1{
+  color:var(--ink);
+  font-size:clamp(26px,4vw,36px);
+  line-height:1.14;
+  letter-spacing:-.03em;
+  overflow-wrap:anywhere;
+}
+#detail .place{
+  color:var(--muted);
+  line-height:1.5;
+  overflow-wrap:anywhere;
+}
+#detail .actions{gap:10px;margin:18px 0 12px}
+#detail .action{
+  min-height:46px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #dce7df;
+  border-radius:14px;
+  color:var(--accent);
+  text-decoration:none;
+  line-height:1.3;
+  padding:12px 10px;
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+#detail .detailtools{gap:9px;margin-top:12px}
+#detail .detailtools button{
+  min-height:43px;
+  border-radius:13px;
+  font-weight:700;
+  color:var(--accent);
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+#detail .detailtools .danger{color:var(--danger)}
+#detail .info{
+  border:1px solid #e3ebe4;
+  border-radius:18px;
+  padding:4px 17px;
+  box-shadow:0 5px 18px rgba(24,59,49,.05);
+}
+#detail .info>div{line-height:1.55;overflow-wrap:anywhere}
+#detail .info>div:last-child{border-bottom:0}
+#detail .detail-menu-cards{
+  border-color:#e3ebe4;
+  border-radius:18px;
+  box-shadow:0 5px 18px rgba(24,59,49,.05);
+}
+#detail .detail-menu-buttons a{
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:13px;
+  line-height:1.35;
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+#detail .back:focus-visible,
+#detail .action:focus-visible,
+#detail .detailtools button:focus-visible,
+#detail .detail-menu-buttons a:focus-visible{
+  outline:3px solid rgba(200,160,75,.82);
+  outline-offset:3px;
+}
+@media(hover:hover){
+  #detail .action:hover{
+    background:#f5faf6;
+    border-color:#b9d0c0;
+    box-shadow:0 5px 13px rgba(23,53,45,.08);
+    transform:translateY(-1px);
+  }
+  #detail .detailtools button:hover,
+  #detail .detail-menu-buttons a:hover{
+    background:#edf6ef;
+    border-color:#b9d0c0;
+  }
+}
+@media(max-width:560px){
+  #detail{padding:12px 14px 24px}
+  #detail .hero{height:230px;border-radius:18px;margin-bottom:17px}
+  #detail .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  #detail .action{min-width:0;padding:11px 7px;font-size:13px}
+  #detail .detailtools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  #detail .detailtools button{min-width:0;padding:10px 7px}
+  #detail .info{padding:3px 14px}
+}
+@media(max-width:360px){
+  #detail .actions{grid-template-columns:1fr}
+  #detail .hero{height:200px}
+}
+@media(prefers-reduced-motion:reduce){
+  #detail .action,#detail .detailtools button,#detail .detail-menu-buttons a{transition:none}
+  #detail .action:hover{transform:none}
+}
 
 </style>
 </head>
@@ -4946,3 +5397,5 @@ loadWelcomeHeroText();
 
 </body>
 </html>
+
+<!-- Preview-Build-Trigger: rein technischer Kommentar, keine sichtbare App-Aenderung. -->
