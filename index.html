@@ -2245,6 +2245,14 @@ function normalizeRestaurant(r){
         r.ruhetag
       ),
 
+    // Betriebsferien aus der zentralen API übernehmen, damit sie
+    // beim Bearbeiten wieder im Formular stehen und auf Kacheln erscheinen.
+    betriebsferien_start:
+      cleanValue(r.betriebsferien_start),
+
+    betriebsferien_ende:
+      cleanValue(r.betriebsferien_ende),
+
     notizen:
       cleanValue(
         r.notizen
