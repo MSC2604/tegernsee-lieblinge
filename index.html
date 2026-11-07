@@ -3306,12 +3306,12 @@ async function loadOneTileCardLink(place){
       : "";
     const extraLabels = {dessertkarte:"Dessertkarte als PDF",brotzeitkarte:"Brotzeitkarte als PDF",saisonkarte:"Saisonkarte als PDF"};
     const extraPdfLinks = Object.keys(extraLabels).filter(kind => cards && cards[kind] && cards[kind].fileAvailable)
-      .map(kind => '<a href="' + API_URL + '?action=cardFile&restaurantId=' + encodeURIComponent(id) + '&kind=' + kind + '" target="_blank" rel="noopener noreferrer">📄 ' + extraLabels[kind] + ' öffnen</a>').join("");
+      .map(kind => '<a onclick="event.stopPropagation()" href="' + API_URL + '?action=cardFile&restaurantId=' + encodeURIComponent(id) + '&kind=' + kind + '" target="_blank" rel="noopener noreferrer">📄 ' + extraLabels[kind] + ' öffnen</a>').join("");
     current.innerHTML =
-      (menu ? '<a href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarten-Link</a>' : '') +
-      (menuPdf ? '<a href="' + escapeAttr(menuPdf) + '" target="_blank" rel="noopener noreferrer">📄 Speisekarte als PDF öffnen</a>' : '') +
-      (drink ? '<a href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarten-Link</a>' : '') +
-      (drinkPdf ? '<a href="' + escapeAttr(drinkPdf) + '" target="_blank" rel="noopener noreferrer">📄 Getränkekarte als PDF öffnen</a>' : '') +
+      (menu ? '<a onclick="event.stopPropagation()" href="' + escapeAttr(menu) + '" target="_blank" rel="noopener noreferrer">🍽️ Speisekarten-Link</a>' : '') +
+      (menuPdf ? '<a onclick="event.stopPropagation()" href="' + escapeAttr(menuPdf) + '" target="_blank" rel="noopener noreferrer">📄 Speisekarte als PDF öffnen</a>' : '') +
+      (drink ? '<a onclick="event.stopPropagation()" href="' + escapeAttr(drink) + '" target="_blank" rel="noopener noreferrer">🥤 Getränkekarten-Link</a>' : '') +
+      (drinkPdf ? '<a onclick="event.stopPropagation()" href="' + escapeAttr(drinkPdf) + '" target="_blank" rel="noopener noreferrer">📄 Getränkekarte als PDF öffnen</a>' : '') +
       extraPdfLinks;
     // Links und zentral gespeicherte PDFs werden gemeinsam angezeigt.
     current.style.display = current.innerHTML.trim() ? "flex" : "none";
@@ -3471,7 +3471,16 @@ function render(){
               ` : ""}
             </div>
 
-            <!-- Kontakt- und Kartenaktionen erst in der Detailansicht. -->
+            <div class="tile-card-links" id="tile-card-links-${escapeAttr(place.id)}" aria-label="Speise-, Getränke- und weitere Karten"></div>
+
+            ${place.reservierung ? `
+              <div class="cardbottom">
+                <button type="button" onclick="event.stopPropagation();reserveTable('${escapeAttr(place.reservierung)}')">
+                  🍽️ Tisch reservieren
+                </button>
+              </div>
+            ` : ""}
+
           </article>
 
         `;
@@ -3479,7 +3488,8 @@ function render(){
       }
     ).join("");
 
-  // Karten- und Kontaktaktionen werden erst in der Detailansicht angeboten.
+  // Offizielle Speise-, Getränke- und weitere Karten wieder direkt auf den Kacheln laden.
+  loadTileCardLinks(list);
 
 }
 
