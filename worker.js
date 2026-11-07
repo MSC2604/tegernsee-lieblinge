@@ -1255,6 +1255,7 @@ console.log("Tavily usage account:", {
         if (body.action === "uploadGalleryImage") {
           const restaurantId=String(body.restaurantId||"").trim();
           const filename=String(body.filename||"bild.webp").trim().slice(0,120);
+          const caption=String(body.caption||"").trim().slice(0,300);
           const base64=String(body.base64||"");
           if(!restaurantId||!base64) return json({error:"Restaurant oder Bild fehlt."},400);
           if(base64.length>1_450_000) return json({error:"Ein Galeriebild darf höchstens 1 MB groß sein."},413);
