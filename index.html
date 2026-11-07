@@ -1535,6 +1535,52 @@ main#home{max-width:1040px;padding:22px 18px 112px}
   #cards .card,#cards .icon img,.addbtn,.sync button,.secondary-action{transition:none}
 }
 
+
+/* Verfeinerter Premium-Kopf */
+#homeHeader{
+  background:linear-gradient(180deg,#fcfbf7 0%,#f6f3eb 100%);
+  padding:16px 20px 15px;
+  border-bottom:1px solid rgba(49,95,77,.14);
+  box-shadow:0 5px 18px rgba(36,75,60,.055);
+}
+#homeHeader .brandrow{
+  display:flex;align-items:center;max-width:1080px;margin:0 auto;gap:14px;
+}
+#homeHeader .app-logo{
+  width:52px;height:52px;flex:none;border-radius:15px;
+  background:#fffdf8;border:1px solid #e5e0d4;
+  box-shadow:0 2px 8px rgba(36,75,60,.08);
+}
+#homeHeader .brandcopy{min-width:0;flex:1}
+#homeHeader .brandcopy .title{
+  color:#244b3c;font-family:"Playfair Display",Georgia,serif;
+  font-size:clamp(22px,3.2vw,29px);font-weight:700;
+  letter-spacing:-.45px;line-height:1.12;text-wrap:balance;
+}
+#homeHeader .brandcopy .sub{
+  color:#78847b;font-size:13px;font-weight:500;
+  letter-spacing:.035em;line-height:1.3;margin-top:5px;
+}
+#homeHeader .search-toggle,#homeHeader .menu-mark{
+  width:42px;height:42px;min-width:42px;flex:none;
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid rgba(49,95,77,.10);border-radius:13px;
+  background:#eef1e9;color:#315f4d;
+  box-shadow:0 2px 7px rgba(36,75,60,.06);
+}
+#homeHeader .search-toggle{font-size:20px;padding:0}
+#homeHeader .menu-mark{font-size:23px;padding:0}
+@media(max-width:520px){
+  #homeHeader{padding:12px 11px 13px}
+  #homeHeader .brandrow{gap:8px}
+  #homeHeader .app-logo{width:43px;height:43px;border-radius:12px}
+  #homeHeader .brandcopy .title{font-size:24px;letter-spacing:-.4px}
+  #homeHeader .brandcopy .sub{font-size:14px;letter-spacing:.01em;margin-top:4px}
+  #homeHeader .search-toggle,#homeHeader .menu-mark{width:36px;height:36px;min-width:36px;border-radius:11px}
+  #homeHeader .search-toggle{font-size:18px}
+  #homeHeader .menu-mark{font-size:21px}
+}
+
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
