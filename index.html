@@ -1869,6 +1869,9 @@ main#home{max-width:1040px;padding:22px 18px 112px}
 .restaurant-gallery-image-button img{display:block;width:100%;height:clamp(260px,72vw,540px);object-fit:contain;border-radius:12px;background:#f4f2ec}
 .restaurant-gallery-caption{text-align:center;white-space:pre-wrap;margin:10px 4px 0;color:#34483d;font-weight:600}
 .restaurant-gallery-counter{text-align:center;margin-top:6px;color:#718078;font-size:12px}
+.card .icon{position:relative}
+.card .icon .card-gallery-indicator{position:absolute;right:8px;bottom:8px;width:42px;height:42px;border:2px solid rgba(255,255,255,.95);border-radius:12px;background:rgba(28,65,52,.94);color:#fff;display:flex;align-items:center;justify-content:center;font-size:27px;line-height:1;box-shadow:0 2px 10px rgba(0,0,0,.28);z-index:2;cursor:pointer}
+.card .icon .card-gallery-indicator:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .restaurant-gallery-lightbox[hidden]{display:none}
 .restaurant-gallery-lightbox{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;gap:12px;padding:56px 12px 62px;box-sizing:border-box}
 .restaurant-gallery-lightbox img{max-width:calc(100% - 104px);max-height:100%;object-fit:contain}
@@ -3950,7 +3953,7 @@ function render(){
 
             <div class="cardtop">
 
-              <div class="icon">
+              <div class="icon" data-gallery-restaurant-id="${escapeAttr(place.id)}">
                 ${imageHtml(place)}
               </div>
 
@@ -4038,6 +4041,7 @@ function render(){
 
   // Offizielle Speise-, Getränke- und weitere Karten wieder direkt auf den Kacheln laden.
   loadTileCardLinks(list);
+  loadRestaurantGalleryIndicators();
 
 }
 
@@ -6148,6 +6152,13 @@ function openRestaurantGalleryLightbox(){
 function closeRestaurantGalleryLightbox(){const box=document.getElementById("restaurantGalleryLightbox");if(box)box.hidden=true;}
 (function bindRestaurantGalleryViewer(){
   const bind=(id,fn)=>{const el=document.getElementById(id);if(el)el.addEventListener("click",fn);};
+  const cards=document.getElementById("cards");
+  if(cards)cards.addEventListener("click",event=>{
+    const button=event.target.closest(".card-gallery-indicator");
+    if(!button)return;
+    event.preventDefault();event.stopPropagation();
+    openTileRestaurantGallery(button.dataset.restaurantId);
+  });
   bind("restaurantGalleryPrev",()=>moveRestaurantPhotoGallery(-1));
   bind("restaurantGalleryNext",()=>moveRestaurantPhotoGallery(1));
   bind("restaurantGalleryLightPrev",()=>moveRestaurantPhotoGallery(-1));
@@ -6164,6 +6175,38 @@ function closeRestaurantGalleryLightbox(){const box=document.getElementById("res
     if(event.key==="ArrowRight")moveRestaurantPhotoGallery(1);
   });
 })();
+const restaurantGalleryCounts=new Map();
+async function loadRestaurantGalleryIndicators(){
+  const cards=document.getElementById("cards");if(!cards)return;
+  try{
+    const response=await fetch(galleryApiUrl({action:"galleryCounts"}));
+    if(!response.ok)throw new Error("Galerie-Hinweise konnten nicht geladen werden.");
+    const rows=await response.json();
+    restaurantGalleryCounts.clear();
+    if(Array.isArray(rows))rows.forEach(item=>{if(item?.restaurantId&&Number(item.count)>0)restaurantGalleryCounts.set(String(item.restaurantId),Number(item.count));});
+    cards.querySelectorAll("[data-gallery-restaurant-id]").forEach(photo=>{
+      const id=photo.dataset.galleryRestaurantId;
+      if(!restaurantGalleryCounts.has(id)||photo.querySelector(".card-gallery-indicator"))return;
+      const button=document.createElement("button");
+      button.type="button";button.className="card-gallery-indicator";
+      button.setAttribute("aria-label","Bildergalerie öffnen");button.title="Bildergalerie öffnen";button.dataset.restaurantId=id;
+      button.innerHTML='<svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="2"></rect><path d="M7 7V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-2"></path><circle cx="8" cy="12" r="1.5"></circle><path d="m5 18 4-4 3 3 2-2 3 3"></path></svg>';
+      photo.appendChild(button);
+    });
+  }catch(error){console.warn("Galerie-Symbole konnten nicht geladen werden",error);}
+}
+async function openTileRestaurantGallery(restaurantId){
+  try{
+    const response=await fetch(galleryApiUrl({action:"gallery",restaurantId}));
+    if(!response.ok)throw new Error("Bildergalerie konnte nicht geladen werden.");
+    const images=await response.json();
+    if(!Array.isArray(images)||!images.length)return;
+    restaurantPhotoGalleryItems=images;restaurantPhotoGalleryIndex=0;
+    const box=document.getElementById("restaurantGalleryLightbox");if(!box)return;
+    if(box.parentElement!==document.body)document.body.appendChild(box);
+    showRestaurantPhotoGalleryImage();box.hidden=false;
+  }catch(error){console.warn("Restaurantgalerie konnte nicht geöffnet werden",error);}
+}
 async function loadRestaurantPhotoGallery(restaurantId){
   const section=document.getElementById("restaurantPhotoGallery");
   if(!section)return;
