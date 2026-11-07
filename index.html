@@ -1766,7 +1766,7 @@ main#home{
 
       <div class="card-edit-box">
         <strong>🏖 Betriebsferien</strong>
-        <small>Nur eintragen, wenn ein zusammenhängender Zeitraum feststeht. Die Zeile erscheint dann auf der Restaurant-Kachel.</small>
+        <small>Zeitraum eintragen. Die Zeile erscheint auf der Kachel ab dem Startdatum bis einschließlich Enddatum und verschwindet danach automatisch. Zum vorzeitigen Löschen beide Datumsfelder leeren und speichern.</small>
         <label for="f_betriebsferien_start">Von</label>
         <input id="f_betriebsferien_start" type="date">
         <label for="f_betriebsferien_ende">Bis</label>
@@ -2549,6 +2549,20 @@ function formatTileRestDay(value){
 function formatBetriebsferienDate(value){
   const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return match ? `${match[3]}.${match[2]}.${match[1]}` : "";
+}
+
+// Betriebsferien bleiben bis einschließlich des Enddatums sichtbar.
+// Ab dem folgenden Kalendertag blendet die Kachel die Zeile automatisch aus.
+function isBetriebsferienActive(start, end){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(start || "")) ||
+     !/^\d{4}-\d{2}-\d{2}$/.test(String(end || ""))) return false;
+  const now = new Date();
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0")
+  ].join("-");
+  return start <= today && today <= end;
 }
 
 
@@ -3395,7 +3409,7 @@ function render(){
                 <span class="tile-hours-icon" aria-hidden="true">▦</span>
                 <div class="tile-hours-text">${formatTileRestDay(place.ruhetag)}</div>
               </div>
-              ${place.betriebsferien_start && place.betriebsferien_ende ? `
+              ${isBetriebsferienActive(place.betriebsferien_start, place.betriebsferien_ende) ? `
                 <div class="tile-hours-row tile-hours-holiday">
                   <span class="tile-hours-icon" aria-hidden="true">🏖</span>
                   <div class="tile-hours-text">Betriebsferien: ${escapeHtml(formatBetriebsferienDate(place.betriebsferien_start))} – ${escapeHtml(formatBetriebsferienDate(place.betriebsferien_ende))}</div>
