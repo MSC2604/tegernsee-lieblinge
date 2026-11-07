@@ -3398,7 +3398,7 @@ function render(){
 
         return `
 
-          <div class="card" role="button" tabindex="0" aria-label="Details zu ${escapeAttr(place.name)} öffnen" onclick="openDetail('${escapeAttr(place.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDetail('${escapeAttr(place.id)}')}">
+          <article class="card" tabindex="0" aria-label="Details zu ${escapeAttr(place.name)} öffnen" onclick="openDetail('${escapeAttr(place.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDetail('${escapeAttr(place.id)}')}">
 
             <div class="cardtop">
 
@@ -3441,7 +3441,7 @@ function render(){
 
               <button
                 class="fav"
-                onclick="event.stopPropagation();toggleFavorite('${escapeAttr(place.id)}')" aria-label="${fav ? "Aus Favoriten entfernen" : "Zu Favoriten hinzufügen"}"
+                onclick="event.stopPropagation();toggleFavorite('${escapeAttr(place.id)}')" onkeydown="event.stopPropagation()" aria-label="${fav ? "Aus Favoriten entfernen" : "Zu Favoriten hinzufügen"}"
               >
                 ${
                   fav
@@ -3472,7 +3472,7 @@ function render(){
             </div>
 
             <!-- Kontakt- und Kartenaktionen erst in der Detailansicht. -->
-          </div>
+          </article>
 
         `;
 
