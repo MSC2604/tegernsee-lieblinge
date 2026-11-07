@@ -6159,7 +6159,7 @@ function closeRestaurantGalleryLightbox(){const box=document.getElementById("res
     if(!restaurantGalleryCounts.has(restaurantId))return;
     event.preventDefault();event.stopPropagation();
     openTileRestaurantGallery(restaurantId);
-  });
+  },true);
   bind("restaurantGalleryPrev",()=>moveRestaurantPhotoGallery(-1));
   bind("restaurantGalleryNext",()=>moveRestaurantPhotoGallery(1));
   bind("restaurantGalleryLightPrev",()=>moveRestaurantPhotoGallery(-1));
