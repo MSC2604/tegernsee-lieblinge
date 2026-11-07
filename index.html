@@ -760,6 +760,12 @@ a{
   }
 }
 
+/* Restaurantübersicht: auf allen Bildschirmgrößen eine gut lesbare Spalte */
+#cards.grid{grid-template-columns:minmax(0,1fr)}
+#cards .card{cursor:pointer}
+#cards .card:focus-visible{outline:3px solid rgba(200,160,75,.82);outline-offset:3px}
+
+
 
 /* Tavily-Credit-Anzeige */
 .tavily-usage{
@@ -1506,9 +1512,19 @@ main#home{
 
     <div
       class="action"
+      id="phoneAction"
       onclick="callPlace()"
     >
       ☎️ Anrufen
+    </div>
+
+    <div
+      class="action"
+      id="websiteAction"
+      onclick="openWebsite(currentPlace.website)"
+      style="display:none"
+    >
+      🌐 Webseite
     </div>
 
     <div
@@ -3382,7 +3398,7 @@ function render(){
 
         return `
 
-          <div class="card">
+          <div class="card" role="button" tabindex="0" aria-label="Details zu ${escapeAttr(place.name)} öffnen" onclick="openDetail('${escapeAttr(place.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openDetail('${escapeAttr(place.id)}')}">
 
             <div class="cardtop">
 
@@ -3425,7 +3441,7 @@ function render(){
 
               <button
                 class="fav"
-                onclick="toggleFavorite('${escapeAttr(place.id)}')"
+                onclick="event.stopPropagation();toggleFavorite('${escapeAttr(place.id)}')" aria-label="${fav ? "Aus Favoriten entfernen" : "Zu Favoriten hinzufügen"}"
               >
                 ${
                   fav
@@ -3455,66 +3471,7 @@ function render(){
               ` : ""}
             </div>
 
-            <div class="tile-card-links" id="tile-card-links-${escapeAttr(place.id)}" aria-label="Offizielle Karten"></div>
-
-            <div class="cardbottom">
-
-              <button
-                onclick="openDetail('${escapeAttr(place.id)}')"
-              >
-                Details
-              </button>
-
-
-              <button
-                onclick="routeTo('${escapeAttr(place.id)}')"
-              >
-                📍 Route
-              </button>
-
-
-              ${
-                place.telefon
-
-                ? `
-                  <button
-                    onclick="callPhone('${escapeAttr(place.telefon)}')"
-                  >
-                    ☎️ Anrufen
-                  </button>
-                `
-
-                : ""
-              }
-
-
-              ${
-                place.website
-                  ? `
-                    <button onclick="openWebsite('${escapeAttr(place.website)}')">
-                      🌐 Website
-                    </button>
-                  `
-                  : ""
-              }
-
-
-              ${
-                place.reservierung
-
-                ? `
-                  <button
-                    onclick="reserveTable('${escapeAttr(place.reservierung)}')"
-                  >
-                    🍽️ Tisch reservieren
-                  </button>
-                `
-
-                : ""
-              }
-
-            </div>
-
+            <!-- Kontakt- und Kartenaktionen erst in der Detailansicht. -->
           </div>
 
         `;
@@ -3522,7 +3479,7 @@ function render(){
       }
     ).join("");
 
-  loadTileCardLinks(list);
+  // Karten- und Kontaktaktionen werden erst in der Detailansicht angeboten.
 
 }
 
@@ -3707,6 +3664,12 @@ function openDetail(
 
   }
 
+
+  const phoneAction = document.getElementById("phoneAction");
+  if(phoneAction) phoneAction.style.display = currentPlace.telefon ? "block" : "none";
+
+  const websiteAction = document.getElementById("websiteAction");
+  if(websiteAction) websiteAction.style.display = currentPlace.website ? "block" : "none";
 
   const reservationAction =
     document.getElementById(
