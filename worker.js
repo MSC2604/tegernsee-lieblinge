@@ -974,10 +974,18 @@ console.log("Tavily usage account:", {
       const existingColumns = (restaurantColumns?.results?.[0]?.response?.result?.rows || [])
         .map(row => String(rowValue(row[1]) || ""));
       if (!existingColumns.includes("betriebsferien_start")) {
-        await turso("ALTER TABLE restaurants ADD COLUMN betriebsferien_start TEXT NOT NULL DEFAULT ''");
+        try {
+          await turso("ALTER TABLE restaurants ADD COLUMN betriebsferien_start TEXT NOT NULL DEFAULT ''");
+        } catch (error) {
+          if (!/duplicate column name/i.test(String(error?.message || error))) throw error;
+        }
       }
       if (!existingColumns.includes("betriebsferien_ende")) {
-        await turso("ALTER TABLE restaurants ADD COLUMN betriebsferien_ende TEXT NOT NULL DEFAULT ''");
+        try {
+          await turso("ALTER TABLE restaurants ADD COLUMN betriebsferien_ende TEXT NOT NULL DEFAULT ''");
+        } catch (error) {
+          if (!/duplicate column name/i.test(String(error?.message || error))) throw error;
+        }
       }
 
       if (request.method === "GET") {
