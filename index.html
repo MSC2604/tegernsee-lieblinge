@@ -6110,27 +6110,52 @@ function galleryApiUrl(params){
 async function loadRestaurantPhotoGallery(restaurantId){
   const section=document.getElementById("restaurantPhotoGallery"),target=document.getElementById("restaurantPhotoGalleryItems");
   if(!section||!target)return;
-  section.hidden=true;target.innerHTML="";
+  section.hidden=true;target.replaceChildren();
   try{
     const response=await fetch(galleryApiUrl({action:"gallery",restaurantId}));
     if(!response.ok)return;
     const images=await response.json();
     if(!Array.isArray(images)||!images.length)return;
-    target.innerHTML=images.map((item,index)=>'<div class="restaurant-gallery-thumb"><img loading="lazy" src="'+escapeAttr(new URL(item.url,API_URL).toString())+'" alt="Weitere Ansicht von '+escapeAttr(currentPlace?.name||"Restaurant")+' '+(index+1)+'"></div>').join("");
+    images.forEach((item,index)=>{
+      const card=document.createElement("div");card.className="restaurant-gallery-thumb";
+      const img=document.createElement("img");img.loading="lazy";img.src=new URL(item.url,API_URL).toString();img.alt="Weitere Ansicht von "+(currentPlace?.name||"Restaurant")+" "+(index+1);card.appendChild(img);
+      if(item.caption){const caption=document.createElement("div");caption.className="restaurant-gallery-caption";caption.textContent=item.caption;card.appendChild(caption);}
+      target.appendChild(card);
+    });
     section.hidden=false;
   }catch(error){console.warn("Restaurantgalerie konnte nicht geladen werden",error);}
 }
 async function loadRestaurantGallery(restaurantId){
   const target=document.getElementById("restaurantGalleryExisting"),status=document.getElementById("restaurantGalleryStatus");
   if(!target)return;
-  target.innerHTML="";if(status)status.textContent="Gespeicherte Bilder werden geladen …";
+  target.replaceChildren();if(status)status.textContent="Gespeicherte Bilder werden geladen …";
   try{
     const response=await fetch(galleryApiUrl({action:"gallery",restaurantId}));
     if(!response.ok)throw new Error("Galerie konnte nicht geladen werden.");
     const images=await response.json();
-    target.innerHTML=images.map((item,index)=>'<div class="restaurant-gallery-thumb"><img loading="lazy" src="'+escapeAttr(new URL(item.url,API_URL).toString())+'" alt="Galeriebild '+(index+1)+'"><button type="button" onclick="deleteRestaurantGalleryImage('+Number(item.id)+')">Bild entfernen</button></div>').join("");
+    images.forEach((item,index)=>{
+      const card=document.createElement("div");card.className="restaurant-gallery-thumb";
+      const img=document.createElement("img");img.loading="lazy";img.src=new URL(item.url,API_URL).toString();img.alt="Galeriebild "+(index+1);card.appendChild(img);
+      const label=document.createElement("label");label.textContent="Bildbeschriftung";
+      const input=document.createElement("textarea");input.maxLength=300;input.rows=2;input.placeholder="Text unter diesem Bild …";input.value=item.caption||"";input.style.cssText="width:100%;box-sizing:border-box;margin:6px 0;padding:8px;border:1px solid #c9d2cc;border-radius:8px;font:inherit";
+      const save=document.createElement("button");save.type="button";save.textContent="Beschriftung speichern";save.onclick=()=>saveRestaurantGalleryCaption(item.id,input.value,save);
+      const remove=document.createElement("button");remove.type="button";remove.textContent="Bild entfernen";remove.onclick=()=>deleteRestaurantGalleryImage(Number(item.id));
+      card.append(label,input,save,remove);target.appendChild(card);
+    });
     if(status)status.textContent=images.length+" von 20 Bildern gespeichert.";
   }catch(error){if(status)status.textContent=error.message||"Galerie konnte nicht geladen werden.";}
+}
+async function saveRestaurantGalleryCaption(imageId,caption,button){
+  if(!editId)return;
+  const password=await askAdminPassword("Bitte Admin-Passwort zum Speichern der Bildbeschriftung eingeben.");if(password===null||!password)return;
+  button.disabled=true;button.textContent="Speichert …";
+  try{
+    const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"updateGalleryCaption",restaurantId:editId,imageId,caption})});
+    const result=await response.json();if(!response.ok||!result.success||!result.verified)throw new Error(result.error||"Beschriftung konnte nicht gespeichert werden.");
+    button.textContent="Gespeichert";
+    if(currentPlace)loadRestaurantPhotoGallery(currentPlace.id);
+  }catch(error){button.textContent="Erneut speichern";alert(error.message||"Speichern fehlgeschlagen.");}
+  finally{button.disabled=false;}
 }
 function previewRestaurantGalleryFiles(input){
   const files=Array.from(input.files||[]);if(!files.length)return;
@@ -6152,8 +6177,9 @@ function previewRestaurantGalleryFiles(input){
         while(dataUrl.length>1_350_000&&quality>.42){quality-=.08;dataUrl=canvas.toDataURL("image/webp",quality);}
         const base64=dataUrl.split(",")[1]||"";
         if(!dataUrl.startsWith("data:image/webp")||base64.length>1_400_000){completed++;if(status)status.textContent="Ein Bild ist zu groß und wurde übersprungen.";return;}
-        pendingRestaurantGalleryFiles.push({filename:(file.name||"restaurantbild").replace(/[^a-z0-9._-]/gi,"_").slice(0,90)+".webp",base64,dataUrl});
-        const card=document.createElement("div");card.className="restaurant-gallery-thumb";const img=document.createElement("img");img.src=dataUrl;img.alt="Bildvorschau "+(index+1);card.appendChild(img);target.appendChild(card);
+        const pending={filename:(file.name||"restaurantbild").replace(/[^a-z0-9._-]/gi,"_").slice(0,90)+".webp",base64,dataUrl,caption:""};pendingRestaurantGalleryFiles.push(pending);
+        const card=document.createElement("div");card.className="restaurant-gallery-thumb";const img=document.createElement("img");img.src=dataUrl;img.alt="Bildvorschau "+(index+1);card.appendChild(img);
+        const label=document.createElement("label");label.textContent="Bildbeschriftung";const caption=document.createElement("textarea");caption.maxLength=300;caption.rows=2;caption.placeholder="Text unter diesem Bild …";caption.style.cssText="width:100%;box-sizing:border-box;margin:6px 0;padding:8px;border:1px solid #c9d2cc;border-radius:8px;font:inherit";caption.oninput=()=>pending.caption=caption.value;card.append(label,caption);target.appendChild(card);
         completed++;
         if(completed===files.length){document.getElementById("uploadRestaurantGalleryButton").style.display=pendingRestaurantGalleryFiles.length?"block":"none";if(status)status.textContent=pendingRestaurantGalleryFiles.length+" Bild(er) vorbereitet. Bitte Vorschau prüfen und speichern.";}
       };
@@ -6171,7 +6197,7 @@ async function uploadRestaurantGalleryFiles(){
   button.disabled=true;status.textContent="Bilder werden zentral gespeichert …";
   try{
     for(const file of pendingRestaurantGalleryFiles){
-      const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"uploadGalleryImage",restaurantId:editId,filename:file.filename,base64:file.base64})});
+      const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"uploadGalleryImage",restaurantId:editId,filename:file.filename,base64:file.base64,caption:file.caption})});
       const result=await response.json();if(!response.ok||!result.success||!result.verified)throw new Error(result.error||"Ein Bild wurde nicht bestätigt.");
     }
     pendingRestaurantGalleryFiles=[];document.getElementById("restaurantGalleryPending").innerHTML="";button.style.display="none";
