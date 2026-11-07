@@ -1830,32 +1830,30 @@ main#home{max-width:1040px;padding:22px 18px 112px}
 }
 
 
-/* Restaurantbilder vollständig zeigen – keine abgeschnittenen Motive */
+/* Einheitliche Bildflächen – ganze Fotos ohne Beschnitt */
 #cards .card .icon{
-  display:block;
+  display:grid;
+  place-items:center;
   width:100%;
-  height:auto;
+  height:270px;
   aspect-ratio:auto;
   max-height:none;
   overflow:hidden;
-  background:#f0eee7;
+  background:#e9e8df;
 }
 #cards .card .icon img{
   display:block;
   width:100%;
-  height:auto;
-  max-height:420px;
+  height:100%;
+  max-height:none;
   object-fit:contain;
   object-position:center;
   transform:none;
+  transition:none;
 }
 @media(max-width:520px){
-  #cards .card .icon img{max-height:360px}
+  #cards .card .icon{height:250px}
 }
-@media(hover:hover) and (prefers-reduced-motion:no-preference){
-  #cards .card:hover .icon img{transform:none}
-}
-
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
