@@ -1341,6 +1341,16 @@ main#home{
   object-position:center;
 }
 
+
+/* Kompakte, aufklappbare Ortsauswahl im Premium-Stil */
+.location-picker-wrap{margin:8px 0 20px;padding:14px 16px;background:#fff;border:1px solid rgba(45,106,86,.12);border-radius:17px;box-shadow:0 5px 18px rgba(23,53,45,.055)}
+.location-picker-label{display:block;margin:0 0 7px;color:#718276;font-size:10px;font-weight:800;letter-spacing:.09em}
+.location-picker-shell{position:relative;display:flex;align-items:center;gap:10px;min-height:28px}
+.location-picker-icon{color:var(--accent);font-size:21px;line-height:1}
+.location-picker{appearance:none;-webkit-appearance:none;width:100%;min-width:0;border:0;outline:0;background:transparent;color:var(--ink);font-size:17px;font-weight:750;padding:3px 28px 3px 0;cursor:pointer}
+.location-picker-chevron{position:absolute;right:2px;top:50%;transform:translateY(-58%);pointer-events:none;color:var(--accent);font-size:22px}
+.location-picker:focus-visible{outline:2px solid rgba(45,106,86,.55);outline-offset:4px;border-radius:5px}
+
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1433,26 +1443,25 @@ main#home{
   </div>
 
   <div class="sectionhead" id="discoverSectionHead">
-    <h2>Restaurants entdecken</h2>
+    <h2>Unsere Restaurants</h2>
     <span class="count" id="restaurantCount">0</span>
   </div>
 
-  <div class="filters">
-
-    <button
-      class="chip active"
-      data-filter="Alle"
-    >
-      Alle
-    </button>
-
-    <button class="chip" data-filter="Tegernsee">Tegernsee</button>
-    <button class="chip" data-filter="Gmund">Gmund</button>
-    <button class="chip" data-filter="Rottach-Egern">Rottach-Egern</button>
-    <button class="chip" data-filter="Kreuth">Kreuth</button>
-    <button class="chip" data-filter="Bad Wiessee">Bad Wiessee</button>
-    <button class="chip" data-filter="Schliersee">Schliersee</button>
-
+  <div class="location-picker-wrap">
+    <label class="location-picker-label" for="locationPicker">RESTAURANTS ANZEIGEN IN</label>
+    <div class="location-picker-shell">
+      <span class="location-picker-icon" aria-hidden="true">⌖</span>
+      <select id="locationPicker" class="location-picker" aria-label="Ort auswählen">
+        <option value="Alle">Alle Orte</option>
+        <option value="Tegernsee">Tegernsee</option>
+        <option value="Rottach-Egern">Rottach-Egern</option>
+        <option value="Kreuth">Kreuth</option>
+        <option value="Gmund">Gmund</option>
+        <option value="Bad Wiessee">Bad Wiessee</option>
+        <option value="Schliersee">Schliersee</option>
+      </select>
+      <span class="location-picker-chevron" aria-hidden="true">⌄</span>
+    </div>
   </div>
 
   <div
@@ -5319,43 +5328,13 @@ document.getElementById(
    FILTER
 -------------------------------------------------- */
 
-document.querySelectorAll(
-  ".chip"
-).forEach(
-  button => {
-
-    button.addEventListener(
-      "click",
-      () => {
-
-        document
-          .querySelectorAll(
-            ".chip"
-          )
-          .forEach(
-            b =>
-              b.classList.remove(
-                "active"
-              )
-          );
-
-
-        button.classList.add(
-          "active"
-        );
-
-
-        currentFilter =
-          button.dataset.filter;
-
-
-        render();
-
-      }
-    );
-
-  }
-);
+const locationPicker = document.getElementById("locationPicker");
+if(locationPicker){
+  locationPicker.addEventListener("change", () => {
+    currentFilter = locationPicker.value || "Alle";
+    render();
+  });
+}
 
 
 /* --------------------------------------------------
