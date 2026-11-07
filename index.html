@@ -2551,11 +2551,25 @@ function formatBetriebsferienDate(value){
   return match ? `${match[3]}.${match[2]}.${match[1]}` : "";
 }
 
-// Betriebsferien bleiben bis einschließlich des Enddatums sichtbar.
-// Ab dem folgenden Kalendertag blendet die Kachel die Zeile automatisch aus.
-function isBetriebsferienActive(start, end){
+// Die Betriebsferien-Zeile erscheint sofort nach Eingabe eines gültigen
+// Zeitraums und bleibt bis einschließlich Enddatum sichtbar.
+function shouldShowBetriebsferien(start, end){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(String(start || "")) ||
-     !/^\d{4}-\d{2}-\d{2}$/.test(String(end || ""))) return false;
+     !/^\d{4}-\d{2}-\d{2}$/.test(String(end || "")) ||
+     start > end) return false;
+  const now = new Date();
+  const today = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0")
+  ].join("-");
+  return today <= end;
+}
+
+// Der Status „Aktuell geschlossen · Betriebsferien“ gilt ausschließlich
+// innerhalb des eingetragenen Zeitraums (Start- und Enddatum inklusive).
+function isBetriebsferienActive(start, end){
+  if(!shouldShowBetriebsferien(start, end)) return false;
   const now = new Date();
   const today = [
     now.getFullYear(),
@@ -3418,7 +3432,7 @@ function render(){
                 <span class="tile-hours-icon" aria-hidden="true">▦</span>
                 <div class="tile-hours-text">${formatTileRestDay(place.ruhetag)}</div>
               </div>
-              ${isBetriebsferienActive(place.betriebsferien_start, place.betriebsferien_ende) ? `
+              ${shouldShowBetriebsferien(place.betriebsferien_start, place.betriebsferien_ende) ? `
                 <div class="tile-hours-row tile-hours-holiday">
                   <span class="tile-hours-icon" aria-hidden="true">🏖</span>
                   <div class="tile-hours-text">Betriebsferien: ${escapeHtml(formatBetriebsferienDate(place.betriebsferien_start))} – ${escapeHtml(formatBetriebsferienDate(place.betriebsferien_ende))}</div>
