@@ -968,6 +968,18 @@ console.log("Tavily usage account:", {
         updated_at TEXT NOT NULL DEFAULT ''
       )`);
 
+      // Bestehende Restaurantdaten bleiben unverändert; fehlende Spalten werden
+      // beim ersten API-Aufruf rückwärtskompatibel ergänzt.
+      const restaurantColumns = await turso("PRAGMA table_info(restaurants)", [], true);
+      const existingColumns = (restaurantColumns?.results?.[0]?.response?.result?.rows || [])
+        .map(row => String(rowValue(row[1]) || ""));
+      if (!existingColumns.includes("betriebsferien_start")) {
+        await turso("ALTER TABLE restaurants ADD COLUMN betriebsferien_start TEXT NOT NULL DEFAULT ''");
+      }
+      if (!existingColumns.includes("betriebsferien_ende")) {
+        await turso("ALTER TABLE restaurants ADD COLUMN betriebsferien_ende TEXT NOT NULL DEFAULT ''");
+      }
+
       if (request.method === "GET") {
         const url = new URL(request.url);
         const action = url.searchParams.get("action");
@@ -1100,7 +1112,7 @@ console.log("Tavily usage account:", {
         const result = await turso(
           `SELECT
             id, name, ort, kategorie, adresse, telefon, website,
-            email, oeffnungszeiten, ruhetag, notizen, bild, reservierung
+            email, oeffnungszeiten, ruhetag, betriebsferien_start, betriebsferien_ende, notizen, bild, reservierung
           FROM restaurants
           ORDER BY name COLLATE NOCASE`,
           [],
@@ -1120,9 +1132,11 @@ console.log("Tavily usage account:", {
           email: rowValue(row[7]),
           oeffnungszeiten: rowValue(row[8]),
           ruhetag: rowValue(row[9]),
-          notizen: rowValue(row[10]),
-          bild: rowValue(row[11]),
-          reservierung: rowValue(row[12])
+          betriebsferien_start: rowValue(row[10]),
+          betriebsferien_ende: rowValue(row[11]),
+          notizen: rowValue(row[12]),
+          bild: rowValue(row[13]),
+          reservierung: rowValue(row[14])
         })));
       }
 
@@ -1280,14 +1294,14 @@ console.log("Tavily usage account:", {
           const result = await turso(
             `INSERT INTO restaurants (
               name, ort, kategorie, adresse, telefon, website, email,
-              oeffnungszeiten, ruhetag, notizen, bild, reservierung
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              oeffnungszeiten, ruhetag, betriebsferien_start, betriebsferien_ende, notizen, bild, reservierung
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               textArg(r.name), textArg(r.ort), textArg(r.kategorie),
               textArg(r.adresse), textArg(r.telefon), textArg(r.website),
               textArg(r.email), textArg(r.oeffnungszeiten),
-              textArg(r.ruhetag), textArg(r.notizen), textArg(r.bild),
-              textArg(r.reservierung)
+              textArg(r.ruhetag), textArg(r.betriebsferien_start), textArg(r.betriebsferien_ende),
+              textArg(r.notizen), textArg(r.bild), textArg(r.reservierung)
             ]
           );
 
@@ -1308,14 +1322,15 @@ console.log("Tavily usage account:", {
             `UPDATE restaurants SET
               name = ?, ort = ?, kategorie = ?, adresse = ?,
               telefon = ?, website = ?, email = ?, oeffnungszeiten = ?,
-              ruhetag = ?, notizen = ?, bild = ?, reservierung = ?
+              ruhetag = ?, betriebsferien_start = ?, betriebsferien_ende = ?,
+              notizen = ?, bild = ?, reservierung = ?
             WHERE id = ?`,
             [
               textArg(r.name), textArg(r.ort), textArg(r.kategorie),
               textArg(r.adresse), textArg(r.telefon), textArg(r.website),
               textArg(r.email), textArg(r.oeffnungszeiten),
-              textArg(r.ruhetag), textArg(r.notizen), textArg(r.bild),
-              textArg(r.reservierung), integerArg(body.id)
+              textArg(r.ruhetag), textArg(r.betriebsferien_start), textArg(r.betriebsferien_ende),
+              textArg(r.notizen), textArg(r.bild), textArg(r.reservierung), integerArg(body.id)
             ]
           );
 
