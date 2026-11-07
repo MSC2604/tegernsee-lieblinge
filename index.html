@@ -1713,6 +1713,59 @@ main#home{max-width:1040px;padding:22px 18px 112px}
   #cards .tile-card-links{padding:0 16px 11px}
 }
 
+
+/* Restaurant-Kacheln – Feine Statusdetails */
+#cards .status{
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  max-width:100%;
+  padding:5px 10px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.2;
+  letter-spacing:.015em;
+  background:#f2eee7;
+}
+#cards .status.open{
+  color:#28694d;
+  background:#eaf3ec;
+}
+#cards .status.closed{
+  color:#a84943;
+  background:#f8ece9;
+}
+#cards .status.unknown{
+  color:#6f786f;
+  background:#f0f0eb;
+}
+#cards .tile-hours{
+  border-top:1px solid #e9e5db;
+}
+#cards .tile-hours-heading{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+#cards .tile-hours-heading:before{
+  content:"";
+  display:block;
+  width:15px;
+  height:1px;
+  background:#9bad9d;
+}
+#cards .tile-hours-row + .tile-hours-row{
+  padding-top:2px;
+}
+#cards .tile-hours-rest .tile-hours-icon,
+#cards .tile-hours-holiday .tile-hours-icon{
+  opacity:.8;
+}
+@media(max-width:520px){
+  #cards .status{padding:4px 9px;font-size:9.5px}
+}
+
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
