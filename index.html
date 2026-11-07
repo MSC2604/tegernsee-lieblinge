@@ -268,6 +268,13 @@ main{
 .tile-hours-rest .tile-hours-text{
   font-weight:700;
 }
+.tile-hours-holiday,
+.tile-hours-holiday .tile-hours-icon{
+  color:#a65335;
+}
+.tile-hours-holiday .tile-hours-text{
+  font-weight:750;
+}
 @media(max-width:360px){
   .icon{height:180px}
   .cardmain{padding:12px 14px 9px}
@@ -1757,6 +1764,14 @@ main#home{
 
       <input id="f_ruhetag" autocomplete="off">
 
+      <div class="card-edit-box">
+        <strong>🏖 Betriebsferien</strong>
+        <small>Nur eintragen, wenn ein zusammenhängender Zeitraum feststeht. Die Zeile erscheint dann auf der Restaurant-Kachel.</small>
+        <label for="f_betriebsferien_start">Von</label>
+        <input id="f_betriebsferien_start" type="date">
+        <label for="f_betriebsferien_ende">Bis</label>
+        <input id="f_betriebsferien_ende" type="date">
+      </div>
 
       <label>Notizen</label>
 
@@ -2521,6 +2536,11 @@ function formatTileRestDay(value){
     .replace(/^ruhetag\s*:?\s*/i, "")
     .replace(/^geschlossen\s*:?\s*/i, "");
   return "Ruhetag: " + escapeHtml(formatted || text);
+}
+
+function formatBetriebsferienDate(value){
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : "";
 }
 
 
@@ -3367,6 +3387,12 @@ function render(){
                 <span class="tile-hours-icon" aria-hidden="true">▦</span>
                 <div class="tile-hours-text">${formatTileRestDay(place.ruhetag)}</div>
               </div>
+              ${place.betriebsferien_start && place.betriebsferien_ende ? `
+                <div class="tile-hours-row tile-hours-holiday">
+                  <span class="tile-hours-icon" aria-hidden="true">🏖</span>
+                  <div class="tile-hours-text">Betriebsferien: ${escapeHtml(formatBetriebsferienDate(place.betriebsferien_start))} – ${escapeHtml(formatBetriebsferienDate(place.betriebsferien_ende))}</div>
+                </div>
+              ` : ""}
             </div>
 
             <div class="tile-card-links" id="tile-card-links-${escapeAttr(place.id)}" aria-label="Offizielle Karten"></div>
@@ -4492,6 +4518,8 @@ function editPlace(){
   ).value =
     currentPlace.ruhetag;
 
+  document.getElementById("f_betriebsferien_start").value = currentPlace.betriebsferien_start || "";
+  document.getElementById("f_betriebsferien_ende").value = currentPlace.betriebsferien_ende || "";
 
   document.getElementById(
     "f_notizen"
@@ -4551,6 +4579,8 @@ function clearForm(){
     "f_email",
     "f_oeffnungszeiten",
     "f_ruhetag",
+    "f_betriebsferien_start",
+    "f_betriebsferien_ende",
     "f_notizen"
 
   ].forEach(
@@ -4679,6 +4709,9 @@ function getFormData(){
       )
       .value
       .trim(),
+
+    betriebsferien_start: document.getElementById("f_betriebsferien_start").value,
+    betriebsferien_ende: document.getElementById("f_betriebsferien_ende").value,
 
     notizen:
       document.getElementById(
@@ -4829,6 +4862,15 @@ async function savePlace(){
   if(!restaurant.kategorie){
     alert("Bitte eine eigene Kategorie eingeben.");
     document.getElementById("f_kategorie_custom").focus();
+    return;
+  }
+
+  if (Boolean(restaurant.betriebsferien_start) !== Boolean(restaurant.betriebsferien_ende)) {
+    alert("Bitte für die Betriebsferien sowohl den ersten als auch den letzten Tag auswählen – oder beide Felder leer lassen.");
+    return;
+  }
+  if (restaurant.betriebsferien_start && restaurant.betriebsferien_ende < restaurant.betriebsferien_start) {
+    alert("Das Ende der Betriebsferien darf nicht vor dem Beginn liegen.");
     return;
   }
 
