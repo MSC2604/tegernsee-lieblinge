@@ -965,6 +965,11 @@ console.log("Tavily usage account:", {
         sort_order INTEGER NOT NULL DEFAULT 0,
         updated_at TEXT NOT NULL DEFAULT ''
       )`);
+      const galleryColumns = await turso("PRAGMA table_info(restaurant_gallery_images)", [], true);
+      const galleryColumnNames = (galleryColumns?.results?.[0]?.response?.result?.rows || []).map(row => String(rowValue(row[1]) || ""));
+      if (!galleryColumnNames.includes("caption")) {
+        await turso("ALTER TABLE restaurant_gallery_images ADD COLUMN caption TEXT NOT NULL DEFAULT ''");
+      }
 
       await turso(`CREATE TABLE IF NOT EXISTS title_image_settings (
         id INTEGER PRIMARY KEY CHECK (id = 1), filename TEXT NOT NULL,
@@ -1005,9 +1010,9 @@ console.log("Tavily usage account:", {
         if (action === "gallery") {
           const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
           if (!restaurantId) return json({error:"Restaurant-ID fehlt."},400);
-          const result = await turso("SELECT id, filename, mime_type, sort_order FROM restaurant_gallery_images WHERE restaurant_id = ? ORDER BY sort_order, id",[textArg(restaurantId)],true);
+          const result = await turso("SELECT id, filename, mime_type, sort_order, caption FROM restaurant_gallery_images WHERE restaurant_id = ? ORDER BY sort_order, id",[textArg(restaurantId)],true);
           const rows = result?.results?.[0]?.response?.result?.rows || [];
-          return json(rows.map(row=>({id:rowValue(row[0]),filename:rowValue(row[1]),mimeType:rowValue(row[2]),sortOrder:rowValue(row[3]),url:"?action=galleryImage&restaurantId="+encodeURIComponent(restaurantId)+"&imageId="+encodeURIComponent(rowValue(row[0]))})));
+          return json(rows.map(row=>({id:rowValue(row[0]),filename:rowValue(row[1]),mimeType:rowValue(row[2]),sortOrder:rowValue(row[3]),caption:rowValue(row[4])||"",url:"?action=galleryImage&restaurantId="+encodeURIComponent(restaurantId)+"&imageId="+encodeURIComponent(rowValue(row[0]))})));
         }
 
         if (action === "galleryImage") {
@@ -1262,12 +1267,25 @@ console.log("Tavily usage account:", {
           const count=Number(rowValue(countResult?.results?.[0]?.response?.result?.rows?.[0]?.[0])||0);
           if(count>=20) return json({error:"Pro Restaurant sind höchstens 20 zusätzliche Bilder möglich."},409);
           const updatedAt=new Date().toISOString();
-          await turso("INSERT INTO restaurant_gallery_images (restaurant_id,filename,mime_type,file_data,sort_order,updated_at) VALUES (?,?, 'image/webp', ?, ?, ?)",[textArg(restaurantId),textArg(filename),{type:"blob",base64},integerArg(count),textArg(updatedAt)]);
+          await turso("INSERT INTO restaurant_gallery_images (restaurant_id,filename,mime_type,file_data,sort_order,updated_at,caption) VALUES (?,?, 'image/webp', ?, ?, ?, ?)",[textArg(restaurantId),textArg(filename),{type:"blob",base64},integerArg(count),textArg(updatedAt),textArg(caption)]);
           const verify=await turso("SELECT id, length(file_data) FROM restaurant_gallery_images WHERE restaurant_id=? AND filename=? ORDER BY id DESC LIMIT 1",[textArg(restaurantId),textArg(filename)],true);
           const row=verify?.results?.[0]?.response?.result?.rows?.[0];
           const savedBytes=row?Number(rowValue(row[1])||0):0;
           if(!row||savedBytes!==binary.length) return json({error:"Speicherung konnte nicht bestätigt werden."},500);
           return json({success:true,id:rowValue(row[0]),bytes:savedBytes,verified:true});
+        }
+
+        if (body.action === "updateGalleryCaption") {
+          const restaurantId=String(body.restaurantId||"").trim(), imageId=Number(body.imageId||0);
+          const caption=String(body.caption||"").trim().slice(0,300);
+          if(!restaurantId||!Number.isSafeInteger(imageId)||imageId<1) return json({error:"Bildangabe ungültig."},400);
+          const found=await turso("SELECT id FROM restaurant_gallery_images WHERE restaurant_id=? AND id=?",[textArg(restaurantId),integerArg(imageId)],true);
+          if(!(found?.results?.[0]?.response?.result?.rows||[]).length) return json({error:"Bild nicht gefunden."},404);
+          await turso("UPDATE restaurant_gallery_images SET caption=?, updated_at=? WHERE restaurant_id=? AND id=?",[textArg(caption),textArg(new Date().toISOString()),textArg(restaurantId),integerArg(imageId)]);
+          const verify=await turso("SELECT caption FROM restaurant_gallery_images WHERE restaurant_id=? AND id=?",[textArg(restaurantId),integerArg(imageId)],true);
+          const saved=String(rowValue(verify?.results?.[0]?.response?.result?.rows?.[0]?.[0])||"");
+          if(saved!==caption) return json({error:"Beschriftung konnte nicht bestätigt werden."},500);
+          return json({success:true,verified:true,caption:saved});
         }
 
         if (body.action === "deleteGalleryImage") {
