@@ -1829,6 +1829,33 @@ main#home{max-width:1040px;padding:22px 18px 112px}
   #cards .card .icon img{transition:none;transform:none}
 }
 
+
+/* Restaurantbilder vollständig zeigen – keine abgeschnittenen Motive */
+#cards .card .icon{
+  display:block;
+  width:100%;
+  height:auto;
+  aspect-ratio:auto;
+  max-height:none;
+  overflow:hidden;
+  background:#f0eee7;
+}
+#cards .card .icon img{
+  display:block;
+  width:100%;
+  height:auto;
+  max-height:420px;
+  object-fit:contain;
+  object-position:center;
+  transform:none;
+}
+@media(max-width:520px){
+  #cards .card .icon img{max-height:360px}
+}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){
+  #cards .card:hover .icon img{transform:none}
+}
+
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
