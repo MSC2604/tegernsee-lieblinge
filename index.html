@@ -3337,8 +3337,7 @@ async function loadOneTileCardLink(place){
 
 function render(){
 
-  const menuCount = document.getElementById("incompleteMenuCount");
-  if(menuCount) menuCount.textContent = restaurants.filter(r => getMissingRestaurantFields(r).length).length;
+  refreshIncompleteEntries();
 
   const list =
     filteredRestaurants();
@@ -3856,6 +3855,40 @@ function getMissingRestaurantFields(place){
   return fields.filter(([key]) => isFieldMissing(place[key])).map(([,label]) => label);
 }
 
+function refreshIncompleteEntries(){
+  const incomplete = restaurants
+    .map(place => ({place, missing:getMissingRestaurantFields(place)}))
+    .filter(item => item.missing.length);
+
+  const count = document.getElementById("incompleteMenuCount");
+  if(count) count.textContent = incomplete.length;
+
+  const view = document.getElementById("incompleteView");
+  if(!view || view.style.display !== "block") return;
+
+  const summary = document.getElementById("incompleteSummary");
+  if(summary){
+    summary.textContent = incomplete.length
+      ? incomplete.length + " von " + restaurants.length + " Restaurant-Einträgen haben noch fehlende Angaben. Angezeigt werden leere oder als „Noch ergänzen“ markierte Felder. Bild und Notizen gelten als optional."
+      : "Alle Restaurant-Einträge enthalten die geprüften Angaben. Bild und Notizen sind optional.";
+  }
+
+  const list = document.getElementById("incompleteList");
+  if(!list) return;
+
+  if(!incomplete.length){
+    list.innerHTML = '<div class="incomplete-card">🎉 Keine unvollständigen Einträge gefunden.</div>';
+    return;
+  }
+
+  list.innerHTML = incomplete.map(({place,missing}) => '<section class="incomplete-card">'
+    + '<div class="incomplete-name">'+escapeHtml(place.name||"Restaurant ohne Namen")+'</div>'
+    + '<div class="incomplete-meta">'+escapeHtml([place.ort,place.kategorie].filter(Boolean).join(" · ")||"Ort/Kategorie fehlen")+'</div>'
+    + '<div><strong>Fehlende Angaben:</strong></div><div class="missing-list">'+missing.map(label=>'<span class="missing-chip">'+escapeHtml(label)+'</span>').join("")+'</div>'
+    + '<div class="incomplete-actions"><button type="button" onclick="openDetail(\''+escapeAttr(String(place.id))+'\')">Eintrag öffnen</button><button type="button" onclick="editRestaurantById(\''+escapeAttr(String(place.id))+'\')">Bearbeiten</button></div>'
+    + '</section>').join("");
+}
+
 function showIncompleteEntries(){
   closeAppMenu();
   document.getElementById("home").style.display = "none";
@@ -3864,23 +3897,7 @@ function showIncompleteEntries(){
   document.getElementById("mapView").style.display = "none";
   document.getElementById("incompleteView").style.display = "block";
   window.scrollTo({top:0,behavior:"auto"});
-  const incomplete = restaurants.map(place => ({place,missing:getMissingRestaurantFields(place)})).filter(item => item.missing.length);
-  const count = document.getElementById("incompleteMenuCount");
-  if(count) count.textContent = incomplete.length;
-  document.getElementById("incompleteSummary").textContent = incomplete.length
-    ? incomplete.length + " von " + restaurants.length + " Restaurant-Einträgen haben noch fehlende Angaben. Angezeigt werden leere oder als „Noch ergänzen“ markierte Felder. Bild und Notizen gelten als optional."
-    : "Alle Restaurant-Einträge enthalten die geprüften Angaben. Bild und Notizen sind optional.";
-  const list = document.getElementById("incompleteList");
-  if(!incomplete.length){
-    list.innerHTML = '<div class="incomplete-card">🎉 Keine unvollständigen Einträge gefunden.</div>';
-    return;
-  }
-  list.innerHTML = incomplete.map(({place,missing}) => '<section class="incomplete-card">'
-    + '<div class="incomplete-name">'+escapeHtml(place.name||"Restaurant ohne Namen")+'</div>'
-    + '<div class="incomplete-meta">'+escapeHtml([place.ort,place.kategorie].filter(Boolean).join(" · ")||"Ort/Kategorie fehlen")+'</div>'
-    + '<div><strong>Fehlende Angaben:</strong></div><div class="missing-list">'+missing.map(label=>'<span class="missing-chip">'+escapeHtml(label)+'</span>').join("")+'</div>'
-    + '<div class="incomplete-actions"><button type="button" onclick="openDetail(\''+escapeAttr(String(place.id))+'\')">Eintrag öffnen</button><button type="button" onclick="editRestaurantById(\''+escapeAttr(String(place.id))+'\')">Bearbeiten</button></div>'
-    + '</section>').join("");
+  refreshIncompleteEntries();
 }
 
 function editRestaurantById(id){
