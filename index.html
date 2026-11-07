@@ -2569,6 +2569,15 @@ function isBetriebsferienActive(start, end){
 function getOpeningStatus(place)
 {
 
+  // Während des eingetragenen Betriebsferien-Zeitraums hat dieser
+  // Status Vorrang vor den normalen Öffnungszeiten.
+  if(isBetriebsferienActive(place.betriebsferien_start, place.betriebsferien_ende)){
+    return {
+      type:"closed",
+      text:"🔴 Aktuell geschlossen · Betriebsferien"
+    };
+  }
+
   const hours =
     cleanValue(
       place.oeffnungszeiten
