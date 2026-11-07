@@ -3460,6 +3460,17 @@ function render(){
 
 
               ${
+                place.website
+                  ? `
+                    <button onclick="openWebsite('${escapeAttr(place.website)}')">
+                      🌐 Website
+                    </button>
+                  `
+                  : ""
+              }
+
+
+              ${
                 place.reservierung
 
                 ? `
@@ -4014,6 +4025,17 @@ function showFavorites(){
 
 
               ${
+                place.website
+                  ? `
+                    <button onclick="openWebsite('${escapeAttr(place.website)}')">
+                      🌐 Website
+                    </button>
+                  `
+                  : ""
+              }
+
+
+              ${
                 place.reservierung
 
                 ? `
@@ -4079,6 +4101,14 @@ function routeTo(
 
   );
 
+}
+
+
+function openWebsite(website){
+  if(!website) return;
+  const value = String(website).trim();
+  const url = /^https?:\/\//i.test(value) ? value : "https://" + value;
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 
