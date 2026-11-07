@@ -956,6 +956,16 @@ console.log("Tavily usage account:", {
         mime_type TEXT NOT NULL DEFAULT 'application/pdf', file_data BLOB NOT NULL,
         updated_at TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, kind)
       )`);
+      await turso(`CREATE TABLE IF NOT EXISTS restaurant_gallery_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        restaurant_id TEXT NOT NULL,
+        filename TEXT NOT NULL,
+        mime_type TEXT NOT NULL DEFAULT 'image/webp',
+        file_data BLOB NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL DEFAULT ''
+      )`);
+
       await turso(`CREATE TABLE IF NOT EXISTS title_image_settings (
         id INTEGER PRIMARY KEY CHECK (id = 1), filename TEXT NOT NULL,
         mime_type TEXT NOT NULL, file_data BLOB NOT NULL, updated_at TEXT NOT NULL DEFAULT ''
@@ -991,6 +1001,29 @@ console.log("Tavily usage account:", {
       if (request.method === "GET") {
         const url = new URL(request.url);
         const action = url.searchParams.get("action");
+
+        if (action === "gallery") {
+          const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
+          if (!restaurantId) return json({error:"Restaurant-ID fehlt."},400);
+          const result = await turso("SELECT id, filename, mime_type, sort_order FROM restaurant_gallery_images WHERE restaurant_id = ? ORDER BY sort_order, id",[textArg(restaurantId)],true);
+          const rows = result?.results?.[0]?.response?.result?.rows || [];
+          return json(rows.map(row=>({id:rowValue(row[0]),filename:rowValue(row[1]),mimeType:rowValue(row[2]),sortOrder:rowValue(row[3]),url:"?action=galleryImage&restaurantId="+encodeURIComponent(restaurantId)+"&imageId="+encodeURIComponent(rowValue(row[0]))})));
+        }
+
+        if (action === "galleryImage") {
+          const restaurantId=(url.searchParams.get("restaurantId")||"").trim();
+          const imageId=Number(url.searchParams.get("imageId")||0);
+          if(!restaurantId||!Number.isSafeInteger(imageId)||imageId<1) return json({error:"Bildangabe ungültig."},400);
+          const result=await turso("SELECT filename,mime_type,file_data FROM restaurant_gallery_images WHERE restaurant_id=? AND id=?",[textArg(restaurantId),integerArg(imageId)],true);
+          const row=result?.results?.[0]?.response?.result?.rows?.[0];
+          if(!row) return json({error:"Bild nicht gefunden."},404);
+          const mime=String(rowValue(row[1])||"");
+          if(!["image/webp","image/jpeg","image/png"].includes(mime)) return json({error:"Ungültiger Bildtyp."},500);
+          const raw=row[2], encoded=raw&&typeof raw==="object"?(raw.base64||raw.value||""):String(raw||"");
+          if(!encoded) return json({error:"Bilddatei ist leer."},500);
+          let bytes; try{const binary=atob(encoded);bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);}catch{return json({error:"Bilddatei kann nicht gelesen werden."},500);}
+          return new Response(bytes,{status:200,headers:{...corsHeaders,"Content-Type":mime,"Content-Length":String(bytes.length),"Cache-Control":"public, max-age=3600","X-Content-Type-Options":"nosniff"}});
+        }
 
         if (action === "cardFile") {
           const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
@@ -1212,6 +1245,40 @@ console.log("Tavily usage account:", {
             console.error("Title image upload failed",String(error?.message||error).slice(0,300));
             return json({error:"Titelbild-Speicherfehler: "+String(error?.message||error).slice(0,200)},500);
           }
+        }
+
+        if (body.action === "uploadGalleryImage") {
+          const restaurantId=String(body.restaurantId||"").trim();
+          const filename=String(body.filename||"bild.webp").trim().slice(0,120);
+          const base64=String(body.base64||"");
+          if(!restaurantId||!base64) return json({error:"Restaurant oder Bild fehlt."},400);
+          if(base64.length>1_450_000) return json({error:"Ein Galeriebild darf höchstens 1 MB groß sein."},413);
+          let binary; try{binary=atob(base64)}catch{return json({error:"Bild ist ungültig kodiert."},400)}
+          if(binary.length<16||binary.length>1024*1024) return json({error:"Ein Galeriebild darf höchstens 1 MB groß sein."},413);
+          if(!(binary.slice(0,4)==="RIFF"&&binary.slice(8,12)==="WEBP")) return json({error:"Bitte ein gültiges WebP-Bild auswählen."},400);
+          const exists=await turso("SELECT id FROM restaurants WHERE CAST(id AS TEXT)=?",[textArg(restaurantId)],true);
+          if(!(exists?.results?.[0]?.response?.result?.rows||[]).length) return json({error:"Restaurant nicht gefunden."},404);
+          const countResult=await turso("SELECT COUNT(*) FROM restaurant_gallery_images WHERE restaurant_id=?",[textArg(restaurantId)],true);
+          const count=Number(rowValue(countResult?.results?.[0]?.response?.result?.rows?.[0]?.[0])||0);
+          if(count>=20) return json({error:"Pro Restaurant sind höchstens 20 zusätzliche Bilder möglich."},409);
+          const updatedAt=new Date().toISOString();
+          await turso("INSERT INTO restaurant_gallery_images (restaurant_id,filename,mime_type,file_data,sort_order,updated_at) VALUES (?,?, 'image/webp', ?, ?, ?)",[textArg(restaurantId),textArg(filename),{type:"blob",base64},integerArg(count),textArg(updatedAt)]);
+          const verify=await turso("SELECT id, length(file_data) FROM restaurant_gallery_images WHERE restaurant_id=? AND filename=? ORDER BY id DESC LIMIT 1",[textArg(restaurantId),textArg(filename)],true);
+          const row=verify?.results?.[0]?.response?.result?.rows?.[0];
+          const savedBytes=row?Number(rowValue(row[1])||0):0;
+          if(!row||savedBytes!==binary.length) return json({error:"Speicherung konnte nicht bestätigt werden."},500);
+          return json({success:true,id:rowValue(row[0]),bytes:savedBytes,verified:true});
+        }
+
+        if (body.action === "deleteGalleryImage") {
+          const restaurantId=String(body.restaurantId||"").trim(), imageId=Number(body.imageId||0);
+          if(!restaurantId||!Number.isSafeInteger(imageId)||imageId<1) return json({error:"Bildangabe ungültig."},400);
+          const found=await turso("SELECT id FROM restaurant_gallery_images WHERE restaurant_id=? AND id=?",[textArg(restaurantId),integerArg(imageId)],true);
+          if(!(found?.results?.[0]?.response?.result?.rows||[]).length) return json({error:"Bild nicht gefunden."},404);
+          await turso("DELETE FROM restaurant_gallery_images WHERE restaurant_id=? AND id=?",[textArg(restaurantId),integerArg(imageId)]);
+          const verify=await turso("SELECT id FROM restaurant_gallery_images WHERE restaurant_id=? AND id=?",[textArg(restaurantId),integerArg(imageId)],true);
+          if((verify?.results?.[0]?.response?.result?.rows||[]).length) return json({error:"Löschen konnte nicht bestätigt werden."},500);
+          return json({success:true,deleted:true});
         }
 
         if (body.action === "uploadCardFile") {
