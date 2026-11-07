@@ -1007,6 +1007,12 @@ console.log("Tavily usage account:", {
         const url = new URL(request.url);
         const action = url.searchParams.get("action");
 
+        if (action === "galleryCounts") {
+          const result = await turso("SELECT restaurant_id, COUNT(*) FROM restaurant_gallery_images GROUP BY restaurant_id", [], true);
+          const rows = result?.results?.[0]?.response?.result?.rows || [];
+          return json(rows.map(row=>({restaurantId:String(rowValue(row[0])||""),count:Number(rowValue(row[1])||0)})));
+        }
+
         if (action === "gallery") {
           const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
           if (!restaurantId) return json({error:"Restaurant-ID fehlt."},400);
