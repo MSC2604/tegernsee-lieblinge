@@ -1863,6 +1863,19 @@ main#home{max-width:1040px;padding:22px 18px 112px}
 .restaurant-gallery-thumb button{display:block;width:100%;margin-top:4px;padding:6px 3px;border:1px solid #dfb8b5;border-radius:8px;background:#fff5f4;color:#9b3934;font-size:12px}
 .restaurant-photo-gallery{margin:16px 0;padding:14px;background:#fff;border:1px solid var(--line);border-radius:16px}
 .restaurant-photo-gallery h2{margin:0 0 8px;font-size:18px}
+.restaurant-gallery-viewer{display:flex;align-items:center;gap:8px;min-width:0}
+.restaurant-gallery-arrow{flex:0 0 38px;width:38px;height:48px;border:0;border-radius:12px;background:#2d6a56;color:#fff;font-size:30px;line-height:1;cursor:pointer}
+.restaurant-gallery-image-button{display:block;flex:1;min-width:0;padding:0;border:0;background:transparent;cursor:zoom-in}
+.restaurant-gallery-image-button img{display:block;width:100%;height:clamp(210px,58vw,440px);object-fit:contain;border-radius:12px;background:#f4f2ec}
+.restaurant-gallery-caption{text-align:center;white-space:pre-wrap;margin:10px 4px 0;color:#34483d;font-weight:600}
+.restaurant-gallery-counter{text-align:center;margin-top:6px;color:#718078;font-size:12px}
+.restaurant-gallery-lightbox[hidden]{display:none}
+.restaurant-gallery-lightbox{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;gap:12px;padding:56px 12px 62px;box-sizing:border-box}
+.restaurant-gallery-lightbox img{max-width:calc(100% - 104px);max-height:100%;object-fit:contain}
+.restaurant-gallery-lightbox-arrow,.restaurant-gallery-lightbox-close{border:0;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;cursor:pointer}
+.restaurant-gallery-lightbox-arrow{width:42px;height:52px;font-size:30px;flex:0 0 42px}
+.restaurant-gallery-lightbox-close{position:absolute;right:16px;top:12px;width:42px;height:42px;font-size:30px}
+#restaurantGalleryLightCaption{position:absolute;bottom:16px;left:12px;right:12px;text-align:center;color:#fff;white-space:pre-wrap}
 
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2015,7 +2028,7 @@ main#home{max-width:1040px;padding:22px 18px 112px}
   >
     🍽️
   </div>
-  <section id="restaurantPhotoGallery" class="restaurant-photo-gallery" hidden aria-label="Weitere Restaurantbilder"><h2>Bildergalerie</h2><div id="restaurantPhotoGalleryItems" class="restaurant-gallery-grid"></div></section>
+  <section id="restaurantPhotoGallery" class="restaurant-photo-gallery" hidden aria-label="Weitere Restaurantbilder"><h2>Bildergalerie</h2><div class="restaurant-gallery-viewer"><button type="button" class="restaurant-gallery-arrow" id="restaurantGalleryPrev" aria-label="Vorheriges Bild">‹</button><button type="button" class="restaurant-gallery-image-button" id="restaurantGalleryOpen" aria-label="Bild vergrößern"><img id="restaurantGalleryCurrentImage" alt="Restaurantbild"></button><button type="button" class="restaurant-gallery-arrow" id="restaurantGalleryNext" aria-label="Nächstes Bild">›</button></div><div id="restaurantGalleryCurrentCaption" class="restaurant-gallery-caption"></div><div id="restaurantGalleryCounter" class="restaurant-gallery-counter"></div></section><div id="restaurantGalleryLightbox" class="restaurant-gallery-lightbox" hidden role="dialog" aria-modal="true" aria-label="Bildansicht"><button type="button" class="restaurant-gallery-lightbox-close" id="restaurantGalleryClose" aria-label="Schließen">×</button><button type="button" class="restaurant-gallery-lightbox-arrow" id="restaurantGalleryLightPrev" aria-label="Vorheriges Bild">‹</button><img id="restaurantGalleryLightImage" alt="Vergrößertes Restaurantbild"><button type="button" class="restaurant-gallery-lightbox-arrow" id="restaurantGalleryLightNext" aria-label="Nächstes Bild">›</button><div id="restaurantGalleryLightCaption"></div></div>
 
 
   <h1 id="dname"></h1>
@@ -6107,22 +6120,61 @@ function galleryApiUrl(params){
   Object.entries(params).forEach(([key,value])=>url.searchParams.set(key,String(value)));
   return url.toString();
 }
+let restaurantPhotoGalleryItems=[];
+let restaurantPhotoGalleryIndex=0;
+function showRestaurantPhotoGalleryImage(){
+  const item=restaurantPhotoGalleryItems[restaurantPhotoGalleryIndex];if(!item)return;
+  const url=new URL(item.url,API_URL).toString();
+  const image=document.getElementById("restaurantGalleryCurrentImage");
+  const caption=document.getElementById("restaurantGalleryCurrentCaption");
+  const counter=document.getElementById("restaurantGalleryCounter");
+  if(image){image.src=url;image.alt="Restaurantbild "+(restaurantPhotoGalleryIndex+1);}
+  if(caption)caption.textContent=item.caption||"";
+  if(counter)counter.textContent=(restaurantPhotoGalleryIndex+1)+" / "+restaurantPhotoGalleryItems.length;
+  const lightImage=document.getElementById("restaurantGalleryLightImage");
+  const lightCaption=document.getElementById("restaurantGalleryLightCaption");
+  if(lightImage)lightImage.src=url;
+  if(lightCaption)lightCaption.textContent=item.caption||"";
+}
+function moveRestaurantPhotoGallery(step){
+  if(!restaurantPhotoGalleryItems.length)return;
+  restaurantPhotoGalleryIndex=(restaurantPhotoGalleryIndex+step+restaurantPhotoGalleryItems.length)%restaurantPhotoGalleryItems.length;
+  showRestaurantPhotoGalleryImage();
+}
+function openRestaurantGalleryLightbox(){
+  const box=document.getElementById("restaurantGalleryLightbox");if(!box)return;
+  box.hidden=false;showRestaurantPhotoGalleryImage();
+}
+function closeRestaurantGalleryLightbox(){const box=document.getElementById("restaurantGalleryLightbox");if(box)box.hidden=true;}
+(function bindRestaurantGalleryViewer(){
+  const bind=(id,fn)=>{const el=document.getElementById(id);if(el)el.addEventListener("click",fn);};
+  bind("restaurantGalleryPrev",()=>moveRestaurantPhotoGallery(-1));
+  bind("restaurantGalleryNext",()=>moveRestaurantPhotoGallery(1));
+  bind("restaurantGalleryLightPrev",()=>moveRestaurantPhotoGallery(-1));
+  bind("restaurantGalleryLightNext",()=>moveRestaurantPhotoGallery(1));
+  bind("restaurantGalleryOpen",openRestaurantGalleryLightbox);
+  bind("restaurantGalleryClose",closeRestaurantGalleryLightbox);
+  const box=document.getElementById("restaurantGalleryLightbox");
+  if(box)box.addEventListener("click",event=>{if(event.target===box)closeRestaurantGalleryLightbox();});
+  document.addEventListener("keydown",event=>{
+    const lightbox=document.getElementById("restaurantGalleryLightbox");
+    if(!lightbox||lightbox.hidden)return;
+    if(event.key==="Escape")closeRestaurantGalleryLightbox();
+    if(event.key==="ArrowLeft")moveRestaurantPhotoGallery(-1);
+    if(event.key==="ArrowRight")moveRestaurantPhotoGallery(1);
+  });
+})();
 async function loadRestaurantPhotoGallery(restaurantId){
-  const section=document.getElementById("restaurantPhotoGallery"),target=document.getElementById("restaurantPhotoGalleryItems");
-  if(!section||!target)return;
-  section.hidden=true;target.replaceChildren();
+  const section=document.getElementById("restaurantPhotoGallery");
+  if(!section)return;
+  section.hidden=true;restaurantPhotoGalleryItems=[];
   try{
     const response=await fetch(galleryApiUrl({action:"gallery",restaurantId}));
     if(!response.ok)return;
     const images=await response.json();
     if(!Array.isArray(images)||!images.length)return;
-    images.forEach((item,index)=>{
-      const card=document.createElement("div");card.className="restaurant-gallery-thumb";
-      const img=document.createElement("img");img.loading="lazy";img.src=new URL(item.url,API_URL).toString();img.alt="Weitere Ansicht von "+(currentPlace?.name||"Restaurant")+" "+(index+1);card.appendChild(img);
-      if(item.caption){const caption=document.createElement("div");caption.className="restaurant-gallery-caption";caption.textContent=item.caption;card.appendChild(caption);}
-      target.appendChild(card);
-    });
-    section.hidden=false;
+    restaurantPhotoGalleryItems=images;restaurantPhotoGalleryIndex=0;
+    showRestaurantPhotoGalleryImage();section.hidden=false;
   }catch(error){console.warn("Restaurantgalerie konnte nicht geladen werden",error);}
 }
 async function loadRestaurantGallery(restaurantId){
