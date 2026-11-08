@@ -2894,6 +2894,7 @@ async function loadTavilyUsage(){
 
 
 let restaurants = [];
+let restaurantDataPromise = null;
 
 let currentFilter =
   "Alle";
@@ -5943,7 +5944,7 @@ async function savePlace(){
     }
 
     closeModal();
-    await loadData();
+    await restaurantDataPromise = loadData();
 
     const savedRestaurant = isEditing
       ? restaurants.find(r => String(r.id) === String(savedEditId))
@@ -6380,10 +6381,14 @@ async function openRestaurantMap(embedded=false){
  try{
   if(!embedded){document.getElementById('home').style.display='none';document.getElementById('homeHeader').style.display='none';document.getElementById('detail').style.display='none';document.getElementById('incompleteView').style.display='none';document.getElementById('mapView').classList.remove('embedded-map');document.getElementById('mapView').style.display='block';}
   window.scrollTo({top:0,behavior:'auto'});
+  const status=document.getElementById('mapStatus');
+  status.textContent='Restaurantdaten werden geladen …';
+  if(restaurantDataPromise)await restaurantDataPromise;
+  if(!restaurants.length){status.textContent='Die Restaurantdaten sind momentan nicht verfügbar. Bitte zuerst die Daten aktualisieren und die Karte erneut öffnen.';return;}
   await loadLeaflet();
   if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.layerGroup().addTo(restaurantMap);restaurantMap.on('zoomend moveend',updateMapLabels);}
   setTimeout(()=>restaurantMap.invalidateSize(),150);
-  const status=document.getElementById('mapStatus'),cache=readMapCache(),places=restaurants.slice();mapEntries=[];mapMarkers.clearLayers();let failed=0,requests=0;const failedNames=[];
+  const cache=readMapCache(),places=restaurants.slice();mapEntries=[];mapMarkers.clearLayers();let failed=0,requests=0;const failedNames=[];
   status.textContent='Standorte werden ermittelt. Die Karte füllt sich währenddessen …';
   for(let i=0;i<places.length;i++){
    const place=places[i],query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', '),cacheKey=String(place.id||place.name)+'|'+query;
