@@ -853,6 +853,22 @@ a{
 .restaurant-map-legend i{display:inline-block;width:9px;height:9px;border:1px solid #fff;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.12)}
 @media(max-width:560px){.restaurant-map-legend{font-size:10px;padding:8px 9px}.restaurant-map-legend strong{font-size:11px}}
 .map-popup-link{display:inline-block;margin-top:6px;font-weight:750}
+.map-filterbar{display:flex;gap:7px;overflow-x:auto;padding:2px 1px 10px;margin-bottom:4px;scrollbar-width:thin}
+.map-filter-chip{flex:0 0 auto;border:1px solid #d7e4dd;border-radius:999px;background:#fff;color:#36594b;padding:8px 12px;font-size:12px;font-weight:750}
+.map-filter-chip.active{background:#285f4d;border-color:#285f4d;color:#fff}
+.map-stage{position:relative}
+#restaurantMap{height:min(68vh,680px)}
+.map-place-preview{position:absolute;z-index:500;left:12px;right:12px;bottom:14px;max-width:520px;margin:auto;background:rgba(255,255,255,.98);border:1px solid #dce7e1;border-radius:16px;padding:12px 14px;box-shadow:0 8px 28px rgba(20,50,40,.24);color:#17352d}
+.map-place-preview-head{display:flex;gap:11px;align-items:center}
+.map-place-preview img{width:76px;height:76px;object-fit:cover;border-radius:11px;background:#edf3ef}
+.map-place-preview-main{min-width:0;flex:1}
+.map-place-preview-name{font-size:15px;font-weight:850;line-height:1.25}
+.map-place-preview-meta{font-size:12px;color:#65766e;margin-top:4px}
+.map-place-preview-actions{display:flex;gap:7px;margin-top:10px}
+.map-place-preview-actions button,.map-place-preview-actions a{border:0;border-radius:9px;padding:9px 11px;background:#285f4d;color:#fff;text-decoration:none;font-size:12px;font-weight:800}
+.map-place-preview-actions .map-preview-secondary{background:#edf3ef;color:#285f4d}
+.map-cluster{display:flex;align-items:center;justify-content:center;border:3px solid #fff;border-radius:50%;background:#285f4d;color:#fff;font-weight:850;box-shadow:0 2px 9px #17352d55}
+@media(max-width:560px){#restaurantMap{height:66vh;min-height:390px}.map-place-preview{left:8px;right:8px;bottom:10px;padding:10px}.map-place-preview img{width:64px;height:64px}}
 .restaurant-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}
 .restaurant-card-box{border:1px solid var(--line);background:#fff;border-radius:14px;padding:13px;min-width:0}
 .restaurant-card-box strong{display:block;margin-bottom:8px;color:var(--ink)}
@@ -2099,8 +2115,12 @@ main#home{max-width:1040px;padding:22px 18px 112px}
 
 
 <main id="mapView">
-  <div class="map-head"><h2>🗺️ Übersichtskarte</h2><button class="map-back" onclick="showHome()">‹ Zurück</button></div>
-  <div id="restaurantMap" role="application" aria-label="Karte mit Restaurants am Tegernsee"></div>
+  <div class="map-head"><h2>🗺️ Tegernsee-Genusskarte</h2><button class="map-back" onclick="showHome()">‹ Zurück</button></div>
+  <div class="map-filterbar" id="mapFilterBar" aria-label="Kartenkategorien"></div>
+  <div class="map-stage">
+    <div id="restaurantMap" role="application" aria-label="Karte mit Restaurants am Tegernsee"></div>
+    <section id="mapPlacePreview" class="map-place-preview" hidden aria-live="polite"></section>
+  </div>
   <p class="map-status" id="mapStatus">Die Restaurantstandorte werden vorbereitet …</p>
 </main>
 
@@ -6056,35 +6076,83 @@ setInterval(
 let restaurantMap = null;
 let mapMarkers = null;
 let mapOpening = false;
+let mapEntries = [];
+let activeMapCategory = "Alle";
 const GEOCODE_CACHE_KEY = 'tegernseeMapCoordinates_v1';
 function openAppMenu(){document.getElementById('appMenuOverlay').style.display='block';}
 function closeAppMenu(){document.getElementById('appMenuOverlay').style.display='none';}
 function loadLeaflet(){if(window.L)return Promise.resolve();if(window.__leafletLoading)return window.__leafletLoading;window.__leafletLoading=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';script.integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';script.crossOrigin='';script.onload=resolve;script.onerror=()=>reject(new Error('Kartenbibliothek konnte nicht geladen werden.'));document.head.appendChild(script);});return window.__leafletLoading;}
+function loadMarkerCluster(){if(window.L&&L.markerClusterGroup)return Promise.resolve();if(window.__clusterLoading)return window.__clusterLoading;window.__clusterLoading=new Promise((resolve,reject)=>{if(!document.getElementById('markerClusterCss')){const link=document.createElement('link');link.id='markerClusterCss';link.rel='stylesheet';link.href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';document.head.appendChild(link);const theme=document.createElement('link');theme.rel='stylesheet';theme.href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';document.head.appendChild(theme);}const script=document.createElement('script');script.src='https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';script.onload=resolve;script.onerror=()=>reject(new Error('Die Karten-Gruppierung konnte nicht geladen werden.'));document.head.appendChild(script);});return window.__clusterLoading;}
 function readMapCache(){try{return JSON.parse(localStorage.getItem(GEOCODE_CACHE_KEY)||'{}')}catch(e){return {}}}
 function writeMapCache(cache){try{localStorage.setItem(GEOCODE_CACHE_KEY,JSON.stringify(cache))}catch(e){}}
 function waitMap(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 function mapCategoryStyle(category){
  const value=String(category||'').toLocaleLowerCase('de');
- if(/café|cafe|bäck|konditorei/.test(value))return {color:'#b7791f',label:'Café & Genuss'};
- if(/alm|hütte|huette|berg/.test(value))return {color:'#8b5e3c',label:'Almen & Hütten'};
- if(/biergarten|wirtshaus|gasthof/.test(value))return {color:'#397b57',label:'Wirtshaus & Biergarten'};
+ if(/café|cafe|bäck|konditorei/.test(value))return {color:'#b7791f',label:'Cafés'};
+ if(/alm|hütte|huette|berg/.test(value))return {color:'#8b5e3c',label:'Almen'};
+ if(/biergarten|wirtshaus|gasthof/.test(value))return {color:'#397b57',label:'Biergärten'};
  if(/pizzeria|italien/.test(value))return {color:'#bd4b45',label:'Italienisch'};
  if(/ausflugsziel|ausflug/.test(value))return {color:'#3976a8',label:'Ausflugsziele'};
  return {color:'#2d6a56',label:'Restaurants'};
 }
-function addMapLegend(){
- if(!restaurantMap||restaurantMap._restaurantLegend)return;
- const legend=L.control({position:'bottomright'});
- legend.onAdd=()=>{
-  const div=L.DomUtil.create('div','restaurant-map-legend');
-  div.innerHTML='<strong>Kategorien</strong><span><i style="background:#2d6a56"></i>Restaurants</span><span><i style="background:#b7791f"></i>Café & Genuss</span><span><i style="background:#8b5e3c"></i>Almen & Hütten</span><span><i style="background:#397b57"></i>Wirtshaus & Biergarten</span><span><i style="background:#bd4b45"></i>Italienisch</span><span><i style="background:#3976a8"></i>Ausflugsziele</span>';
-  L.DomEvent.disableClickPropagation(div);
-  return div;
- };
- legend.addTo(restaurantMap);restaurantMap._restaurantLegend=legend;
+function mapCategoryOf(place){return mapCategoryStyle(place.kategorie||place.kategorie_name||place.category).label;}
+function renderMapFilters(){
+ const bar=document.getElementById('mapFilterBar');
+ const categories=['Alle',...Array.from(new Set(mapEntries.map(x=>mapCategoryOf(x.place))))];
+ if(!categories.includes(activeMapCategory))activeMapCategory='Alle';
+ bar.innerHTML=categories.map(c=>'<button type="button" class="map-filter-chip '+(c===activeMapCategory?'active':'')+'" aria-pressed="'+(c===activeMapCategory)+'" onclick="setMapCategory(\''+escapeAttr(c)+'\')">'+escapeHtml(c)+'</button>').join('');
+}
+function setMapCategory(category){activeMapCategory=category;renderMapFilters();drawMapEntries();}
+function mapMarkerIcon(color){return L.divIcon({className:'',html:'<span style="display:block;width:19px;height:19px;border:3px solid #fff;border-radius:50%;background:'+color+';box-shadow:0 2px 7px #17352d66"></span>',iconSize:[25,25],iconAnchor:[12,12]});}
+function showMapPlace(place){
+ const preview=document.getElementById('mapPlacePreview');
+ const image=getRestaurantImage(place);
+ const address=[place.adresse,place.ort].filter(Boolean).join(', ');
+ const destination='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(address||place.name||'Tegernsee');
+ preview.innerHTML='<div class="map-place-preview-head">'+(image?'<img src="'+escapeAttr(image)+'" alt="">':'<div style="width:76px;height:76px;border-radius:11px;background:#edf3ef;display:grid;place-items:center;font-size:28px">🍽️</div>')+'<div class="map-place-preview-main"><div class="map-place-preview-name">'+escapeHtml(place.name||'Restaurant')+'</div><div class="map-place-preview-meta">'+escapeHtml([place.ort,mapCategoryOf(place)].filter(Boolean).join(' · '))+'</div><div class="map-place-preview-meta">'+escapeHtml(place.oeffnungszeiten||'Öffnungszeiten nicht hinterlegt')+'</div></div><button type="button" aria-label="Vorschau schließen" onclick="document.getElementById(\'mapPlacePreview\').hidden=true" style="border:0;background:transparent;font-size:22px;color:#52665d">×</button></div><div class="map-place-preview-actions"><button type="button" onclick="openDetail(\''+escapeAttr(String(place.id))+'\')">Details ansehen</button><a href="'+escapeAttr(destination)+'" target="_blank" rel="noopener">Navigation starten ↗</a></div>';
+ preview.hidden=false;
+}
+function drawMapEntries(){
+ if(!mapMarkers)return;
+ mapMarkers.clearLayers();
+ const visible=mapEntries.filter(entry=>activeMapCategory==='Alle'||mapCategoryOf(entry.place)===activeMapCategory);
+ visible.forEach(entry=>{
+  const style=mapCategoryStyle(entry.place.kategorie||entry.place.kategorie_name||entry.place.category);
+  const marker=L.marker([entry.point.lat,entry.point.lon],{icon:mapMarkerIcon(style.color)});
+  marker.on('click',()=>showMapPlace(entry.place));
+  marker.bindTooltip(escapeHtml(entry.place.name||'Restaurant'),{direction:'top'});
+  mapMarkers.addLayer(marker);
+ });
+ document.getElementById('mapStatus').textContent=visible.length+' von '+mapEntries.length+' Standorten angezeigt. Tippe auf eine Markierung für Details und Navigation.';
 }
 async function geocodeRestaurant(place,cache){const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const key=String(place.id||place.name)+'|'+query;if(Object.prototype.hasOwnProperty.call(cache,key))return cache[key];if(!query||!place.ort)return null;try{const response=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(query),{headers:{Accept:'application/json'}});if(!response.ok)return null;const data=await response.json();if(!data.length){cache[key]=null;writeMapCache(cache);return null;}const point={lat:Number(data[0].lat),lon:Number(data[0].lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return null;cache[key]=point;writeMapCache(cache);return point;}catch(e){console.warn('Standort nicht gefunden:',place.name,e);return null;}}
-async function openRestaurantMap(embedded=false){closeAppMenu();if(!embedded){document.getElementById('home').style.display='none';document.getElementById('homeHeader').style.display='none';document.getElementById('detail').style.display='none';document.getElementById('incompleteView').style.display='none';document.getElementById('mapView').classList.remove('embedded-map');document.getElementById('mapView').style.display='block';}window.scrollTo({top:0,behavior:'auto'});try{await loadLeaflet();if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.featureGroup().addTo(restaurantMap);addMapLegend();}setTimeout(()=>restaurantMap.invalidateSize(),120);if(mapOpening)return;mapOpening=true;const status=document.getElementById('mapStatus');const cache=readMapCache();mapMarkers.clearLayers();const places=restaurants.slice();let found=0,failed=0,requests=0;const points=[];status.textContent='Standorte werden ermittelt. Beim ersten Öffnen kann das etwas dauern …';for(let i=0;i<places.length;i++){const place=places[i];const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const cacheKey=String(place.id||place.name)+'|'+query;if(!Object.prototype.hasOwnProperty.call(cache,cacheKey)&&query&&place.ort){if(requests>0)await waitMap(1100);requests++;}const point=await geocodeRestaurant(place,cache);if(!point){failed++;continue;}found++;points.push(point);const categoryStyle=mapCategoryStyle(place.kategorie||place.kategorie_name||place.category);const marker=L.circleMarker([point.lat,point.lon],{radius:9,color:'#fff',weight:2,fillColor:categoryStyle.color,fillOpacity:.96}).addTo(mapMarkers);const popup='<div class="map-popup-title">'+escapeHtml(place.name||'Restaurant')+'</div><div>'+escapeHtml(place.ort||'')+'</div><a class="map-popup-link" href="#" onclick="openDetail(decodeURIComponent(this.dataset.id));return false" data-id="' + encodeURIComponent(String(place.id)) + '">Restaurant öffnen →</a><br><a class="map-popup-link" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent([place.adresse,place.ort].filter(Boolean).join(', '))+'">Navigation starten ↗</a>';marker.bindPopup(popup);marker.bindTooltip(escapeHtml(place.name||'Restaurant'),{permanent:true,direction:'right',offset:[8,0],className:'restaurant-map-label'});status.textContent='Karte wird aufgebaut: '+found+' von '+places.length+' Restaurants gefunden …';}if(points.length===1)restaurantMap.setView([points[0].lat,points[0].lon],14);else if(points.length>1)restaurantMap.fitBounds(mapMarkers.getBounds().pad(0.12),{maxZoom:13});status.textContent=found+' von '+places.length+' Restaurant-Einträgen auf der Karte.'+(failed?' Für '+failed+' Einträge konnte noch kein genauer Standort gefunden werden.':'')+' Standorte werden auf diesem Gerät zwischengespeichert.';}catch(error){console.error(error);document.getElementById('mapStatus').textContent='Die Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.';}finally{mapOpening=false;}}
+async function openRestaurantMap(embedded=false){
+ closeAppMenu();
+ if(!embedded){document.getElementById('home').style.display='none';document.getElementById('homeHeader').style.display='none';document.getElementById('detail').style.display='none';document.getElementById('incompleteView').style.display='none';document.getElementById('mapView').classList.remove('embedded-map');document.getElementById('mapView').style.display='block';}
+ window.scrollTo({top:0,behavior:'auto'});
+ try{
+  await loadLeaflet();await loadMarkerCluster();
+  if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.markerClusterGroup({showCoverageOnHover:false,spiderfyOnMaxZoom:true, maxClusterRadius:48, iconCreateFunction:cluster=>{const n=cluster.getChildCount();const size=n<10?38:n<50?44:50;return L.divIcon({html:'<div class="map-cluster" style="width:'+size+'px;height:'+size+'px">'+n+'</div>',className:'',iconSize:[size,size]});}});restaurantMap.addLayer(mapMarkers);}
+  setTimeout(()=>restaurantMap.invalidateSize(),150);
+  if(mapOpening)return;
+  mapOpening=true;
+  const status=document.getElementById('mapStatus'),cache=readMapCache(),places=restaurants.slice();mapEntries=[];let failed=0,requests=0;
+  status.textContent='Standorte werden ermittelt. Beim ersten Öffnen kann das etwas dauern …';
+  for(let i=0;i<places.length;i++){
+   const place=places[i],query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', '),cacheKey=String(place.id||place.name)+'|'+query;
+   if(!Object.prototype.hasOwnProperty.call(cache,cacheKey)&&query&&place.ort){if(requests>0)await waitMap(1100);requests++;}
+   const point=await geocodeRestaurant(place,cache);
+   if(!point){failed++;continue;}
+   mapEntries.push({place,point});
+   status.textContent='Karte wird aufgebaut: '+mapEntries.length+' von '+places.length+' Standorten gefunden …';
+  }
+  renderMapFilters();drawMapEntries();
+  const points=mapEntries.map(x=>[x.point.lat,x.point.lon]);
+  if(points.length>1)restaurantMap.fitBounds(points,{padding:[35,35],maxZoom:13});else if(points.length===1)restaurantMap.setView(points[0],14);
+  if(failed)status.textContent+=' '+failed+' Einträge haben noch keinen eindeutig gefundenen Standort.';
+ }catch(error){console.error(error);document.getElementById('mapStatus').textContent='Die Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.';}
+ finally{mapOpening=false;}
+}
 
 /* --------------------------------------------------
    START
