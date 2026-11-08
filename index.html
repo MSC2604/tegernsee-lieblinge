@@ -6360,20 +6360,20 @@ async function openRestaurantMap(embedded=false){
   setTimeout(()=>restaurantMap.invalidateSize(),150);
   if(mapOpening)return;
   mapOpening=true;
-  const status=document.getElementById('mapStatus'),cache=readMapCache(),places=restaurants.slice();mapEntries=[];let failed=0,requests=0;
+  const status=document.getElementById('mapStatus'),cache=readMapCache(),places=restaurants.slice();mapEntries=[];let failed=0,requests=0;const failedNames=[];
   status.textContent='Standorte werden ermittelt. Beim ersten Öffnen kann das etwas dauern …';
   for(let i=0;i<places.length;i++){
    const place=places[i],query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', '),cacheKey=String(place.id||place.name)+'|'+query;
    if(!Object.prototype.hasOwnProperty.call(cache,cacheKey)&&query&&place.ort){if(requests>0)await waitMap(1100);requests++;}
    const point=await geocodeRestaurant(place,cache);
-   if(!point){failed++;continue;}
+   if(!point){failed++;failedNames.push(String(place.name||'Unbekannter Eintrag'));continue;}
    mapEntries.push({place,point});
    status.textContent='Karte wird aufgebaut: '+mapEntries.length+' von '+places.length+' Standorten gefunden …';
   }
   renderMapFilters();drawMapEntries();
   const points=mapEntries.map(x=>[x.point.lat,x.point.lon]);
   if(points.length>1)restaurantMap.fitBounds(points,{padding:[35,35],maxZoom:13});else if(points.length===1)restaurantMap.setView(points[0],14);
-  if(failed)status.textContent+=' '+failed+' Einträge haben noch keinen eindeutig gefundenen Standort.';
+  if(failed)status.textContent+=' Nicht auf der Karte: '+failedNames.join(' · ')+'.';
  }catch(error){console.error(error);document.getElementById('mapStatus').textContent='Die Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.';}
  finally{mapOpening=false;}
 }
