@@ -6091,11 +6091,10 @@ function showMapPlace(place){
  preview.hidden=false;
 }
 function updateMapLabels(){
- if(!mapMarkers||!restaurantMap)return;
- const showNames=restaurantMap.getZoom()>=14;
+ if(!mapMarkers)return;
  mapMarkers.eachLayer(marker=>{
-  if(marker._mapPlaceNumber!==undefined){
-   marker.setTooltipContent(showNames?marker._mapPlaceName:String(marker._mapPlaceNumber));
+  if(marker._mapPlaceName){
+   marker.setTooltipContent(marker._mapPlaceName);
   }
  });
 }
@@ -6107,9 +6106,8 @@ function drawMapEntries(){
   const style=mapCategoryStyle(entry.place.kategorie||entry.place.kategorie_name||entry.place.category);
   const marker=L.marker([entry.point.lat,entry.point.lon],{icon:mapMarkerIcon(style.color)});
   marker._mapPlaceName=escapeHtml(entry.place.name||'Restaurant');
-  marker._mapPlaceNumber=index+1;
   marker.on('click',()=>showMapPlace(entry.place));
-  marker.bindTooltip(String(index+1),{permanent:true,direction:'right',offset:[9,0],className:'map-place-label'});
+  marker.bindTooltip(marker._mapPlaceName,{permanent:true,direction:'right',offset:[9,0],className:'map-place-label'});
   mapMarkers.addLayer(marker);
  });
  updateMapLabels();
