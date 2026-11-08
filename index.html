@@ -2903,6 +2903,7 @@ let currentPlace =
 
 // Merkt sich die Listenposition, damit die passende Kachel nach Details wieder sichtbar ist.
 let detailReturnScrollY = 0;
+let detailReturnToMap = false;
 
 let editId =
   null;
@@ -4430,7 +4431,8 @@ function escapeAttr(
 -------------------------------------------------- */
 
 function openDetail(
-  id
+  id,
+  returnToMap = false
 ){
 
   // Tatsächliche Listenposition vor dem Öffnen der Details merken.
@@ -4452,6 +4454,8 @@ function openDetail(
 
   if(!currentPlace)
     return;
+
+  detailReturnToMap = Boolean(returnToMap);
 
   // Eigenen Verlaufseintrag anlegen, damit die Handy-Rückwärtstaste
   // aus den Restaurantdetails zurück zur Liste führt.
@@ -4643,6 +4647,22 @@ function showHome(fromPhoneBack = false){
   // Bei der Handy-Rückwärtstaste kommt die Ansicht bereits aus popstate.
   if(!fromPhoneBack && currentPlace && history.state && history.state.tegernseeRestaurantDetail){
     history.back();
+    return;
+  }
+
+  if(detailReturnToMap){
+    document.getElementById("incompleteView").style.display = "none";
+    document.getElementById("detail").style.display = "none";
+    document.getElementById("home").style.display = "none";
+    document.getElementById("homeHeader").style.display = "none";
+    document.getElementById("mapView").style.display = "block";
+    currentPlace = null;
+    detailReturnToMap = false;
+    window.scrollTo({top:0,behavior:"auto"});
+    requestAnimationFrame(() => {
+      if(restaurantMap) restaurantMap.invalidateSize();
+      updateMapLabels();
+    });
     return;
   }
 
@@ -6302,7 +6322,7 @@ function showMapPlace(place){
  const image=getRestaurantImage(place);
  const address=[place.adresse,place.ort].filter(Boolean).join(', ');
  const destination='https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(address||place.name||'Tegernsee');
- preview.innerHTML='<div class="map-place-preview-head">'+(image?'<img src="'+escapeAttr(image)+'" alt="">':'<div style="width:76px;height:76px;border-radius:11px;background:#edf3ef;display:grid;place-items:center;font-size:28px">🍽️</div>')+'<div class="map-place-preview-main"><div class="map-place-preview-name">'+escapeHtml(place.name||'Restaurant')+'</div><div class="map-place-preview-meta">'+escapeHtml([place.ort,mapCategoryOf(place)].filter(Boolean).join(' · '))+'</div><div class="map-place-preview-meta">'+escapeHtml(place.oeffnungszeiten||'Öffnungszeiten nicht hinterlegt')+'</div></div><button type="button" aria-label="Vorschau schließen" onclick="document.getElementById(\'mapPlacePreview\').hidden=true" style="border:0;background:transparent;font-size:22px;color:#52665d">×</button></div><div class="map-place-preview-actions"><button type="button" onclick="openDetail(\''+escapeAttr(String(place.id))+'\')">Details ansehen</button><a href="'+escapeAttr(destination)+'" target="_blank" rel="noopener">Navigation starten ↗</a></div>';
+ preview.innerHTML='<div class="map-place-preview-head">'+(image?'<img src="'+escapeAttr(image)+'" alt="">':'<div style="width:76px;height:76px;border-radius:11px;background:#edf3ef;display:grid;place-items:center;font-size:28px">🍽️</div>')+'<div class="map-place-preview-main"><div class="map-place-preview-name">'+escapeHtml(place.name||'Restaurant')+'</div><div class="map-place-preview-meta">'+escapeHtml([place.ort,mapCategoryOf(place)].filter(Boolean).join(' · '))+'</div><div class="map-place-preview-meta">'+escapeHtml(place.oeffnungszeiten||'Öffnungszeiten nicht hinterlegt')+'</div></div><button type="button" aria-label="Vorschau schließen" onclick="document.getElementById(\'mapPlacePreview\').hidden=true" style="border:0;background:transparent;font-size:22px;color:#52665d">×</button></div><div class="map-place-preview-actions"><button type="button" onclick="openDetail(\''+escapeAttr(String(place.id))+'\',true)">Details ansehen</button><a href="'+escapeAttr(destination)+'" target="_blank" rel="noopener">Navigation starten ↗</a></div>';
  preview.hidden=false;
 }
 function updateMapLabels(){
