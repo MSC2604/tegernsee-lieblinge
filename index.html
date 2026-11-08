@@ -865,7 +865,7 @@ a{
 .map-place-preview-actions button,.map-place-preview-actions a{border:0;border-radius:9px;padding:9px 11px;background:#285f4d;color:#fff;text-decoration:none;font-size:12px;font-weight:800}
 .map-place-preview-actions .map-preview-secondary{background:#edf3ef;color:#285f4d}
 .map-cluster{display:flex;align-items:center;justify-content:center;border:3px solid #fff;border-radius:50%;background:#285f4d;color:#fff;font-weight:850;box-shadow:0 2px 9px #17352d55}
-.leaflet-tooltip.map-place-label{border:1px solid #cbded5;border-radius:7px;background:rgba(255,255,255,.97);color:#17352d;padding:4px 7px;font-size:11px;font-weight:800;line-height:1.25;box-shadow:0 2px 7px rgba(23,53,45,.18);white-space:normal;max-width:150px;min-width:0;overflow-wrap:anywhere;word-break:normal;text-align:center}.leaflet-tooltip.map-place-label:before{display:none}
+.leaflet-tooltip.map-place-label{border:1px solid #cbded5;border-radius:7px;background:rgba(255,255,255,.97);color:#17352d;padding:4px 7px;font-size:11px;font-weight:800;line-height:1.25;box-shadow:0 2px 7px rgba(23,53,45,.18);white-space:normal;max-width:min(150px,42vw);min-width:0;overflow-wrap:anywhere;word-break:normal;text-align:center}.leaflet-tooltip.map-place-label:before{display:none}
 @media(max-width:560px){#restaurantMap{height:66vh;min-height:390px}.map-place-preview{left:8px;right:8px;bottom:10px;padding:10px}.map-place-preview img{width:64px;height:64px}}
 .restaurant-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}
 .restaurant-card-box{border:1px solid var(--line);background:#fff;border-radius:14px;padding:13px;min-width:0}
@@ -6332,7 +6332,7 @@ function updateMapLabels(){
  const markers=[];
  mapMarkers.eachLayer(marker=>{if(marker._mapPlaceName)markers.push(marker);});
  if(!markers.length)return;
- const maxWidth=Math.min(150,Math.max(105,window.innerWidth*.42));
+ const maxWidth=Math.max(80,Math.min(150,window.innerWidth*.42));
  const directions=[
   {direction:'right',offset:[12,0]},
   {direction:'left',offset:[-12,0]},
@@ -6342,9 +6342,11 @@ function updateMapLabels(){
  const items=markers.map(marker=>{
   const point=restaurantMap.latLngToContainerPoint(marker.getLatLng());
   const name=marker._mapPlaceName.replace(/<[^>]*>/g,'');
-  const rawWidth=Math.max(52,Math.min(maxWidth,name.length*6.1+16));
+  const tooltipElement=marker.getTooltip&&marker.getTooltip()?marker.getTooltip().getElement():null;
+  const measured=tooltipElement?tooltipElement.getBoundingClientRect():null;
+  const estimatedWidth=Math.max(52,Math.min(maxWidth,name.length*6.1+16));
   const lines=Math.max(1,Math.ceil((name.length*6.1)/(maxWidth-16)));
-  return {marker,point,width:rawWidth,height:lines*13+10,name,density:0};
+  return {marker,point,width:measured&&measured.width>0?measured.width:estimatedWidth,height:measured&&measured.height>0?measured.height:lines*13+10,name,density:0};
  });
  items.forEach((item,index)=>{
   item.density=items.reduce((sum,other,j)=>{
