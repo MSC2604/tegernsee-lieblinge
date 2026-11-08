@@ -1,0 +1,27 @@
+{
+  "id": "./",
+  "name": "Meine Lieblings-Restaurants am Tegernsee",
+  "short_name": "Lieblings-Restaurants",
+  "description": "Restaurants, Almen und besondere Plätze rund um den Tegernsee.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone"
+  ],
+  "orientation": "portrait",
+  "background_color": "#f4f2ec",
+  "theme_color": "#2d6a56",
+  "categories": [
+    "food",
+    "travel"
+  ],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
