@@ -1882,6 +1882,68 @@ main#home{max-width:1040px;padding:22px 18px 112px}
 
 
 
+
+/* Premium-Kachelgestaltung: ruhige Bildsprache, klare Typografie und dezente Details */
+#cards .card{
+  border-radius:22px;
+  border:1px solid rgba(45,106,86,.12);
+  box-shadow:0 7px 22px rgba(23,53,45,.075);
+  transition:box-shadow .18s ease,transform .18s ease;
+}
+#cards .card:active{transform:scale(.995)}
+#cards .card .icon{
+  width:100%;
+  height:auto;
+  aspect-ratio:16/9;
+  max-height:290px;
+  min-height:170px;
+  position:relative;
+  background:linear-gradient(145deg,#e5eee9,#cbded6);
+}
+#cards .card .icon img{width:100%;height:100%;object-fit:cover}
+#cards .card .cardmain{padding:15px 18px 13px}
+#cards .card .cardname{font-size:22px;line-height:1.18;letter-spacing:-.35px}
+#cards .card .place{font-size:13px;letter-spacing:.1px;margin-top:6px}
+#cards .card .status{
+  display:inline-flex;
+  align-items:center;
+  min-height:27px;
+  margin-top:11px;
+  padding:5px 10px;
+  border-radius:999px;
+  font-size:11px;
+  line-height:1.2;
+  font-weight:800;
+  background:#f0f4f1;
+}
+#cards .card .status.open{color:#216b45;background:#eaf5ed}
+#cards .card .status.closed{color:#a3423b;background:#fbefed}
+#cards .card .status.unknown{color:#68766f;background:#f0f2ef}
+#cards .card .fav{top:13px;right:13px;width:42px;height:42px;backdrop-filter:blur(8px)}
+#cards .card .tile-hours{
+  gap:7px;
+  padding:12px 18px 14px;
+  background:#fff;
+  border-top:1px solid #edf1ed;
+}
+#cards .card .tile-hours-heading{
+  font-size:11px;
+  letter-spacing:.55px;
+  text-transform:uppercase;
+}
+#cards .card .tile-hours-row{font-size:13px;line-height:1.45}
+#cards .card .cardbottom{
+  padding:11px 16px 15px;
+  background:#f8faf8;
+}
+#cards .card .cardbottom button{border-radius:11px;min-height:40px}
+#cards .card .tile-card-links{padding:0 16px 14px;background:#f8faf8}
+@media(max-width:420px){
+  #cards .card .cardmain{padding:13px 15px 11px}
+  #cards .card .cardname{font-size:20px}
+  #cards .card .tile-hours{padding:11px 15px 13px}
+}
+
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
