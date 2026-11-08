@@ -2198,8 +2198,8 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 }
 
 
-/* Kartenansicht: einzelne Restaurantpunkte mit dauerhaft sichtbaren Namen, ohne Zahlencluster */
-.leaflet-tooltip.map-place-label{display:block;width:max-content;max-width:180px;white-space:normal;overflow-wrap:anywhere;word-break:normal;writing-mode:horizontal-tb;text-orientation:mixed;text-align:center;font-size:11px;font-weight:800;line-height:1.25;padding:4px 7px;border:1px solid #cbded5;border-radius:8px;background:rgba(255,255,255,.98);color:#17352d;box-shadow:0 2px 8px rgba(23,53,45,.2)}
+/* Kartenansicht: horizontale, mobil angepasste Restaurantnamen ohne Zahlencluster */
+.leaflet-tooltip.map-place-label{display:block;width:max-content;max-width:min(180px,42vw);white-space:normal;overflow-wrap:anywhere;word-break:normal;writing-mode:horizontal-tb;text-orientation:mixed;text-align:center;font-size:clamp(10px,2.8vw,11px);font-weight:800;line-height:1.25;padding:4px 6px;border:1px solid #cbded5;border-radius:8px;background:rgba(255,255,255,.98);color:#17352d;box-shadow:0 2px 8px rgba(23,53,45,.2)}
 .leaflet-tooltip.map-place-label:before{display:none}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6326,7 +6326,7 @@ function updateMapLabels(){
     const dx=point.x-own.x,dy=point.y-own.y;
     const forward=dx*candidate.vx+dy*candidate.vy;
     const lateral=Math.abs(dx*candidate.vy-dy*candidate.vx);
-    if(forward>0)score+=Math.exp(-forward/115)*Math.exp(-lateral/62);
+    if(forward>0)score+=Math.exp(-forward/Math.min(180,window.innerWidth*.42))*Math.exp(-lateral/85);
    });
    if(score<bestScore){bestScore=score;best=candidate;}
   });
