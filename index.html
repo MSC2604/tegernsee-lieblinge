@@ -838,9 +838,6 @@ a{
 .view-switch{display:flex;gap:5px;width:100%;max-width:360px;margin:16px auto 12px;padding:4px;background:#edf3ef;border:1px solid #dce7e1;border-radius:14px}
 .view-switch-btn{flex:1;min-height:42px;border:0;border-radius:10px;background:transparent;color:#456257;font-size:14px;font-weight:800}
 .view-switch-btn.active{background:#fff;color:#245846;box-shadow:0 2px 8px rgba(20,50,40,.12)}
-#mapView.embedded-map{display:none;max-width:none;margin:0;padding:0}
-#mapView.embedded-map .map-head{display:none}
-#mapView.embedded-map #restaurantMap{height:min(66vh,680px)}
 .map-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .map-head h2{margin:0;font-size:22px}
 .map-back{border:1px solid var(--line);background:#fff;color:var(--accent);border-radius:12px;padding:10px 12px;font-weight:750}
@@ -2102,15 +2099,15 @@ main#home{max-width:1040px;padding:22px 18px 112px}
     </div>
   </div>
 
-  <div class="view-switch" role="group" aria-label="Ansicht wählen">
-    <button type="button" class="view-switch-btn active" id="listViewButton" aria-pressed="true" onclick="switchRestaurantView('list')">☷ Liste</button>
-    <button type="button" class="view-switch-btn" id="mapViewButton" aria-pressed="false" onclick="switchRestaurantView('map')">🗺️ Karte</button>
-  </div>
   <div
     class="grid"
     id="cards"
   ></div>
 
+
+
+
+</main>
 
 <main id="mapView">
   <div class="map-head"><h2>🗺️ Tegernsee-Genusskarte</h2><button class="map-back" onclick="showHome()">‹ Zurück</button></div>
@@ -2121,9 +2118,6 @@ main#home{max-width:1040px;padding:22px 18px 112px}
   </div>
   <p class="map-status" id="mapStatus">Die Restaurantstandorte werden vorbereitet …</p>
 </main>
-
-</main>
-
 
 <main id="incompleteView">
   <div class="map-head"><h2>📋 Unvollständige Einträge</h2><button class="map-back" onclick="showHome()">‹ Zurück</button></div>
@@ -4264,9 +4258,6 @@ function openDetail(
   document.getElementById("mapView").style.display = "none";
   document.getElementById("mapView").classList.remove("embedded-map");
   document.getElementById("cards").style.display = "grid";
-  const listButton=document.getElementById("listViewButton");
-  const mapButton=document.getElementById("mapViewButton");
-  if(listButton&&mapButton){listButton.classList.add("active");mapButton.classList.remove("active");listButton.setAttribute("aria-pressed","true");mapButton.setAttribute("aria-pressed","false");}
 
   document.getElementById(
     "detail"
@@ -4430,21 +4421,6 @@ function openDetail(
    STARTSEITE
 -------------------------------------------------- */
 
-function switchRestaurantView(view){
- const listButton=document.getElementById('listViewButton');
- const mapButton=document.getElementById('mapViewButton');
- const cards=document.getElementById('cards');
- const mapView=document.getElementById('mapView');
- const showMap=view==='map';
- cards.style.display=showMap?'none':'grid';
- mapView.classList.add('embedded-map');
- mapView.style.display=showMap?'block':'none';
- listButton.classList.toggle('active',!showMap);
- mapButton.classList.toggle('active',showMap);
- listButton.setAttribute('aria-pressed',String(!showMap));
- mapButton.setAttribute('aria-pressed',String(showMap));
- if(showMap)openRestaurantMap(true);
-}
 function showHome(fromPhoneBack = false){
 
   // Bei normalem Zurück-Button den Verlauf zurückgehen lassen.
