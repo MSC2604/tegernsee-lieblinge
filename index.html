@@ -5944,7 +5944,8 @@ async function savePlace(){
     }
 
     closeModal();
-    await restaurantDataPromise = loadData();
+    restaurantDataPromise = loadData();
+    await restaurantDataPromise;
 
     const savedRestaurant = isEditing
       ? restaurants.find(r => String(r.id) === String(savedEditId))
@@ -6445,7 +6446,7 @@ async function openRestaurantMap(embedded=false){
    START
 -------------------------------------------------- */
 
-loadData();
+restaurantDataPromise = loadData();
 
 const toggleTavilyUsage = document.getElementById("toggleTavilyUsage");
 const tavilyUsageCard = document.getElementById("tavilyUsageCard");
