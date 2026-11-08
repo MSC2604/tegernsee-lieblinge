@@ -6330,29 +6330,63 @@ function updateMapLabels(){
  if(!mapMarkers||!restaurantMap)return;
  const markers=[];
  mapMarkers.eachLayer(marker=>{if(marker._mapPlaceName)markers.push(marker);});
+ if(!markers.length)return;
+ const maxWidth=Math.min(150,Math.max(105,window.innerWidth*.42));
  const directions=[
-  {direction:'right',offset:[12,0],vx:1,vy:0},
-  {direction:'left',offset:[-12,0],vx:-1,vy:0},
-  {direction:'top',offset:[0,-12],vx:0,vy:-1},
-  {direction:'bottom',offset:[0,12],vx:0,vy:1}
+  {direction:'right',offset:[12,0]},
+  {direction:'left',offset:[-12,0]},
+  {direction:'top',offset:[0,-12]},
+  {direction:'bottom',offset:[0,12]}
  ];
- const positions=markers.map(marker=>restaurantMap.latLngToContainerPoint(marker.getLatLng()));
- markers.forEach((marker,index)=>{
-  const own=positions[index];
-  let best=directions[0],bestScore=Infinity;
+ const items=markers.map(marker=>{
+  const point=restaurantMap.latLngToContainerPoint(marker.getLatLng());
+  const name=marker._mapPlaceName.replace(/<[^>]*>/g,'');
+  const rawWidth=Math.max(52,Math.min(maxWidth,name.length*6.1+16));
+  const lines=Math.max(1,Math.ceil((name.length*6.1)/(maxWidth-16)));
+  return {marker,point,width:rawWidth,height:lines*13+10,name,density:0};
+ });
+ items.forEach((item,index)=>{
+  item.density=items.reduce((sum,other,j)=>{
+   if(index===j)return sum;
+   const distance=Math.hypot(other.point.x-item.point.x,other.point.y-item.point.y);
+   return sum+(distance<190?1/(distance+18):0);
+  },0);
+ });
+ items.sort((a,b)=>b.density-a.density||b.name.length-a.name.length);
+ const placed=[];
+ items.forEach(item=>{
+  let best=null,bestScore=Infinity;
   directions.forEach(candidate=>{
+   let rect;
+   if(candidate.direction==='right')rect={left:item.point.x+14,top:item.point.y-item.height/2,width:item.width,height:item.height};
+   else if(candidate.direction==='left')rect={left:item.point.x-item.width-14,top:item.point.y-item.height/2,width:item.width,height:item.height};
+   else if(candidate.direction==='top')rect={left:item.point.x-item.width/2,top:item.point.y-item.height-14,width:item.width,height:item.height};
+   else rect={left:item.point.x-item.width/2,top:item.point.y+14,width:item.width,height:item.height};
    let score=0;
-   positions.forEach((point,otherIndex)=>{
-    if(otherIndex===index)return;
-    const dx=point.x-own.x,dy=point.y-own.y;
-    const forward=dx*candidate.vx+dy*candidate.vy;
-    const lateral=Math.abs(dx*candidate.vy-dy*candidate.vx);
-    if(forward>0)score+=Math.exp(-forward/Math.min(180,window.innerWidth*.42))*Math.exp(-lateral/85);
+   placed.forEach(other=>{
+    const overlapX=Math.max(0,Math.min(rect.left+rect.width,other.rect.left+other.rect.width)-Math.max(rect.left,other.rect.left));
+    const overlapY=Math.max(0,Math.min(rect.top+rect.height,other.rect.top+other.rect.height)-Math.max(rect.top,other.rect.top));
+    score+=overlapX*overlapY*3;
    });
+   items.forEach(other=>{
+    if(other===item)return;
+    const dx=other.point.x-(rect.left+rect.width/2),dy=other.point.y-(rect.top+rect.height/2);
+    const nearestX=Math.max(rect.left,Math.min(other.point.x,rect.left+rect.width));
+    const nearestY=Math.max(rect.top,Math.min(other.point.y,rect.top+rect.height));
+    const distance=Math.hypot(other.point.x-nearestX,other.point.y-nearestY);
+    if(distance<18)score+=(18-distance)*18;
+   });
+   if(rect.left<0||rect.top<0||rect.left+rect.width>restaurantMap.getSize().x||rect.top+rect.height>restaurantMap.getSize().y)score+=500;
    if(score<bestScore){bestScore=score;best=candidate;}
   });
-  marker.unbindTooltip();
-  marker.bindTooltip(marker._mapPlaceName,{permanent:true,direction:best.direction,offset:best.offset,className:'map-place-label',opacity:1});
+  item.marker.unbindTooltip();
+  item.marker.bindTooltip(item.marker._mapPlaceName,{permanent:true,direction:best.direction,offset:best.offset,className:'map-place-label',opacity:1});
+  let rect;
+  if(best.direction==='right')rect={left:item.point.x+14,top:item.point.y-item.height/2,width:item.width,height:item.height};
+  else if(best.direction==='left')rect={left:item.point.x-item.width-14,top:item.point.y-item.height/2,width:item.width,height:item.height};
+  else if(best.direction==='top')rect={left:item.point.x-item.width/2,top:item.point.y-item.height-14,width:item.width,height:item.height};
+  else rect={left:item.point.x-item.width/2,top:item.point.y+14,width:item.width,height:item.height};
+  placed.push({rect});
  });
 }
 function addMapEntryMarker(entry){
