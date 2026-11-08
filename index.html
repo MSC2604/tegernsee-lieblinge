@@ -4240,7 +4240,12 @@ function openDetail(
   ).style.display =
     "none";
 
-  document.getElementById("mapView").style.display = "none";\n  document.getElementById("mapView").classList.remove("embedded-map");\n  document.getElementById("cards").style.display = "grid";\n  const listButton=document.getElementById("listViewButton");\n  const mapButton=document.getElementById("mapViewButton");\n  if(listButton&&mapButton){listButton.classList.add("active");mapButton.classList.remove("active");listButton.setAttribute("aria-pressed","true");mapButton.setAttribute("aria-pressed","false");}
+  document.getElementById("mapView").style.display = "none";
+  document.getElementById("mapView").classList.remove("embedded-map");
+  document.getElementById("cards").style.display = "grid";
+  const listButton=document.getElementById("listViewButton");
+  const mapButton=document.getElementById("mapViewButton");
+  if(listButton&&mapButton){listButton.classList.add("active");mapButton.classList.remove("active");listButton.setAttribute("aria-pressed","true");mapButton.setAttribute("aria-pressed","false");}
 
   document.getElementById(
     "detail"
