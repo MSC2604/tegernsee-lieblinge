@@ -835,6 +835,12 @@ a{
 .missing-chip{background:#fff2d9;color:#805716;border:1px solid #f0d7a6;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}
 .incomplete-actions{display:flex;gap:8px;flex-wrap:wrap}
 .incomplete-actions button{border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:#f7faf8;color:var(--accent);font-weight:750}
+.view-switch{display:flex;gap:5px;width:100%;max-width:360px;margin:16px auto 12px;padding:4px;background:#edf3ef;border:1px solid #dce7e1;border-radius:14px}
+.view-switch-btn{flex:1;min-height:42px;border:0;border-radius:10px;background:transparent;color:#456257;font-size:14px;font-weight:800}
+.view-switch-btn.active{background:#fff;color:#245846;box-shadow:0 2px 8px rgba(20,50,40,.12)}
+#mapView.embedded-map{display:none;max-width:none;margin:0;padding:0}
+#mapView.embedded-map .map-head{display:none}
+#mapView.embedded-map #restaurantMap{height:min(66vh,680px)}
 .map-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .map-head h2{margin:0;font-size:22px}
 .map-back{border:1px solid var(--line);background:#fff;color:var(--accent);border-radius:12px;padding:10px 12px;font-weight:750}
@@ -2080,6 +2086,10 @@ main#home{max-width:1040px;padding:22px 18px 112px}
     </div>
   </div>
 
+  <div class="view-switch" role="group" aria-label="Ansicht wählen">
+    <button type="button" class="view-switch-btn active" id="listViewButton" aria-pressed="true" onclick="switchRestaurantView('list')">☷ Liste</button>
+    <button type="button" class="view-switch-btn" id="mapViewButton" aria-pressed="false" onclick="switchRestaurantView('map')">🗺️ Karte</button>
+  </div>
   <div
     class="grid"
     id="cards"
@@ -4230,7 +4240,7 @@ function openDetail(
   ).style.display =
     "none";
 
-  document.getElementById("mapView").style.display = "none";
+  document.getElementById("mapView").style.display = "none";\n  document.getElementById("mapView").classList.remove("embedded-map");\n  document.getElementById("cards").style.display = "grid";\n  const listButton=document.getElementById("listViewButton");\n  const mapButton=document.getElementById("mapViewButton");\n  if(listButton&&mapButton){listButton.classList.add("active");mapButton.classList.remove("active");listButton.setAttribute("aria-pressed","true");mapButton.setAttribute("aria-pressed","false");}
 
   document.getElementById(
     "detail"
@@ -4394,6 +4404,21 @@ function openDetail(
    STARTSEITE
 -------------------------------------------------- */
 
+function switchRestaurantView(view){
+ const listButton=document.getElementById('listViewButton');
+ const mapButton=document.getElementById('mapViewButton');
+ const cards=document.getElementById('cards');
+ const mapView=document.getElementById('mapView');
+ const showMap=view==='map';
+ cards.style.display=showMap?'none':'grid';
+ mapView.classList.add('embedded-map');
+ mapView.style.display=showMap?'block':'none';
+ listButton.classList.toggle('active',!showMap);
+ mapButton.classList.toggle('active',showMap);
+ listButton.setAttribute('aria-pressed',String(!showMap));
+ mapButton.setAttribute('aria-pressed',String(showMap));
+ if(showMap)openRestaurantMap(true);
+}
 function showHome(fromPhoneBack = false){
 
   // Bei normalem Zurück-Button den Verlauf zurückgehen lassen.
@@ -6054,7 +6079,7 @@ function addMapLegend(){
  legend.addTo(restaurantMap);restaurantMap._restaurantLegend=legend;
 }
 async function geocodeRestaurant(place,cache){const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const key=String(place.id||place.name)+'|'+query;if(Object.prototype.hasOwnProperty.call(cache,key))return cache[key];if(!query||!place.ort)return null;try{const response=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(query),{headers:{Accept:'application/json'}});if(!response.ok)return null;const data=await response.json();if(!data.length){cache[key]=null;writeMapCache(cache);return null;}const point={lat:Number(data[0].lat),lon:Number(data[0].lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon))return null;cache[key]=point;writeMapCache(cache);return point;}catch(e){console.warn('Standort nicht gefunden:',place.name,e);return null;}}
-async function openRestaurantMap(){closeAppMenu();document.getElementById('home').style.display='none';document.getElementById('homeHeader').style.display='none';document.getElementById('detail').style.display='none';document.getElementById('incompleteView').style.display='none';document.getElementById('mapView').style.display='block';window.scrollTo({top:0,behavior:'auto'});try{await loadLeaflet();if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.featureGroup().addTo(restaurantMap);addMapLegend();}setTimeout(()=>restaurantMap.invalidateSize(),120);if(mapOpening)return;mapOpening=true;const status=document.getElementById('mapStatus');const cache=readMapCache();mapMarkers.clearLayers();const places=restaurants.slice();let found=0,failed=0,requests=0;const points=[];status.textContent='Standorte werden ermittelt. Beim ersten Öffnen kann das etwas dauern …';for(let i=0;i<places.length;i++){const place=places[i];const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const cacheKey=String(place.id||place.name)+'|'+query;if(!Object.prototype.hasOwnProperty.call(cache,cacheKey)&&query&&place.ort){if(requests>0)await waitMap(1100);requests++;}const point=await geocodeRestaurant(place,cache);if(!point){failed++;continue;}found++;points.push(point);const categoryStyle=mapCategoryStyle(place.kategorie||place.kategorie_name||place.category);const marker=L.circleMarker([point.lat,point.lon],{radius:9,color:'#fff',weight:2,fillColor:categoryStyle.color,fillOpacity:.96}).addTo(mapMarkers);const popup='<div class="map-popup-title">'+escapeHtml(place.name||'Restaurant')+'</div><div>'+escapeHtml(place.ort||'')+'</div><a class="map-popup-link" href="#" onclick="openDetail(decodeURIComponent(this.dataset.id));return false" data-id="' + encodeURIComponent(String(place.id)) + '">Restaurant öffnen →</a><br><a class="map-popup-link" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent([place.adresse,place.ort].filter(Boolean).join(', '))+'">Navigation starten ↗</a>';marker.bindPopup(popup);marker.bindTooltip(escapeHtml(place.name||'Restaurant'),{permanent:true,direction:'right',offset:[8,0],className:'restaurant-map-label'});status.textContent='Karte wird aufgebaut: '+found+' von '+places.length+' Restaurants gefunden …';}if(points.length===1)restaurantMap.setView([points[0].lat,points[0].lon],14);else if(points.length>1)restaurantMap.fitBounds(mapMarkers.getBounds().pad(0.12),{maxZoom:13});status.textContent=found+' von '+places.length+' Restaurant-Einträgen auf der Karte.'+(failed?' Für '+failed+' Einträge konnte noch kein genauer Standort gefunden werden.':'')+' Standorte werden auf diesem Gerät zwischengespeichert.';}catch(error){console.error(error);document.getElementById('mapStatus').textContent='Die Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.';}finally{mapOpening=false;}}
+async function openRestaurantMap(embedded=false){closeAppMenu();if(!embedded){document.getElementById('home').style.display='none';document.getElementById('homeHeader').style.display='none';document.getElementById('detail').style.display='none';document.getElementById('incompleteView').style.display='none';document.getElementById('mapView').classList.remove('embedded-map');document.getElementById('mapView').style.display='block';}window.scrollTo({top:0,behavior:'auto'});try{await loadLeaflet();if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.featureGroup().addTo(restaurantMap);addMapLegend();}setTimeout(()=>restaurantMap.invalidateSize(),120);if(mapOpening)return;mapOpening=true;const status=document.getElementById('mapStatus');const cache=readMapCache();mapMarkers.clearLayers();const places=restaurants.slice();let found=0,failed=0,requests=0;const points=[];status.textContent='Standorte werden ermittelt. Beim ersten Öffnen kann das etwas dauern …';for(let i=0;i<places.length;i++){const place=places[i];const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const cacheKey=String(place.id||place.name)+'|'+query;if(!Object.prototype.hasOwnProperty.call(cache,cacheKey)&&query&&place.ort){if(requests>0)await waitMap(1100);requests++;}const point=await geocodeRestaurant(place,cache);if(!point){failed++;continue;}found++;points.push(point);const categoryStyle=mapCategoryStyle(place.kategorie||place.kategorie_name||place.category);const marker=L.circleMarker([point.lat,point.lon],{radius:9,color:'#fff',weight:2,fillColor:categoryStyle.color,fillOpacity:.96}).addTo(mapMarkers);const popup='<div class="map-popup-title">'+escapeHtml(place.name||'Restaurant')+'</div><div>'+escapeHtml(place.ort||'')+'</div><a class="map-popup-link" href="#" onclick="openDetail(decodeURIComponent(this.dataset.id));return false" data-id="' + encodeURIComponent(String(place.id)) + '">Restaurant öffnen →</a><br><a class="map-popup-link" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent([place.adresse,place.ort].filter(Boolean).join(', '))+'">Navigation starten ↗</a>';marker.bindPopup(popup);marker.bindTooltip(escapeHtml(place.name||'Restaurant'),{permanent:true,direction:'right',offset:[8,0],className:'restaurant-map-label'});status.textContent='Karte wird aufgebaut: '+found+' von '+places.length+' Restaurants gefunden …';}if(points.length===1)restaurantMap.setView([points[0].lat,points[0].lon],14);else if(points.length>1)restaurantMap.fitBounds(mapMarkers.getBounds().pad(0.12),{maxZoom:13});status.textContent=found+' von '+places.length+' Restaurant-Einträgen auf der Karte.'+(failed?' Für '+failed+' Einträge konnte noch kein genauer Standort gefunden werden.':'')+' Standorte werden auf diesem Gerät zwischengespeichert.';}catch(error){console.error(error);document.getElementById('mapStatus').textContent='Die Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.';}finally{mapOpening=false;}}
 
 /* --------------------------------------------------
    START
