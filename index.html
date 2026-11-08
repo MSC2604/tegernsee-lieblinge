@@ -1988,6 +1988,38 @@ main#home{max-width:1040px;padding:22px 18px 112px}
 @media(max-width:560px){.search-dialog{padding:13px}.search-suggestions{max-height:44vh}}
 
 
+
+
+/* PREMIUM-DETAILANSICHT – klare Informationshierarchie und hochwertige Lesbarkeit */
+#detail .back{font-size:14px;font-weight:750;color:#2d6a56;padding:9px 13px;margin:0 0 12px;background:#edf4ef;border:1px solid #dce8df;border-radius:999px}
+#detail .hero{position:relative;background:linear-gradient(145deg,#e8eee8,#cbd9cf);border-radius:22px;overflow:hidden}
+#detail .hero img{display:block;width:100%;height:100%;object-fit:cover}
+#detail h1{margin-top:5px;margin-bottom:5px;font-family:Georgia,'Times New Roman',serif;font-weight:700;letter-spacing:-.025em}
+#detail .place{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:14px;margin:0 0 17px}
+#detail .actions{margin:18px 0 14px}
+#detail .action{background:linear-gradient(180deg,#fff 0%,#f7faf7 100%);box-shadow:0 4px 13px rgba(30,62,49,.07);font-weight:750}
+#detail .detailtools{padding-top:5px}
+#detail .info{margin-top:17px;padding:3px 18px;background:linear-gradient(180deg,#fff 0%,#fcfdfb 100%);border-color:#dfe8e0}
+#detail .info>div{display:grid;grid-template-columns:minmax(118px, .34fr) minmax(0,1fr);gap:12px;align-items:start;padding:15px 0;border-bottom:1px solid #e9eee9}
+#detail .info .label{display:block;color:#617168;font-size:12px;font-weight:800;letter-spacing:.035em;text-transform:uppercase;line-height:1.5}
+#detail .info>div>span:last-child{color:#263b31;font-size:14px;font-weight:550;line-height:1.6;min-width:0}
+#detail #dweb a{color:#2d6a56;font-weight:750;text-decoration-thickness:1px;text-underline-offset:3px}
+#detail .note{margin-top:17px;padding:17px;background:#f7f8f3;border:1px solid #e2e8dc;border-radius:18px;box-shadow:0 5px 18px rgba(24,59,49,.045)}
+#detail .note b{display:block;margin-bottom:10px;color:#30483a;font-size:15px}
+#detail .note textarea{width:100%;box-sizing:border-box;min-height:104px;padding:12px 13px;border:1px solid #d9e2d9;border-radius:12px;background:#fff;color:#263b31;font:inherit;line-height:1.55;resize:vertical}
+#detail .note textarea:focus{outline:3px solid rgba(200,160,75,.25);border-color:#8eae98}
+#detail .restaurant-photo-gallery{margin-top:18px;padding:16px;border-radius:19px;border-color:#e0e8e0;box-shadow:0 5px 18px rgba(24,59,49,.05)}
+#detail .restaurant-photo-gallery h2{font-family:Georgia,'Times New Roman',serif;color:#30483a;font-size:20px}
+#detail .restaurant-gallery-image-button img{background:#f1f3ed;border-radius:14px}
+@media(max-width:560px){
+  #detail .info{padding:2px 13px}
+  #detail .info>div{grid-template-columns:108px minmax(0,1fr);gap:9px;padding:13px 0}
+  #detail .info .label{font-size:11px}
+  #detail .info>div>span:last-child{font-size:13px}
+  #detail .note{padding:14px}
+}
+@media(max-width:360px){#detail .info>div{grid-template-columns:1fr;gap:3px}}
+
 /* PREMIUM-OBERFLÄCHE – gezielte visuelle Veredelung, ohne App-Logik zu ändern */
 :root{
   --bg:#f4f1e9;
