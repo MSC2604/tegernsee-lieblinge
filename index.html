@@ -6420,7 +6420,7 @@ async function openRestaurantMap(embedded=false){
   if(restaurantDataPromise)await restaurantDataPromise;
   if(!restaurants.length){status.textContent='Die Restaurantdaten sind momentan nicht verfügbar. Bitte zuerst die Daten aktualisieren und die Karte erneut öffnen.';return;}
   await loadLeaflet();
-  if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.layerGroup().addTo(restaurantMap);restaurantMap.on('zoomend moveend',updateMapLabels);}
+  if(!restaurantMap){restaurantMap=L.map('restaurantMap').setView([47.70,11.75],11);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(restaurantMap);mapMarkers=L.layerGroup().addTo(restaurantMap);restaurantMap.on('zoomend moveend resize',updateMapLabels);}
   setTimeout(()=>restaurantMap.invalidateSize(),150);
   const cache=readMapCache(),places=restaurants.slice();mapEntries=[];mapMarkers.clearLayers();let failed=0,requests=0;const failedNames=[];
   status.textContent='Standorte werden ermittelt. Die Karte füllt sich währenddessen …';
