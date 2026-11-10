@@ -1282,6 +1282,30 @@ console.log("Tavily usage account:", {
           return json({success:true,id:rowValue(row[0]),bytes:savedBytes,verified:true});
         }
 
+        if (body.action === "reorderGalleryImages") {
+          const restaurantId=String(body.restaurantId||"").trim();
+          const imageIds=Array.isArray(body.imageIds)?body.imageIds.map(Number):[];
+          if(!restaurantId||imageIds.length>20||imageIds.some(id=>!Number.isSafeInteger(id)||id<1)||new Set(imageIds).size!==imageIds.length) {
+            return json({error:"Die Bildreihenfolge ist ungültig."},400);
+          }
+          const existing=await turso("SELECT id FROM restaurant_gallery_images WHERE restaurant_id=? ORDER BY sort_order,id",[textArg(restaurantId)],true);
+          const rows=existing?.results?.[0]?.response?.result?.rows||[];
+          const existingIds=rows.map(row=>Number(rowValue(row[0])));
+          if(existingIds.length!==imageIds.length||existingIds.some(id=>!imageIds.includes(id))) {
+            return json({error:"Die Galerie wurde zwischenzeitlich geändert. Bitte erneut laden."},409);
+          }
+          const updatedAt=new Date().toISOString();
+          for(let index=0;index<imageIds.length;index++){
+            await turso("UPDATE restaurant_gallery_images SET sort_order=?,updated_at=? WHERE restaurant_id=? AND id=?",[integerArg(index),textArg(updatedAt),textArg(restaurantId),integerArg(imageIds[index])]);
+          }
+          const verify=await turso("SELECT id FROM restaurant_gallery_images WHERE restaurant_id=? ORDER BY sort_order,id",[textArg(restaurantId)],true);
+          const savedIds=(verify?.results?.[0]?.response?.result?.rows||[]).map(row=>Number(rowValue(row[0])));
+          if(savedIds.length!==imageIds.length||savedIds.some((id,index)=>id!==imageIds[index])) {
+            return json({error:"Die gespeicherte Bildreihenfolge konnte nicht bestätigt werden."},500);
+          }
+          return json({success:true,verified:true,imageIds:savedIds});
+        }
+
         if (body.action === "updateGalleryCaption") {
           const restaurantId=String(body.restaurantId||"").trim(), imageId=Number(body.imageId||0);
           const caption=String(body.caption||"").trim().slice(0,300);
