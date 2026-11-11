@@ -43,7 +43,7 @@ function openingHoursText(item) {
   }).filter(Boolean).join('; ');
 }
 export function extractPageText(html) {
-  return String(html || '').replace(/<(script|style|noscript|svg)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ').replace(/<!--[\s\S]*?-->/g, ' ').replace(/<br\s*\/?\s*>|<\/(p|div|li|tr|h[1-6]|section|article)>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ').replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/\s+/g, ' ').trim().slice(0, 50000);
+  return decodeHtmlEntities(String(html || '').replace(/<(script|style|noscript|svg)\\b[^>]*>[\\s\\S]*?<\\/\\1>/gi, ' ').replace(/<!--[\\s\\S]*?-->/g, ' ').replace(/<br\\s*\\/?\\s*>|<\\/(p|div|li|tr|h[1-6]|section|article)>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim()).slice(0, 50000);
 }
 export function extractRestaurantData(html) {
   const source = String(html || '');
@@ -134,12 +134,12 @@ export function extractOfficialDocumentLinks(html, baseUrl, limit = 20) {
   const matches = String(html || "").matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi);
   for (const match of matches) {
     try {
-      const url = new URL(match[1], base.href);
+      const url = new URL(decodeHtmlEntities(match[1]), base.href);
       if (url.origin !== base.origin || !/\.pdf(?:$|\?)/i.test(url.pathname + url.search)) continue;
       url.hash = "";
       if (seen.has(url.href)) continue;
       seen.add(url.href);
-      const label = match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const label = decodeHtmlEntities(match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
       found.push((label ? label + ": " : "") + url.href);
       if (found.length >= Math.max(1, Math.min(50, limit))) break;
     } catch { /* ungültige Dokumentlinks überspringen */ }
@@ -157,11 +157,11 @@ export function extractRelevantExternalLinks(html, baseUrl, limit = 30) {
   const matches = String(html || "").matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi);
   for (const match of matches) {
     try {
-      const raw = match[1].trim();
+      const raw = decodeHtmlEntities(match[1].trim());
       const url = new URL(raw, base.href);
       const isContact = ["mailto:", "tel:"].includes(url.protocol);
       if (!isContact && (!["http:", "https:"].includes(url.protocol) || url.origin === base.origin)) continue;
-      const label = match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const label = decodeHtmlEntities(match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
       if (!relevant.test(label + " " + url.href)) continue;
       const value = (label ? label + ": " : "") + url.href;
       if (seen.has(value)) continue;
