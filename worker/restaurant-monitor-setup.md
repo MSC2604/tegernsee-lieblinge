@@ -31,7 +31,7 @@ Wenn die drei Pflichtvariablen fehlen, bleibt die E-Mail-Funktion still deaktivi
 
 ## Sicherheitsgrenzen
 
-- Es werden nur HTTP(S)-Seiten der gespeicherten offiziellen Website aufgerufen.
+- Es werden nur HTTP(S)-Seiten der gespeicherten offiziellen Website aufgerufen; lokale und reservierte IP-Adressen werden blockiert.
 - Weiterleitungen auf andere Domains werden blockiert.
 - Pro Seite gelten 8 Sekunden Zeitlimit und 1 MB Größenlimit.
 - Die Prüfung crawlt die Startseite und höchstens fünf priorisierte Unterseiten je Restaurant. Pro Seite werden höchstens 50.000 Zeichen sichtbarer Text ausgewertet.
