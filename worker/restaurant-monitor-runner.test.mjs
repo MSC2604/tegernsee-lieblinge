@@ -200,4 +200,29 @@ assert.equal(contactFallback.errors.length, 0);
 assert.equal(contactFallback.pages, 2);
 assert.ok([...contactFallbackState.snapshots.keys()].some(key => key.endsWith("|https://restaurant.example/kontakt.html")));
 
+// HTTP-only legacy entries are retried once on the same host over HTTPS.
+const httpsUpgrade = await runRestaurantWebsiteMonitor({
+  db: makeDb().db,
+  restaurants: [{ id: 8, name: "Postillion", website: "http://postillion.example/" }],
+  fetchImpl: async url => {
+    if (String(url).startsWith("http://")) throw new TypeError("The operation was aborted");
+    return new Response("<html><body><h1>Postillion</h1></body></html>", {
+      status: 200, headers: { "Content-Type": "text/html" }
+    });
+  }
+});
+assert.equal(httpsUpgrade.pages, 1);
+assert.equal(httpsUpgrade.errors.length, 0);
+
+// A secure retry must not hide a genuine contact change, but ignores tracking/query text.
+const contactNormalization = findRestaurantChanges(
+  { externe_links: "E-Mail: mailto:info%40firstalm%2Ede?subject=Servus\nTelefon: tel:+49%208029%20%E2%80%93%20386" },
+  { externe_links: "E-Mail: mailto:info@firstalm.de?subject=Kontakt\nTelefon: tel:+49 8029 386" }
+);
+assert.equal(contactNormalization.length, 0);
+assert.equal(findRestaurantChanges(
+  { externe_links: "E-Mail: mailto:info@firstalm.de" },
+  { externe_links: "E-Mail: mailto:reservierung@firstalm.de" }
+).length, 1);
+
 console.log("Restaurant-Monitor-Lauf: Baseline, Änderungen, Fehler und HTML-Grenzfälle erfolgreich.");
