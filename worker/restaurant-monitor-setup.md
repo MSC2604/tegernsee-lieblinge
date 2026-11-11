@@ -36,4 +36,4 @@ Wenn die drei Pflichtvariablen fehlen, bleibt die E-Mail-Funktion still deaktivi
 - Pro Seite gelten 8 Sekunden Zeitlimit und 1 MB Größenlimit.
 - Die Prüfung crawlt die Startseite und höchstens fünf priorisierte Unterseiten je Restaurant. Pro Seite werden höchstens 50.000 Zeichen sichtbarer Text ausgewertet.
 - Reine Design-, CSS-, Bild- oder Layoutänderungen sowie nicht verlinkte Unterseiten werden nicht zuverlässig erkannt.
-- PDF-Links auf der offiziellen Domain werden erkannt; die PDF-Dateien selbst werden nicht erneut heruntergeladen. Die bestehende Karten-PDF-Prüfung bleibt separat.
+- PDF-Links auf der offiziellen Domain sowie wichtige externe Reservierungs- und Kontaktlinks werden erkannt; externe Seiten werden nicht aufgerufen und PDF-Dateien selbst nicht erneut heruntergeladen. Die bestehende Karten-PDF-Prüfung bleibt separat.
