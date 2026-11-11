@@ -43,14 +43,15 @@ export function extractRestaurantData(html) {
   const text = extractPageText(source);
   const phone = text.match(/(?:Telefon|Tel\.?|Phone)\s*[:：]?\s*(\+?\s*\d[\d\s()./-]{5,}\d)/i);
   const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-  const hours = text.match(/(?:Öffnungszeiten|Oeffnungszeiten)\s*[:：]?\s*([^.!?]{8,180})/i);
+  const hours = text.match(/(?:Öffnungszeiten|Oeffnungszeiten)\s*[:：]?\s*(.{8,220}?)(?=\s+(?:Ruhetag|Telefon|Tel\.?|E-Mail|Adresse|Betriebsferien)\b|$)/i);
   const dayOff = text.match(/(?:Ruhetag|Ruhetage)\s*[:：]?\s*([A-Za-zÄÖÜäöüß ,/-]{3,60}?)(?=\s+(?:Betriebsferien|Öffnungszeiten|Telefon|Tel\.?|E-Mail)\b|$)/i);
+  const address = text.match(/(?:Adresse|Anschrift)\s*[:：]?\s*(.{6,140}?)(?=\s+(?:Telefon|Tel\.?|E-Mail|Öffnungszeiten|Ruhetag)\b|$)/i);
   const holidays = text.match(/(?:Betriebsferien|Urlaub|geschlossen vom)\s*[:：]?\s*(.{4,100}?)(?=\s+(?:Öffnungszeiten|Ruhetag|Telefon|Tel\.?|E-Mail|Adresse)\b|$)/i);
   const values = {
     telefon: clean(restaurant.telephone) || (phone ? clean(phone[1]) : ''),
     email: clean(restaurant.email) || (email ? clean(email[0]) : ''),
     website: clean(restaurant.url),
-    adresse: addressText(restaurant.address),
+    adresse: addressText(restaurant.address) || (address ? clean(address[1]) : ''),
     oeffnungszeiten: openingHoursText(restaurant) || (hours ? clean(hours[1]) : ''),
     ruhetag: dayOff ? clean(dayOff[1]) : '',
     betriebsferien: holidays ? clean(holidays[1]) : ''
