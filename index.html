@@ -3676,7 +3676,9 @@ function getOpeningStatus(place, referenceDate){
   }
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const today = now.getDay();
+  // Die Öffnungszeiten verwenden Montag=0 bis Sonntag=6; Date.getDay() beginnt dagegen am Sonntag.
+  const today = (now.getDay() + 6) % 7;
+  const weekdayNames = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
   const todayTimes = parsed.schedule[today];
 
   if(parsed.closedDays.has(today)){
@@ -3701,7 +3703,7 @@ function getOpeningStatus(place, referenceDate){
     const day = (today + offset) % 7;
     if(parsed.closedDays.has(day) || !parsed.schedule[day].length) continue;
     const firstPeriod = parsed.schedule[day][0];
-    const label = offset === 1 ? "morgen" : ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"][day];
+    const label = offset === 1 ? "morgen" : weekdayNames[day];
     return {type:"unknown",text:"🟡 Öffnet " + label + " um " + formatOpeningTime(firstPeriod.start)};
   }
 
