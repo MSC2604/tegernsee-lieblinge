@@ -43,7 +43,7 @@ function openingHoursText(item) {
   }).filter(Boolean).join('; ');
 }
 export function extractPageText(html) {
-  return decodeHtmlEntities(String(html || '').replace(/<(script|style|noscript|svg)\\b[^>]*>[\\s\\S]*?<\\/\\1>/gi, ' ').replace(/<!--[\\s\\S]*?-->/g, ' ').replace(/<br\\s*\\/?\\s*>|<\\/(p|div|li|tr|h[1-6]|section|article)>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim()).slice(0, 50000);
+  return decodeHtmlEntities(String(html || '').replace(/<(script|style|noscript|svg)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ').replace(/<!--[\s\S]*?-->/g, ' ').replace(/<br\s*\/?\s*>|<\/(p|div|li|tr|h[1-6]|section|article)>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()).slice(0, 50000);
 }
 export function extractRestaurantData(html) {
   const source = String(html || '');
