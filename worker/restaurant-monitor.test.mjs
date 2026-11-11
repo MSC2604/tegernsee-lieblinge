@@ -17,5 +17,5 @@ assert.deepEqual(
   ['https://restaurant.example/kontakt', 'https://restaurant.example/oeffnungszeiten', 'https://restaurant.example/galerie']
 );
 
-console.log('Restaurant-Monitor: alle Tests erfolgreich.');
 assert.deepEqual(extractOfficialPageLinks('<a href="/kontakt">Kontakt</a><a href="https://other.example">Extern</a><a href="/karte.pdf">PDF</a>', 'https://restaurant.example/'), ['https://restaurant.example/kontakt']);
+console.log('Restaurant-Monitor: alle Tests erfolgreich.');
