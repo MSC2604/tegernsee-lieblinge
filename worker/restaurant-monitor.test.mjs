@@ -11,6 +11,7 @@ assert.match(extractPageText(html), /Gasthof am See/);
 assert.doesNotMatch(extractPageText(html), /application\/ld\+json/);
 assert.deepEqual(extractRestaurantData('<html>keine strukturierten Daten</html>'), {});
 assert.deepEqual(findRestaurantChanges({ telefon: '08022 99999' }, { telefon: '08022 99999' }), []);
+assert.deepEqual(findRestaurantChanges({ telefon: '08022 12345' }, {}), [{ field: 'telefon', oldValue: '08022 12345', newValue: 'Nicht mehr angegeben' }]);
 
 assert.deepEqual(
   extractOfficialPageLinks('<a href="/galerie">Bilder</a><a href="/kontakt">Kontakt</a><a href="/datenschutz">Datenschutz</a><a href="/oeffnungszeiten">Öffnungszeiten</a>', 'https://restaurant.example/'),
