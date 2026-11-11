@@ -7243,7 +7243,7 @@ async function pollRestaurantWebsiteMonitor(password,runId){
       if(percent)percent.textContent=total?pct+" %":"…";
       if(bar)bar.style.width=pct+"%";
       if(current)current.textContent=(r.activeRestaurants||[]).length?"Aktuell: "+r.activeRestaurants.join(", "):"Warte auf die nächsten Webseiten …";
-      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(Array.isArray(r.errors)?r.errors.length:(r.errors||0))+" Fehler · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website";
+      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" neue Vergleichsstände · "+(r.proposals||0)+" Änderungshinweise · "+(Array.isArray(r.errors)?r.errors.length:(r.errors||0))+" Fehler · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website";
       if(status)status.textContent="Die Prüfung läuft schrittweise. Der Fortschritt wird nach jedem Restaurant gespeichert.";
       const stepResponse=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"processRestaurantWebsiteMonitorBatch",runId})});
       let stepData={};try{stepData=await stepResponse.json();}catch(_){}
@@ -7258,7 +7258,7 @@ async function pollRestaurantWebsiteMonitor(password,runId){
       if(percent)percent.textContent="100 %";
       if(bar)bar.style.width="100%";
       if(current)current.textContent="Alle Webseiten dieses Prüflaufs wurden bearbeitet.";
-      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(r.errors||[]).length+" Fehler · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website";
+      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" neue Vergleichsstände · "+(r.proposals||0)+" Änderungshinweise · "+(r.errors||[]).length+" Fehler · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website";
       if(status)status.textContent="Fertig: "+(r.restaurants||0)+" Restaurants mit Website geprüft · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website.";
       await loadRestaurantWebsiteChanges(password);
     }else{
@@ -7344,7 +7344,7 @@ async function refreshRestaurantWebsiteMonitorStatus(password){
     if(percent)percent.textContent="100 %";
     if(bar)bar.style.width="100%";
     if(current)current.textContent="Abgeschlossen am "+(run.finishedAt?new Date(run.finishedAt).toLocaleString("de-DE"):"ohne Zeitangabe")+".";
-    if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(Array.isArray(r.errors)?r.errors.length:(r.errors||0))+" Fehler";
+    if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" neue Vergleichsstände · "+(r.proposals||0)+" Änderungshinweise · "+(Array.isArray(r.errors)?r.errors.length:(r.errors||0))+" Fehler";
     if(status)status.textContent="Letzter Prüflauf erfolgreich abgeschlossen.";
   }else if(run.status==="failed"){
     if(label)label.textContent="Letzte Prüfung fehlgeschlagen";
