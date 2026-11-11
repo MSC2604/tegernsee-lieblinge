@@ -3,6 +3,20 @@
 function clean(value) {
   return typeof value === 'string' || typeof value === 'number' ? String(value).replace(/\s+/g, ' ').trim() : '';
 }
+function decodeHtmlEntities(value) {
+  return String(value || "").replace(/&(#x[0-9a-f]+|#\d+|amp|quot|apos|nbsp|commat|period|colon);/gi, (match, entity) => {
+    const key = entity.toLowerCase();
+    if (key === "amp") return "&";
+    if (key === "quot") return '"';
+    if (key === "apos") return "'";
+    if (key === "nbsp") return " ";
+    if (key === "commat") return "@";
+    if (key === "period") return ".";
+    if (key === "colon") return ":";
+    const code = key.startsWith("#x") ? parseInt(key.slice(2), 16) : parseInt(key.slice(1), 10);
+    return Number.isInteger(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+  });
+}
 function typeIsRestaurant(value) {
   const types = Array.isArray(value) ? value : [value];
   return types.some(type => /(?:Restaurant|FoodEstablishment|LocalBusiness)$/i.test(String(type || '')));
@@ -94,13 +108,13 @@ export function extractOfficialPageLinks(html, baseUrl, limit = 10) {
   const ignored = /(datenschutz|privacy|cookie|barrierefreiheit|facebook|instagram|youtube|newsletter|login|warenkorb)/i;
   for (const match of matches) {
     try {
-      const url = new URL(match[1], base.href);
+      const url = new URL(decodeHtmlEntities(match[1]), base.href);
       if (url.origin !== base.origin || !["http:", "https:"].includes(url.protocol)) continue;
       if (/\.(?:pdf|jpg|jpeg|png|webp|gif|zip|mp4|mp3)(?:$|\?)/i.test(url.pathname + url.search)) continue;
       url.hash = "";
       if (seen.has(url.href)) continue;
       seen.add(url.href);
-      const label = match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const label = decodeHtmlEntities(match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
       const hint = url.pathname + " " + label;
       if (ignored.test(hint) && !/impressum/i.test(hint)) continue;
       candidates.push({ url: url.href, score: priority.test(hint) ? 2 : 1 });
