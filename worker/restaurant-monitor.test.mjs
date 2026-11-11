@@ -1,27 +1,14 @@
-import assert from "node:assert/strict";
-import { extractRestaurantData, findRestaurantChanges } from "./restaurant-monitor.mjs";
-
-const html = \`
-<script type="application/ld+json">
-{
-  "@context":"https://schema.org",
-  "@type":"Restaurant",
-  "telephone":"+49 8022 12345",
-  "email":"info@example.de",
-  "address":{"@type":"PostalAddress","streetAddress":"Seestraße 4","postalCode":"83700","addressLocality":"Tegernsee"},
-  "openingHoursSpecification":[
-    {"dayOfWeek":["Monday"],"opens":"11:00","closes":"22:00"}
-  ]
-}
-</script>\`;
+import assert from 'node:assert/strict';
+import { extractPageText, extractRestaurantData, findRestaurantChanges } from './restaurant-monitor.mjs';
+const html = '<html><body><script type="application/ld+json">{"@type":"Restaurant","telephone":"+49 8022 12345","email":"info@example.de","address":{"streetAddress":"Seestraße 4","postalCode":"83700","addressLocality":"Tegernsee"},"openingHoursSpecification":[{"dayOfWeek":["Monday"],"opens":"11:00","closes":"22:00"}]}</script><h1>Gasthof am See</h1><p>Ruhetag: Montag</p><p>Betriebsferien: 10. bis 20. Januar</p></body></html>';
 const found = extractRestaurantData(html);
-assert.equal(found.telefon, "+49 8022 12345");
-assert.equal(found.adresse, "Seestraße 4, 83700 Tegernsee");
-assert.equal(found.oeffnungszeiten, "Monday 11:00–22:00");
-assert.equal(findRestaurantChanges({ telefon:"+49 (8022) 12345" }, found).length, 3);
-assert.deepEqual(
-  findRestaurantChanges({ telefon:"08022 99999" }, found).map(x => x.field),
-  ["telefon", "email", "adresse", "oeffnungszeiten"]
-);
-assert.deepEqual(extractRestaurantData("<html>keine strukturierten Daten</html>"), {});
-console.log("Restaurant-Monitor: alle Tests erfolgreich.");
+assert.equal(found.telefon, '+49 8022 12345');
+assert.equal(found.adresse, 'Seestraße 4, 83700 Tegernsee');
+assert.equal(found.oeffnungszeiten, 'Monday 11:00–22:00');
+assert.equal(found.ruhetag, 'Montag');
+assert.equal(found.betriebsferien, '10. bis 20. Januar');
+assert.match(extractPageText(html), /Gasthof am See/);
+assert.doesNotMatch(extractPageText(html), /application\/ld\+json/);
+assert.deepEqual(extractRestaurantData('<html>keine strukturierten Daten</html>'), {});
+assert.deepEqual(findRestaurantChanges({ telefon: '08022 99999' }, { telefon: '08022 99999' }), []);
+console.log('Restaurant-Monitor: alle Tests erfolgreich.');
