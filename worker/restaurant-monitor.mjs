@@ -94,3 +94,10 @@ export function extractOfficialPageLinks(html, baseUrl, limit = 10) {
   }
   return links;
 }
+
+
+export async function fingerprintPage(html) {
+  const bytes = new TextEncoder().encode(extractPageText(html));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
