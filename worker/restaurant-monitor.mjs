@@ -133,6 +133,32 @@ export function extractOfficialDocumentLinks(html, baseUrl, limit = 20) {
   return found.sort((a, b) => a.localeCompare(b));
 }
 
+export function extractRelevantExternalLinks(html, baseUrl, limit = 30) {
+  let base;
+  try { base = new URL(baseUrl); } catch { return []; }
+  if (!["http:", "https:"].includes(base.protocol)) return [];
+  const found = [];
+  const seen = new Set();
+  const relevant = /(reserv|tisch|booking|speisekarte|getränkekarte|getraenkekarte|menü|menu|karte|kontakt|telefon|tel\\b|route|anfahrt|pdf|mail)/i;
+  const matches = String(html || "").matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi);
+  for (const match of matches) {
+    try {
+      const raw = match[1].trim();
+      const url = new URL(raw, base.href);
+      const isContact = ["mailto:", "tel:"].includes(url.protocol);
+      if (!isContact && (!["http:", "https:"].includes(url.protocol) || url.origin === base.origin)) continue;
+      const label = match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      if (!relevant.test(label + " " + url.href)) continue;
+      const value = (label ? label + ": " : "") + url.href;
+      if (seen.has(value)) continue;
+      seen.add(value);
+      found.push(value);
+      if (found.length >= Math.max(1, Math.min(50, limit))) break;
+    } catch { /* ungültige Links überspringen */ }
+  }
+  return found.sort((a, b) => a.localeCompare(b));
+}
+
 export async function fingerprintPage(html, extractedData = null) {
   const canonical = extractPageText(html) + "\\n" + JSON.stringify(extractedData || {});
   const bytes = new TextEncoder().encode(canonical);
