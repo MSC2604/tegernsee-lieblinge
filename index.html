@@ -3583,7 +3583,7 @@ function isBetriebsferienActive(start, end){
 function getMentionedWeekdays(text){
   const names = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
   const aliases = ["mo(?:ntag)?","di(?:enstag)?","mi(?:ttwoch)?","do(?:nnerstag)?","fr(?:eitag)?","sa(?:mstag)?","so(?:nntag)?"];
-  const regex = new RegExp("\\b(" + aliases.join("|") + ")\\.?\\b","gi");
+  const regex = new RegExp("\\b(" + aliases.join("|") + ")(?:\\.)?(?=\\W|$)","gi");
   const matches = [];
   let match;
   while((match = regex.exec(String(text || ""))) !== null){
@@ -3622,7 +3622,7 @@ function getOpeningSchedule(place){
   let activeDays = null;
   let hasWeekdays = false;
   let hasTimes = false;
-  const parts = hours.split(/[;,\\n\\r]+/).map(part => part.trim()).filter(Boolean);
+  const parts = hours.split(/[;,\n\r]+/).map(part => part.trim()).filter(Boolean);
 
   parts.forEach(part => {
     const mentioned = getMentionedWeekdays(part);
@@ -3632,7 +3632,7 @@ function getOpeningSchedule(place){
     }
     const days = activeDays || [0,1,2,3,4,5,6];
     const times = parseTimes(part);
-    if(/\\bgeschlossen\\b|\\bruhetag\\b/i.test(part) && !/kein\\s+ruhetag/i.test(part)){
+    if(/\bgeschlossen\b|\bruhetag\b/i.test(part) && !/kein\s+ruhetag/i.test(part)){
       days.forEach(day => closedDays.add(day));
     }
     if(times.length){
@@ -3674,7 +3674,7 @@ function getOpeningStatus(place, referenceDate){
   const today = now.getDay();
   const todayTimes = parsed.schedule[today];
 
-  if(parsed.closedDays.has(today) && !todayTimes.length){
+  if(parsed.closedDays.has(today)){
     return {type:"closed",text:"🔴 Heute Ruhetag"};
   }
 
