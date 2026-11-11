@@ -60,18 +60,6 @@ async function readLimited(response) {
   return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
 }
 
-function changedExcerpt(oldText, newText) {
-  let index = 0;
-  const maxPrefix = Math.min(oldText.length, newText.length);
-  while (index < maxPrefix && oldText[index] === newText[index]) index++;
-  const start = Math.max(0, index - 180);
-  const oldEnd = Math.min(oldText.length, index + 520);
-  const newEnd = Math.min(newText.length, index + 520);
-  return {
-    oldValue: oldText.slice(start, oldEnd),
-    newValue: newText.slice(start, newEnd)
-  };
-}
 
 async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
   let current = rawUrl;
@@ -164,8 +152,6 @@ export async function runRestaurantWebsiteMonitor({
       const found = extractRestaurantData(html);
       const documents = extractOfficialDocumentLinks(html, pageUrl);
       if (documents.length) found.dokumente = documents.join("\n");
-      const subpages = extractOfficialPageLinks(html, pageUrl, 20);
-      if (subpages.length) found.unterseiten = subpages.join("\n");
       const externalLinks = extractRelevantExternalLinks(html, pageUrl);
       if (externalLinks.length) found.externe_links = externalLinks.join("\n");
       const hash = await fingerprintPage(html, found);
@@ -182,11 +168,6 @@ export async function runRestaurantWebsiteMonitor({
         const changes = findRestaurantChanges(oldData, found);
         for (const change of changes) {
           await db("INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')", [textArg(id), textArg(change.field), textArg(change.oldValue), textArg(change.newValue), textArg(pageUrl), textArg(stamp)]);
-          report.proposals++;
-        }
-        if (oldText !== pageText) {
-          const excerpt = changedExcerpt(oldText, pageText);
-          await db("INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, 'website_text', ?, ?, ?, ?, 'pending')", [textArg(id), textArg(excerpt.oldValue), textArg(excerpt.newValue), textArg(pageUrl), textArg(stamp)]);
           report.proposals++;
         }
       }
