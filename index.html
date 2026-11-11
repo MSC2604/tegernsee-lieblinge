@@ -2258,20 +2258,20 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 }
 #welcomeCopy h2{
   margin:0 0 5px!important;
-  color:#244a3b!important;
-  font-family:'Playfair Display',Georgia,serif!important;
-  font-size:clamp(30px,4.4vw,42px)!important;
-  font-weight:700!important;
+  color:#244a3b;
+  font-family:'Playfair Display',Georgia,serif;
+  font-size:clamp(30px,4.4vw,42px);
+  font-weight:700;
   line-height:1.12;
   letter-spacing:-.025em;
   text-shadow:none!important;
 }
 #welcomeCopy p{
   margin:0!important;
-  color:#65766b!important;
-  font-family:system-ui,sans-serif!important;
-  font-size:clamp(14px,2vw,18px)!important;
-  font-weight:500!important;
+  color:#65766b;
+  font-family:system-ui,sans-serif;
+  font-size:clamp(14px,2vw,18px);
+  font-weight:500;
   line-height:1.45;
   letter-spacing:.025em;
   text-shadow:none!important;
@@ -2279,8 +2279,8 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 @media(max-width:560px){
   #welcomeHero.welcome-hero{height:clamp(215px,62vw,290px);min-height:215px;margin-top:3px!important;border-radius:19px}
   #welcomeCopy.welcome-copy{margin-bottom:19px!important;padding:16px 18px 18px!important;border-radius:0 0 15px 15px}
-  #welcomeCopy h2{font-size:clamp(28px,8vw,36px)!important}
-  #welcomeCopy p{font-size:14px!important}
+  #welcomeCopy h2{font-size:clamp(28px,8vw,36px)}
+  #welcomeCopy p{font-size:14px}
 }
 
 </style>
@@ -6676,7 +6676,14 @@ async function loadWelcomeHeroText() {
 
 function getWelcomeTextStyles() {
   const defaults={title:{size:40,font:"'Playfair Display',Georgia,serif",color:"#244a3b",weight:"700",italic:false,align:"left"},subtitle:{size:18,font:"system-ui",color:"#65766b",weight:"400",italic:false,align:"left"}};
-  try { const saved=JSON.parse(localStorage.getItem("tegernseeWelcomeTextStyles")||"null"); return {title:{...defaults.title,...(saved&&saved.title||{})},subtitle:{...defaults.subtitle,...(saved&&saved.subtitle||{})}}; } catch(_){return defaults;}
+  try {
+    const saved=JSON.parse(localStorage.getItem("tegernseeWelcomeTextStyles")||"null");
+    const result={title:{...defaults.title,...(saved&&saved.title||{})},subtitle:{...defaults.subtitle,...(saved&&saved.subtitle||{})}};
+    // Frühere Standard-Schriftfarbe Weiß ist auf der neuen hellen Textfläche nicht lesbar.
+    if(["#fff","#ffffff","white"].includes(String(result.title.color).toLowerCase()))result.title.color=defaults.title.color;
+    if(["#fff","#ffffff","white"].includes(String(result.subtitle.color).toLowerCase()))result.subtitle.color=defaults.subtitle.color;
+    return result;
+  } catch(_){return defaults;}
 }
 function applyWelcomeTextStyles() {
   const styles=getWelcomeTextStyles();
