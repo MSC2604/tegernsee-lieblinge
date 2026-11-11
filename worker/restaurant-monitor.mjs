@@ -1,14 +1,8 @@
 // Isolierter Helfer für die spätere tägliche Restaurant-Datenprüfung.
 // Noch nicht in worker.js eingebunden und nicht produktiv aktiv.
-const FIELD_MAP = {
-  telephone: "telefon",
-  email: "email",
-  url: "website"
-};
-
 function clean(value) {
   if (typeof value === "string" || typeof value === "number") {
-    return String(value).replace(/\\s+/g, " ").trim();
+    return String(value).replace(/\s+/g, " ").trim();
   }
   return "";
 }
@@ -62,10 +56,10 @@ function openingHoursText(item) {
 }
 
 export function extractRestaurantData(html) {
-  const scripts = String(html || "").match(/<script\\b[^>]*type=["']application\\/ld\\+json["'][^>]*>[\\s\\S]*?<\\/script>/gi) || [];
+  const scripts = String(html || "").match(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi) || [];
   const candidates = [];
   for (const script of scripts) {
-    const json = script.replace(/^<script\\b[^>]*>/i, "").replace(/<\\/script>$/i, "");
+    const json = script.replace(/^<script\b[^>]*>/i, "").replace(/<\/script>$/i, "");
     try { candidates.push(...flattenJsonLd(JSON.parse(json))); } catch { /* ungültige JSON-LD-Blöcke ignorieren */ }
   }
 
@@ -86,9 +80,9 @@ export function extractRestaurantData(html) {
 
 function normalize(field, value) {
   const text = clean(value).toLocaleLowerCase("de");
-  if (field === "telefon") return text.replace(/[\\s()./-]/g, "");
-  if (field === "email" || field === "website") return text.replace(/\\/$/, "");
-  return text.replace(/[\\s]+/g, " ");
+  if (field === "telefon") return text.replace(/[\s()./-]/g, "");
+  if (field === "email" || field === "website") return text.replace(/\/$/, "");
+  return text.replace(/[\s]+/g, " ");
 }
 
 export function findRestaurantChanges(current, found) {
