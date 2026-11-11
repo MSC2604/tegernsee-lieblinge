@@ -126,8 +126,9 @@ export function findRestaurantChanges(current, found) {
   // Only compare explicitly relevant restaurant facts and links.
   // A missing field is not evidence that a business removed the information.
   for (const field of MONITORED_FIELDS) {
-    const oldValue = clean(current?.[field]);
-    const nextValue = clean(found?.[field]);
+    const preserveLines = field === 'dokumente' || field === 'externe_links';
+    const oldValue = preserveLines ? String(current?.[field] ?? '').trim() : clean(current?.[field]);
+    const nextValue = preserveLines ? String(found?.[field] ?? '').trim() : clean(found?.[field]);
     if (!nextValue) continue;
     if (normalize(field, oldValue) === normalize(field, nextValue)) continue;
     changes.push({ field, oldValue, newValue: nextValue });
