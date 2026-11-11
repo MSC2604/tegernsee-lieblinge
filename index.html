@@ -7319,7 +7319,7 @@ async function refreshRestaurantWebsiteMonitorStatus(password){
     return;
   }
   const r=run.report||{};
-  renderWebsiteMonitorErrors(r.errors);
+  renderWebsiteMonitorErrors(r.errors,r.withoutWebsite);
   if(progress)progress.style.display="block";
   if(run.status==="running"){
     const started=Date.parse(run.startedAt||"");
