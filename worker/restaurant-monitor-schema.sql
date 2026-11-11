@@ -1,5 +1,5 @@
--- Isoliertes Schema für die spätere Website-Überwachung.
--- Wird NICHT automatisch ausgeführt; keine Live-Datenbankänderung.
+-- Referenzschema für die isolierte Website-Überwachung.
+-- Wird erst mit ausdrücklicher Freigabe durch den Worker auf die Live-Datenbank angewendet.
 
 CREATE TABLE IF NOT EXISTS restaurant_site_snapshots (
   restaurant_id TEXT NOT NULL,
