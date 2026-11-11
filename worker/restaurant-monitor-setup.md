@@ -27,7 +27,7 @@ Wenn die drei Pflichtvariablen fehlen, bleibt die E-Mail-Funktion still deaktivi
 - Jede Meldung zeigt Restaurant, Feld, bisherigen und gefundenen Wert sowie die offizielle Quellseite.
 - „Gesehen – ich kümmere mich“ und „Nicht relevant“ ändern nur den Prüfstatus.
 - Restaurantdaten werden niemals automatisch überschrieben.
-- Nicht erreichbare Seiten werden als Prüfproblem protokolliert und nicht als Datenänderung ausgegeben.
+- Nicht erreichbare Seiten werden als Prüfproblem im Worker-Laufbericht protokolliert und nicht als Datenänderung ausgegeben.
 
 ## Sicherheitsgrenzen
 
