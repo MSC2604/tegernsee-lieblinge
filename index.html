@@ -7086,7 +7086,7 @@ function renderWebsiteChanges(items,password){
   list.replaceChildren();
   if(!items.length){
     const empty=document.createElement("div");empty.className="website-changes-empty";
-    empty.textContent="Zurzeit liegen keine neuen Website-Änderungen vor.";
+    empty.textContent="Zurzeit liegen keine offenen Website-Änderungen vor.";
     list.appendChild(empty);return;
   }
   for(const item of items){
