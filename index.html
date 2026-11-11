@@ -2908,6 +2908,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
       <div style="height:9px;margin:8px 0 10px;background:#e2eae5;border-radius:99px;overflow:hidden"><div id="websiteMonitorProgressBar" style="height:100%;width:0%;background:#2d6a56;border-radius:99px;transition:width .25s"></div></div>
       <div id="websiteMonitorProgressCurrent" style="font-size:12px;color:#63736a"></div>
       <div id="websiteMonitorProgressStats" style="margin-top:7px;font-size:12px;color:#63736a"></div>
+      <div id="websiteMonitorErrors" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid #dce7e0"></div>
     </div>
     <div id="websiteChangesList" aria-live="polite"><div class="website-changes-empty">Änderungen werden geladen …</div></div>
   </section>
@@ -7121,6 +7122,45 @@ function renderWebsiteChanges(items,password){
     actions.append(seen,ignore);card.appendChild(actions);list.appendChild(card);
   }
 }
+function renderWebsiteMonitorErrors(errors){
+  const container=document.getElementById("websiteMonitorErrors");
+  if(!container)return;
+  container.replaceChildren();
+  const items=Array.isArray(errors)?errors:[];
+  if(!items.length){container.style.display="none";return;}
+  container.style.display="block";
+  const heading=document.createElement("div");
+  heading.textContent=items.length+" Prüffehler – bitte ansehen";
+  heading.style.cssText="font-size:13px;font-weight:700;color:#8a4b20;margin-bottom:7px";
+  container.appendChild(heading);
+  const list=document.createElement("ul");
+  list.style.cssText="margin:0;padding-left:18px;display:grid;gap:8px;color:#394b41;font-size:12px";
+  items.forEach(item=>{
+    const li=document.createElement("li");
+    const name=document.createElement("div");
+    name.style.fontWeight="700";
+    name.textContent=item&&item.name?String(item.name):"Unbekannter Restaurant-Eintrag";
+    li.appendChild(name);
+    if(item&&item.url){
+      try{
+        const parsed=new URL(String(item.url));
+        if(parsed.protocol==="http:"||parsed.protocol==="https:"){
+          const link=document.createElement("a");
+          link.href=parsed.href;link.target="_blank";link.rel="noopener noreferrer";
+          link.textContent=parsed.href;
+          link.style.cssText="display:block;overflow-wrap:anywhere;color:#2d6a56;margin:2px 0";
+          li.appendChild(link);
+        }
+      }catch(_){}
+    }
+    const message=document.createElement("div");
+    message.textContent=item&&item.error?String(item.error):"Keine genauere Fehlermeldung übermittelt.";
+    message.style.cssText="overflow-wrap:anywhere;color:#63736a";
+    li.appendChild(message);
+    list.appendChild(li);
+  });
+  container.appendChild(list);
+}
 async function startRestaurantWebsiteMonitor(authenticatedPassword){
   const button=document.getElementById("startWebsiteMonitor");
   const status=document.getElementById("websiteMonitorRunStatus");
@@ -7177,6 +7217,7 @@ async function pollRestaurantWebsiteMonitor(password,runId){
     const run=data.run;
     if(!run||run.runId!==runId)throw new Error("Der aktuelle Prüflauf ist nicht mehr verfügbar.");
     const r=run.report||{};
+    renderWebsiteMonitorErrors(r.errors);
     if(run.status==="running"){
       if(progress)progress.style.display="block";
       const total=Number(r.total)||0,done=Number(r.completed)||0;
@@ -7261,6 +7302,7 @@ async function refreshRestaurantWebsiteMonitorStatus(password){
     return;
   }
   const r=run.report||{};
+  renderWebsiteMonitorErrors(r.errors);
   if(progress)progress.style.display="block";
   if(run.status==="running"){
     const started=Date.parse(run.startedAt||"");
