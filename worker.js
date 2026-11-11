@@ -2,7 +2,7 @@ import { sendRestaurantWebsiteDigest } from "./worker/restaurant-monitor-email.m
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
@@ -1205,6 +1205,99 @@ console.log("Tavily usage account:", {
           body = await request.json();
         } catch {
           return json({ error: "Ungültiger JSON-Inhalt" }, 400);
+        }
+
+        if (body.action === "startRestaurantWebsiteMonitor") {
+          if (!ctx?.waitUntil) return json({ error: "Hintergrundausführung ist nicht verfügbar." }, 503);
+          const runId = crypto.randomUUID();
+          const startedAt = new Date().toISOString();
+          const staleBefore = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+          await turso(`CREATE TABLE IF NOT EXISTS restaurant_website_monitor_runs (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            run_id TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'running',
+            started_at TEXT NOT NULL,
+            finished_at TEXT NOT NULL DEFAULT '',
+            report_json TEXT NOT NULL DEFAULT '{}'
+          )`);
+          await turso(`INSERT INTO restaurant_website_monitor_runs
+            (id, run_id, status, started_at, finished_at, report_json)
+            VALUES (1, ?, 'running', ?, '', '{}')
+            ON CONFLICT(id) DO UPDATE SET
+              run_id=excluded.run_id, status='running', started_at=excluded.started_at,
+              finished_at='', report_json='{}'
+            WHERE restaurant_website_monitor_runs.status <> 'running'
+              OR restaurant_website_monitor_runs.started_at < ?`,
+            [textArg(runId), textArg(startedAt), textArg(staleBefore)]);
+          const lock = await turso(
+            "SELECT run_id, status, started_at FROM restaurant_website_monitor_runs WHERE id = 1",
+            [], true
+          );
+          const lockRow = lock?.results?.[0]?.response?.result?.rows?.[0];
+          if (!lockRow || String(rowValue(lockRow[0])) !== runId) {
+            return json({ success: false, running: true, error: "Eine Webseitenprüfung läuft bereits.", startedAt: rowValue(lockRow?.[2]) || "" }, 409);
+          }
+          const run = async () => {
+            try {
+              await turso(`CREATE TABLE IF NOT EXISTS restaurant_site_snapshots (
+                restaurant_id TEXT NOT NULL, page_url TEXT NOT NULL, checked_at TEXT NOT NULL DEFAULT '',
+                content_hash TEXT NOT NULL DEFAULT '', extracted_data_json TEXT NOT NULL DEFAULT '{}',
+                content_text TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, page_url)
+              )`);
+              await turso(`CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, restaurant_id TEXT NOT NULL, field_name TEXT NOT NULL,
+                old_value TEXT NOT NULL DEFAULT '', new_value TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL,
+                detected_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
+                  CHECK (status IN ('pending', 'accepted', 'rejected')), reviewed_at TEXT NOT NULL DEFAULT '',
+                notified_at TEXT NOT NULL DEFAULT '',
+                UNIQUE (restaurant_id, field_name, old_value, new_value)
+              )`);
+              await turso("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
+              const source = await turso(
+                "SELECT id, name, website FROM restaurants WHERE website IS NOT NULL AND TRIM(website) <> ''",
+                [], true
+              );
+              const rows = source?.results?.[0]?.response?.result?.rows || [];
+              const restaurants = rows.map(row => ({
+                id: String(rowValue(row[0]) || ""),
+                name: String(rowValue(row[1]) || ""),
+                website: String(rowValue(row[2]) || "")
+              })).filter(item => item.id && item.website);
+              const report = await runRestaurantWebsiteMonitor({ db: turso, restaurants });
+              await turso(
+                "UPDATE restaurant_website_monitor_runs SET status = 'completed', finished_at = ?, report_json = ? WHERE id = 1 AND run_id = ?",
+                [textArg(new Date().toISOString()), textArg(JSON.stringify(report)), textArg(runId)]
+              );
+            } catch (error) {
+              const report = { error: String(error?.message || error).slice(0, 400) };
+              try {
+                await turso(
+                  "UPDATE restaurant_website_monitor_runs SET status = 'failed', finished_at = ?, report_json = ? WHERE id = 1 AND run_id = ?",
+                  [textArg(new Date().toISOString()), textArg(JSON.stringify(report)), textArg(runId)]
+                );
+              } catch (writeError) {
+                console.error("Manueller Website-Prüflauf konnte Status nicht speichern:", String(writeError?.message || writeError));
+              }
+              console.error("Manueller Website-Prüflauf fehlgeschlagen:", report.error);
+            }
+          };
+          ctx.waitUntil(run());
+          return json({ success: true, started: true, runId, startedAt });
+        }
+
+        if (body.action === "getRestaurantWebsiteMonitorRun") {
+          const result = await turso(
+            "SELECT run_id, status, started_at, finished_at, report_json FROM restaurant_website_monitor_runs WHERE id = 1",
+            [], true
+          );
+          const row = result?.results?.[0]?.response?.result?.rows?.[0];
+          if (!row) return json({ success: true, run: null });
+          let report = {};
+          try { report = JSON.parse(String(rowValue(row[4]) || "{}")); } catch {}
+          return json({ success: true, run: {
+            runId: rowValue(row[0]), status: rowValue(row[1]), startedAt: rowValue(row[2]),
+            finishedAt: rowValue(row[3]), report
+          }});
         }
 
         if (body.action === "getRestaurantWebsiteChanges") {
