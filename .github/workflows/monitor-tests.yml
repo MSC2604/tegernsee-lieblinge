@@ -10,6 +10,12 @@ on:
       - "worker/restaurant-monitor-schema.sql"
       - "worker.js"
       - ".github/workflows/monitor-tests.yml"
+  pull_request:
+    paths:
+      - "worker/restaurant-monitor*.mjs"
+      - "worker/restaurant-monitor-schema.sql"
+      - "worker.js"
+      - ".github/workflows/monitor-tests.yml"
   workflow_dispatch:
 
 permissions:

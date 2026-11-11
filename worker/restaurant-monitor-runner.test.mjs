@@ -41,6 +41,18 @@ const fetchImpl = async url => new Response(
 );
 const restaurants = [{ id: 7, name: "Gasthof am See", website: "https://restaurant.example/" }];
 
+const progressUpdates = [];
+const progressState = makeDb();
+const progressReport = await runRestaurantWebsiteMonitor({
+  db: progressState.db, restaurants, fetchImpl,
+  onProgress: progress => progressUpdates.push(progress)
+});
+assert.equal(progressReport.pages, 2);
+assert.ok(progressUpdates.length >= 2);
+assert.equal(progressUpdates.at(-1).completed, 1);
+assert.equal(progressUpdates.at(-1).total, 1);
+assert.equal(progressUpdates.at(-1).pages, 2);
+
 const baseline = await runRestaurantWebsiteMonitor({ db: dbState.db, restaurants, fetchImpl });
 assert.equal(baseline.pages, 2);
 assert.equal(baseline.baselines, 2);
