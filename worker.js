@@ -1208,7 +1208,6 @@ console.log("Tavily usage account:", {
         }
 
         if (body.action === "startRestaurantWebsiteMonitor") {
-          if (!ctx?.waitUntil) return json({ error: "Hintergrundausführung ist nicht verfügbar." }, 503);
           const runId = crypto.randomUUID();
           const startedAt = new Date().toISOString();
           const staleBefore = new Date(Date.now() - 30 * 60 * 1000).toISOString();
@@ -1218,17 +1217,61 @@ console.log("Tavily usage account:", {
             status TEXT NOT NULL DEFAULT 'running',
             started_at TEXT NOT NULL,
             finished_at TEXT NOT NULL DEFAULT '',
-            report_json TEXT NOT NULL DEFAULT '{}'
+            report_json TEXT NOT NULL DEFAULT '{}',
+            queue_json TEXT NOT NULL DEFAULT '[]',
+            cursor INTEGER NOT NULL DEFAULT 0,
+            batch_lock TEXT NOT NULL DEFAULT '',
+            batch_lock_at TEXT NOT NULL DEFAULT ''
           )`);
+          for (const migration of [
+            "ALTER TABLE restaurant_website_monitor_runs ADD COLUMN queue_json TEXT NOT NULL DEFAULT '[]'",
+            "ALTER TABLE restaurant_website_monitor_runs ADD COLUMN cursor INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE restaurant_website_monitor_runs ADD COLUMN batch_lock TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE restaurant_website_monitor_runs ADD COLUMN batch_lock_at TEXT NOT NULL DEFAULT ''"
+          ]) {
+            try { await turso(migration); } catch (error) {
+              if (!String(error?.message || error).toLowerCase().includes("duplicate column")) throw error;
+            }
+          }
+          await turso(`CREATE TABLE IF NOT EXISTS restaurant_site_snapshots (
+            restaurant_id TEXT NOT NULL, page_url TEXT NOT NULL, checked_at TEXT NOT NULL DEFAULT '',
+            content_hash TEXT NOT NULL DEFAULT '', extracted_data_json TEXT NOT NULL DEFAULT '{}',
+            content_text TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, page_url)
+          )`);
+          await turso(`CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, restaurant_id TEXT NOT NULL, field_name TEXT NOT NULL,
+            old_value TEXT NOT NULL DEFAULT '', new_value TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL,
+            detected_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
+              CHECK (status IN ('pending', 'accepted', 'rejected')), reviewed_at TEXT NOT NULL DEFAULT '',
+            notified_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (restaurant_id, field_name, old_value, new_value)
+          )`);
+          await turso("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
+          const source = await turso(
+            "SELECT id, name, website FROM restaurants WHERE website IS NOT NULL AND TRIM(website) <> '' ORDER BY name COLLATE NOCASE",
+            [], true
+          );
+          const rows = source?.results?.[0]?.response?.result?.rows || [];
+          const restaurants = rows.map(row => ({
+            id: String(rowValue(row[0]) || ""),
+            name: String(rowValue(row[1]) || ""),
+            website: String(rowValue(row[2]) || "")
+          })).filter(item => item.id && item.website);
+          const initialReport = {
+            phase: "running", completed: 0, total: restaurants.length, activeRestaurants: [],
+            restaurants: 0, pages: 0, baselines: 0, proposals: 0, errors: []
+          };
           await turso(`INSERT INTO restaurant_website_monitor_runs
-            (id, run_id, status, started_at, finished_at, report_json)
-            VALUES (1, ?, 'running', ?, '', '{}')
+            (id, run_id, status, started_at, finished_at, report_json, queue_json, cursor, batch_lock, batch_lock_at)
+            VALUES (1, ?, 'running', ?, '', ?, ?, 0, '', '')
             ON CONFLICT(id) DO UPDATE SET
               run_id=excluded.run_id, status='running', started_at=excluded.started_at,
-              finished_at='', report_json='{}'
+              finished_at='', report_json=excluded.report_json, queue_json=excluded.queue_json,
+              cursor=0, batch_lock='', batch_lock_at=''
             WHERE restaurant_website_monitor_runs.status <> 'running'
               OR restaurant_website_monitor_runs.started_at < ?`,
-            [textArg(runId), textArg(startedAt), textArg(staleBefore)]);
+            [textArg(runId), textArg(startedAt), textArg(JSON.stringify(initialReport)),
+             textArg(JSON.stringify(restaurants)), textArg(staleBefore)]);
           const lock = await turso(
             "SELECT run_id, status, started_at FROM restaurant_website_monitor_runs WHERE id = 1",
             [], true
@@ -1237,58 +1280,95 @@ console.log("Tavily usage account:", {
           if (!lockRow || String(rowValue(lockRow[0])) !== runId) {
             return json({ success: false, running: true, error: "Eine Webseitenprüfung läuft bereits.", startedAt: rowValue(lockRow?.[2]) || "" }, 409);
           }
-          const run = async () => {
-            try {
-              await turso(`CREATE TABLE IF NOT EXISTS restaurant_site_snapshots (
-                restaurant_id TEXT NOT NULL, page_url TEXT NOT NULL, checked_at TEXT NOT NULL DEFAULT '',
-                content_hash TEXT NOT NULL DEFAULT '', extracted_data_json TEXT NOT NULL DEFAULT '{}',
-                content_text TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, page_url)
-              )`);
-              await turso(`CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, restaurant_id TEXT NOT NULL, field_name TEXT NOT NULL,
-                old_value TEXT NOT NULL DEFAULT '', new_value TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL,
-                detected_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
-                  CHECK (status IN ('pending', 'accepted', 'rejected')), reviewed_at TEXT NOT NULL DEFAULT '',
-                notified_at TEXT NOT NULL DEFAULT '',
-                UNIQUE (restaurant_id, field_name, old_value, new_value)
-              )`);
-              await turso("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
-              const source = await turso(
-                "SELECT id, name, website FROM restaurants WHERE website IS NOT NULL AND TRIM(website) <> ''",
-                [], true
-              );
-              const rows = source?.results?.[0]?.response?.result?.rows || [];
-              const restaurants = rows.map(row => ({
-                id: String(rowValue(row[0]) || ""),
-                name: String(rowValue(row[1]) || ""),
-                website: String(rowValue(row[2]) || "")
-              })).filter(item => item.id && item.website);
-              const report = await runRestaurantWebsiteMonitor({
-                db: turso, restaurants,
-                onProgress: progress => turso(
-                  "UPDATE restaurant_website_monitor_runs SET report_json = ? WHERE id = 1 AND run_id = ? AND status = 'running'",
-                  [textArg(JSON.stringify(progress)), textArg(runId)]
-                )
-              });
-              await turso(
-                "UPDATE restaurant_website_monitor_runs SET status = 'completed', finished_at = ?, report_json = ? WHERE id = 1 AND run_id = ?",
-                [textArg(new Date().toISOString()), textArg(JSON.stringify(report)), textArg(runId)]
-              );
-            } catch (error) {
-              const report = { error: String(error?.message || error).slice(0, 400) };
-              try {
-                await turso(
-                  "UPDATE restaurant_website_monitor_runs SET status = 'failed', finished_at = ?, report_json = ? WHERE id = 1 AND run_id = ?",
-                  [textArg(new Date().toISOString()), textArg(JSON.stringify(report)), textArg(runId)]
-                );
-              } catch (writeError) {
-                console.error("Manueller Website-Prüflauf konnte Status nicht speichern:", String(writeError?.message || writeError));
-              }
-              console.error("Manueller Website-Prüflauf fehlgeschlagen:", report.error);
-            }
+          if (restaurants.length === 0) {
+            const finishedAt = new Date().toISOString();
+            await turso("UPDATE restaurant_website_monitor_runs SET status='completed', finished_at=? WHERE id=1 AND run_id=?",
+              [textArg(finishedAt), textArg(runId)]);
+          }
+          return json({ success: true, started: true, runId, startedAt, total: restaurants.length });
+        }
+
+        if (body.action === "processRestaurantWebsiteMonitorBatch") {
+          const runId = String(body.runId || "");
+          if (!runId) return json({ error: "Prüflauf-ID fehlt." }, 400);
+          const stateResult = await turso(
+            "SELECT run_id, status, queue_json, cursor, report_json, batch_lock, batch_lock_at FROM restaurant_website_monitor_runs WHERE id = 1",
+            [], true
+          );
+          const stateRow = stateResult?.results?.[0]?.response?.result?.rows?.[0];
+          if (!stateRow || String(rowValue(stateRow[0])) !== runId) return json({ error: "Der Prüflauf ist nicht mehr aktuell." }, 409);
+          if (String(rowValue(stateRow[1])) !== "running") return json({ success: true, finished: true });
+          let queue = [], report = {};
+          try { queue = JSON.parse(String(rowValue(stateRow[2]) || "[]")); } catch {}
+          try { report = JSON.parse(String(rowValue(stateRow[4]) || "{}")); } catch {}
+          const cursor = Math.max(0, Number(rowValue(stateRow[3])) || 0);
+          if (cursor >= queue.length) {
+            await turso("UPDATE restaurant_website_monitor_runs SET status='completed', finished_at=?, batch_lock='', batch_lock_at='' WHERE id=1 AND run_id=? AND status='running'",
+              [textArg(new Date().toISOString()), textArg(runId)]);
+            return json({ success: true, finished: true });
+          }
+          const now = new Date();
+          const lockToken = crypto.randomUUID();
+          const staleLock = new Date(now.getTime() - 2 * 60 * 1000).toISOString();
+          await turso(
+            "UPDATE restaurant_website_monitor_runs SET batch_lock=?, batch_lock_at=? WHERE id=1 AND run_id=? AND status='running' AND (batch_lock='' OR batch_lock_at < ?)",
+            [textArg(lockToken), textArg(now.toISOString()), textArg(runId), textArg(staleLock)]
+          );
+          const claimedResult = await turso(
+            "SELECT batch_lock, cursor, queue_json, report_json FROM restaurant_website_monitor_runs WHERE id=1 AND run_id=?",
+            [textArg(runId)], true
+          );
+          const claimed = claimedResult?.results?.[0]?.response?.result?.rows?.[0];
+          if (!claimed || String(rowValue(claimed[0])) !== lockToken) {
+            return json({ success: true, busy: true });
+          }
+          const claimedCursor = Math.max(0, Number(rowValue(claimed[1])) || 0);
+          let claimedQueue = [];
+          let cumulative = {};
+          try { claimedQueue = JSON.parse(String(rowValue(claimed[2]) || "[]")); } catch {}
+          try { cumulative = JSON.parse(String(rowValue(claimed[3]) || "{}")); } catch {}
+          const restaurant = claimedQueue[claimedCursor];
+          if (!restaurant) {
+            await turso("UPDATE restaurant_website_monitor_runs SET status='completed', finished_at=?, batch_lock='', batch_lock_at='' WHERE id=1 AND run_id=? AND batch_lock=?",
+              [textArg(new Date().toISOString()), textArg(runId), textArg(lockToken)]);
+            return json({ success: true, finished: true });
+          }
+          cumulative = {
+            phase: "running", completed: claimedCursor, total: claimedQueue.length,
+            activeRestaurants: [String(restaurant.name || "Restaurant")],
+            restaurants: Number(cumulative.restaurants) || 0, pages: Number(cumulative.pages) || 0,
+            baselines: Number(cumulative.baselines) || 0, proposals: Number(cumulative.proposals) || 0,
+            errors: Array.isArray(cumulative.errors) ? cumulative.errors : []
           };
-          ctx.waitUntil(run());
-          return json({ success: true, started: true, runId, startedAt });
+          await turso("UPDATE restaurant_website_monitor_runs SET report_json=? WHERE id=1 AND run_id=? AND batch_lock=?",
+            [textArg(JSON.stringify(cumulative)), textArg(runId), textArg(lockToken)]);
+          try {
+            const result = await runRestaurantWebsiteMonitor({ db: turso, restaurants: [restaurant] });
+            cumulative.restaurants += Number(result.restaurants) || 0;
+            cumulative.pages += Number(result.pages) || 0;
+            cumulative.baselines += Number(result.baselines) || 0;
+            cumulative.proposals += Number(result.proposals) || 0;
+            if (Array.isArray(result.errors)) cumulative.errors.push(...result.errors);
+            cumulative.completed = claimedCursor + 1;
+            cumulative.activeRestaurants = [];
+            const finished = cumulative.completed >= claimedQueue.length;
+            cumulative.phase = finished ? "completed" : "running";
+            await turso(
+              "UPDATE restaurant_website_monitor_runs SET cursor=?, report_json=?, status=?, finished_at=?, batch_lock='', batch_lock_at='' WHERE id=1 AND run_id=? AND batch_lock=?",
+              [integerArg(cumulative.completed), textArg(JSON.stringify(cumulative)),
+               textArg(finished ? "completed" : "running"),
+               textArg(finished ? new Date().toISOString() : ""), textArg(runId), textArg(lockToken)]
+            );
+            return json({ success: true, processed: restaurant.name || restaurant.id, completed: cumulative.completed, total: claimedQueue.length, finished });
+          } catch (error) {
+            const failed = { ...cumulative, phase: "failed", error: String(error?.message || error).slice(0, 400), activeRestaurants: [] };
+            await turso(
+              "UPDATE restaurant_website_monitor_runs SET status='failed', finished_at=?, report_json=?, batch_lock='', batch_lock_at='' WHERE id=1 AND run_id=? AND batch_lock=?",
+              [textArg(new Date().toISOString()), textArg(JSON.stringify(failed)), textArg(runId), textArg(lockToken)]
+            );
+            console.error("Manueller Website-Prüfschritt fehlgeschlagen:", failed.error);
+            return json({ success: false, error: failed.error }, 500);
+          }
         }
 
         if (body.action === "getRestaurantWebsiteMonitorRun") {

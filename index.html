@@ -7150,7 +7150,7 @@ async function startRestaurantWebsiteMonitor(authenticatedPassword){
       return;
     }
     if(!response.ok||!data.success)throw new Error(data.error||"Prüflauf konnte nicht gestartet werden.");
-    if(status)status.textContent="Prüfung läuft im Hintergrund. Diese Ansicht kann geöffnet bleiben.";
+    if(status)status.textContent="Prüfung wird schrittweise ausgeführt. Diese Ansicht kann geöffnet bleiben.";
     await pollRestaurantWebsiteMonitor(password,data.runId);
   }catch(error){
     if(progress)progress.style.display="block";
@@ -7185,9 +7185,13 @@ async function pollRestaurantWebsiteMonitor(password,runId){
       if(percent)percent.textContent=total?pct+" %":"…";
       if(bar)bar.style.width=pct+"%";
       if(current)current.textContent=(r.activeRestaurants||[]).length?"Aktuell: "+r.activeRestaurants.join(", "):"Warte auf die nächsten Webseiten …";
-      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(r.errors||0)+" Fehler";
-      if(status)status.textContent="Die Prüfung läuft im Hintergrund. Der Fortschritt wird laufend aktualisiert.";
-      window.setTimeout(()=>check().catch(error=>{if(status)status.textContent=error.message;if(button)button.disabled=false;}),3000);
+      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(Array.isArray(r.errors)?r.errors.length:(r.errors||0))+" Fehler";
+      if(status)status.textContent="Die Prüfung läuft schrittweise. Der Fortschritt wird nach jedem Restaurant gespeichert.";
+      const stepResponse=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"processRestaurantWebsiteMonitorBatch",runId})});
+      let stepData={};try{stepData=await stepResponse.json();}catch(_){}
+      if(!stepResponse.ok||!stepData.success)throw new Error(stepData.error||"Der nächste Prüfschritt konnte nicht ausgeführt werden.");
+      if(stepData.processed&&current)current.textContent="Zuletzt geprüft: "+stepData.processed;
+      window.setTimeout(()=>check().catch(error=>{if(status)status.textContent=error.message;if(button)button.disabled=false;}),stepData.busy?1200:350);
       return;
     }
     if(progress)progress.style.display="block";
