@@ -78,41 +78,39 @@ const MONITORED_FIELDS = new Set([
   'dokumente', 'externe_links'
 ]);
 function normalizeLinkEntry(entry) {
-  let value = decodeHtmlEntities(entry).replace(/[\s\u00a0]+/g, ' ').trim();
-  // Contact links often vary only because the source page obfuscates email
-  // addresses or encodes phone punctuation differently on each request.
-  value = value.replace(/mailto:[^\s<>"']+/gi, raw => {
-    const candidate = raw.replace(/[),.;]+$/, '');
+  const value = decodeHtmlEntities(entry).replace(/[\s\u00a0]+/g, ' ').trim();
+  // Link labels are presentation text and frequently vary between website
+  // templates. Compare the actual destination instead of label typography.
+  const match = value.match(/(?:https?:\/\/|mailto:|tel:)[^\s<>"']+/i);
+  if (!match) return value.toLocaleLowerCase('de');
+  const raw = match[0];
+  const trailing = raw.match(/[),.;]+$/)?.[0] || '';
+  const candidate = trailing ? raw.slice(0, -trailing.length) : raw;
+  if (/^mailto:/i.test(candidate)) {
     try {
       const url = new URL(candidate);
-      const address = decodeURIComponent(url.pathname || '').toLocaleLowerCase('de');
-      return 'mailto:' + address;
+      return 'mailto:' + decodeURIComponent(url.pathname || '').toLocaleLowerCase('de');
     } catch { return candidate.toLocaleLowerCase('de').split('?')[0]; }
-  });
-  value = value.replace(/tel:[^\s<>"']+/gi, raw => {
-    const candidate = raw.replace(/[),.;]+$/, '');
+  }
+  if (/^tel:/i.test(candidate)) {
     try {
       const number = decodeURIComponent(candidate.slice(4)).replace(/[^+\d]/g, '');
       return 'tel:' + number;
     } catch { return 'tel:' + candidate.slice(4).replace(/[^+\d]/g, ''); }
-  });
-  value = value.replace(/https?:\/\/[^\s<>"']+/gi, raw => {
-    const trailing = raw.match(/[),.;]+$/)?.[0] || '';
-    const candidate = trailing ? raw.slice(0, -trailing.length) : raw;
-    try {
-      const url = new URL(candidate);
-      url.hash = '';
-      if ((url.protocol === 'https:' && url.port === '443') ||
-          (url.protocol === 'http:' && url.port === '80')) url.port = '';
-      const params = [...url.searchParams.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
-      url.search = '';
-      for (const [key, val] of params) url.searchParams.append(key, val);
-      return url.href.toLocaleLowerCase('de') + trailing;
-    } catch { return candidate.toLocaleLowerCase('de') + trailing; }
-  });
-  value = value.toLocaleLowerCase('de').replace(/[\s\u00a0]+/g, ' ').trim();
-  return value;
+  }
+  try {
+    const url = new URL(candidate);
+    url.hash = '';
+    if ((url.protocol === 'https:' && url.port === '443') ||
+        (url.protocol === 'http:' && url.port === '80')) url.port = '';
+    const params = [...url.searchParams.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+    url.search = '';
+    for (const [key, val] of params) url.searchParams.append(key, val);
+    // URL normalizes the hostname but deliberately preserves case-sensitive
+    // path and query values.
+    return url.href + trailing;
+  } catch { return candidate + trailing; }
 }
 function normalize(field, value) {
   const decoded = decodeHtmlEntities(
