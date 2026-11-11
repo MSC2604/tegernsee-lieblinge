@@ -53,6 +53,19 @@ async function readLimited(response) {
   return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
 }
 
+function changedExcerpt(oldText, newText) {
+  let index = 0;
+  const maxPrefix = Math.min(oldText.length, newText.length);
+  while (index < maxPrefix && oldText[index] === newText[index]) index++;
+  const start = Math.max(0, index - 180);
+  const oldEnd = Math.min(oldText.length, index + 520);
+  const newEnd = Math.min(newText.length, index + 520);
+  return {
+    oldValue: oldText.slice(start, oldEnd),
+    newValue: newText.slice(start, newEnd)
+  };
+}
+
 async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
   let current = rawUrl;
   for (let hop = 0; hop <= 3; hop++) {
@@ -148,12 +161,11 @@ export async function runRestaurantWebsiteMonitor({
           );
           report.proposals++;
         }
-        const before = oldText.slice(0, 1200);
-        const after = pageText.slice(0, 1200);
-        if (before !== after) {
+        if (oldText !== pageText) {
+          const excerpt = changedExcerpt(oldText, pageText);
           await db(
             "INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, 'website_text', ?, ?, ?, ?, 'pending')",
-            [textArg(id), textArg(before), textArg(after), textArg(pageUrl), textArg(stamp)]
+            [textArg(id), textArg(excerpt.oldValue), textArg(excerpt.newValue), textArg(pageUrl), textArg(stamp)]
           );
           report.proposals++;
         }
