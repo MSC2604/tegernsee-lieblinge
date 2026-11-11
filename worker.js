@@ -1,3 +1,5 @@
+import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
+
 export default {
   async fetch(request, env) {
     const corsHeaders = {
@@ -1204,6 +1206,49 @@ console.log("Tavily usage account:", {
           return json({ error: "Ungültiger JSON-Inhalt" }, 400);
         }
 
+        if (body.action === "getRestaurantWebsiteChanges") {
+          await turso(`CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            restaurant_id TEXT NOT NULL,
+            field_name TEXT NOT NULL,
+            old_value TEXT NOT NULL DEFAULT '',
+            new_value TEXT NOT NULL DEFAULT '',
+            source_url TEXT NOT NULL,
+            detected_at TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending'
+              CHECK (status IN ('pending', 'accepted', 'rejected')),
+            reviewed_at TEXT NOT NULL DEFAULT '',
+            UNIQUE (restaurant_id, field_name, old_value, new_value)
+          )`);
+          const result = await turso(`SELECT p.id, p.restaurant_id, r.name, p.field_name,
+            p.old_value, p.new_value, p.source_url, p.detected_at, p.status
+            FROM restaurant_change_proposals p
+            LEFT JOIN restaurants r ON CAST(r.id AS TEXT) = p.restaurant_id
+            WHERE p.status = 'pending'
+            ORDER BY p.detected_at DESC, p.id DESC
+            LIMIT 250`, [], true);
+          const rows = result?.results?.[0]?.response?.result?.rows || [];
+          return json({ success: true, items: rows.map(row => ({
+            id: rowValue(row[0]), restaurantId: rowValue(row[1]), restaurantName: rowValue(row[2]),
+            field: rowValue(row[3]), oldValue: rowValue(row[4]), newValue: rowValue(row[5]),
+            sourceUrl: rowValue(row[6]), detectedAt: rowValue(row[7]), status: rowValue(row[8])
+          })) });
+        }
+
+        if (body.action === "reviewRestaurantWebsiteChange") {
+          const id = Number(body.id);
+          const status = String(body.status || "");
+          if (!Number.isSafeInteger(id) || id < 1 || !["accepted", "rejected"].includes(status)) {
+            return json({ error: "Änderungs-ID oder Status ist ungültig." }, 400);
+          }
+          const reviewedAt = new Date().toISOString();
+          await turso(
+            "UPDATE restaurant_change_proposals SET status = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'",
+            [textArg(status), textArg(reviewedAt), integerArg(id)]
+          );
+          return json({ success: true, id, status, reviewedAt });
+        }
+
         if (body.action === "saveTitleText") {
           const title = String(body.title || "").trim().slice(0, 120);
           const subtitle = String(body.subtitle || "").trim().slice(0, 240);
@@ -1616,5 +1661,38 @@ console.log("Tavily usage account:", {
       await Promise.all(entries.slice(i, i + 5).map(check));
     }
     console.log(`Kartenprüfung abgeschlossen: ${entries.length} offizielle Kartenlinks geprüft.`);
+
+    await db(`CREATE TABLE IF NOT EXISTS restaurant_site_snapshots (
+      restaurant_id TEXT NOT NULL, page_url TEXT NOT NULL, checked_at TEXT NOT NULL DEFAULT '',
+      content_hash TEXT NOT NULL DEFAULT '', extracted_data_json TEXT NOT NULL DEFAULT '{}',
+      content_text TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, page_url)
+    )`);
+    await db(`CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, restaurant_id TEXT NOT NULL, field_name TEXT NOT NULL,
+      old_value TEXT NOT NULL DEFAULT '', new_value TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL,
+      detected_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'accepted', 'rejected')), reviewed_at TEXT NOT NULL DEFAULT '',
+      UNIQUE (restaurant_id, field_name, old_value, new_value)
+    )`);
+    await db("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
+    const restaurantResult = await db(
+      "SELECT id, name, website FROM restaurants WHERE website IS NOT NULL AND TRIM(website) <> ''",
+      [], true
+    );
+    const restaurantRows = restaurantResult?.results?.[0]?.response?.result?.rows || [];
+    const websiteRestaurants = restaurantRows.map(row => ({
+      id: String(cell(row[0]) || ""),
+      name: String(cell(row[1]) || ""),
+      website: String(cell(row[2]) || "")
+    })).filter(item => item.id && item.website);
+    const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteRestaurants });
+    console.log("Website-Prüfung:", JSON.stringify({
+      restaurants: monitorReport.restaurants, pages: monitorReport.pages,
+      baselines: monitorReport.baselines, proposals: monitorReport.proposals,
+      errors: monitorReport.errors.length
+    }));
+    for (const issue of monitorReport.errors.slice(0, 30)) {
+      console.warn("Website-Prüfung nicht möglich:", JSON.stringify(issue));
+    }
   }
 };
