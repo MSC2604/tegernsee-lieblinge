@@ -17,7 +17,7 @@ In den Cloudflare-Worker-Einstellungen unter **Settings → Variables and Secret
 - `BREVO_FROM_NAME` – optionaler Absendername
 - `MONITOR_NOTIFICATION_EMAIL` – gewünschte Empfängeradresse
 
-Dazu wird ein Brevo-Konto benötigt. Dort muss die Absenderadresse angelegt und per Bestätigungscode verifiziert werden. Eine kostenlose Maildomain lässt sich nicht per DKIM authentifizieren; Brevo kann in diesem Fall die Absenderadresse ersetzen. Die Zustellbarkeit ist deshalb ohne eigene authentifizierte Domain nicht garantiert. Es ist kein Domainkauf in diesem Code vorausgesetzt.
+Dazu wird ein Brevo-Konto benötigt. Dort muss die Absenderadresse angelegt und per Bestätigungscode verifiziert werden. Bei neuen Konten kann Brevo zusätzlich die Transaktionsplattform freischalten müssen. Eine kostenlose Maildomain lässt sich nicht per DKIM authentifizieren; Brevo kann in diesem Fall die Absenderadresse ersetzen. Die Zustellbarkeit ist deshalb ohne eigene authentifizierte Domain nicht garantiert. Es ist kein Domainkauf in diesem Code vorausgesetzt.
 
 Wenn die drei Pflichtvariablen fehlen, bleibt die E-Mail-Funktion still deaktiviert. Die Hinweise werden weiterhin in der App gesammelt. Nach erfolgreichem Versand markiert der Worker die betreffenden Hinweise als benachrichtigt.
 
@@ -34,5 +34,6 @@ Wenn die drei Pflichtvariablen fehlen, bleibt die E-Mail-Funktion still deaktivi
 - Es werden nur HTTP(S)-Seiten der gespeicherten offiziellen Website aufgerufen.
 - Weiterleitungen auf andere Domains werden blockiert.
 - Pro Seite gelten 8 Sekunden Zeitlimit und 1 MB Größenlimit.
-- Die Prüfung crawlt die Startseite und höchstens fünf priorisierte Unterseiten je Restaurant.
+- Die Prüfung crawlt die Startseite und höchstens fünf priorisierte Unterseiten je Restaurant. Pro Seite werden höchstens 50.000 Zeichen sichtbarer Text ausgewertet.
+- Reine Design-, CSS-, Bild- oder Layoutänderungen sowie nicht verlinkte Unterseiten werden nicht zuverlässig erkannt.
 - PDF-Links auf der offiziellen Domain werden erkannt; die PDF-Dateien selbst werden nicht erneut heruntergeladen. Die bestehende Karten-PDF-Prüfung bleibt separat.
