@@ -7144,6 +7144,11 @@ async function startRestaurantWebsiteMonitor(authenticatedPassword){
   try{
     const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"startRestaurantWebsiteMonitor"})});
     let data={};try{data=await response.json();}catch(_){}
+    if(response.status===409&&data.running){
+      if(status)status.textContent="Es gibt bereits einen Prüflauf. Der vorhandene Status wird jetzt geladen …";
+      await refreshRestaurantWebsiteMonitorStatus(password);
+      return;
+    }
     if(!response.ok||!data.success)throw new Error(data.error||"Prüflauf konnte nicht gestartet werden.");
     if(status)status.textContent="Prüfung läuft im Hintergrund. Diese Ansicht kann geöffnet bleiben.";
     await pollRestaurantWebsiteMonitor(password,data.runId);
