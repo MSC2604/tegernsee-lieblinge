@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
   status TEXT NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending', 'accepted', 'rejected')),
   reviewed_at TEXT NOT NULL DEFAULT '',
+    notified_at TEXT NOT NULL DEFAULT '',
   UNIQUE (restaurant_id, field_name, old_value, new_value)
 );
 
