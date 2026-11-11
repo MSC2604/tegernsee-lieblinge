@@ -150,9 +150,10 @@ export async function runRestaurantWebsiteMonitor({
       return;
     }
     const pages = [root.href, ...extractOfficialPageLinks(homepage, root.href, MAX_PAGES - 1)];
-    const processPage = async (pageUrl, knownHtml) => {
+    const processPage = async (pageUrl, knownHtml, fetchError = null) => {
       let html = knownHtml;
       try {
+        if (fetchError) throw fetchError;
         if (html == null) html = await fetchOfficialHtml(pageUrl, root.origin, fetchImpl);
       } catch (error) {
         report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: pageUrl, error: String(error?.message || error).slice(0, 220) });
@@ -192,11 +193,22 @@ export async function runRestaurantWebsiteMonitor({
       await db("INSERT INTO restaurant_site_snapshots (restaurant_id, page_url, checked_at, content_hash, extracted_data_json, content_text) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(restaurant_id, page_url) DO UPDATE SET checked_at=excluded.checked_at, content_hash=excluded.content_hash, extracted_data_json=excluded.extracted_data_json, content_text=excluded.content_text", [textArg(id), textArg(pageUrl), textArg(stamp), textArg(hash), textArg(JSON.stringify(found)), textArg(pageText.slice(0, 50000))]);
       report.pages++;
     };
-    // Homepage first to discover subpages; then check up to three subpages in parallel.
+    // Homepage first to discover subpages. Fetch up to three subpages in parallel,
+    // but process their snapshots/proposals sequentially to avoid concurrent DB writes.
     await processPage(root.href, homepage);
     const subpages = pages.slice(1);
     for (let i = 0; i < subpages.length; i += 3) {
-      await Promise.all(subpages.slice(i, i + 3).map(pageUrl => processPage(pageUrl, null)));
+      const batch = subpages.slice(i, i + 3);
+      const fetched = await Promise.all(batch.map(async pageUrl => {
+        try {
+          return { pageUrl, html: await fetchOfficialHtml(pageUrl, root.origin, fetchImpl), error: null };
+        } catch (error) {
+          return { pageUrl, html: null, error };
+        }
+      }));
+      for (const item of fetched) {
+        await processPage(item.pageUrl, item.html, item.error);
+      }
     }
   };
 
