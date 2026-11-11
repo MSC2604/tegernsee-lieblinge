@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS restaurant_site_snapshots (
   checked_at TEXT NOT NULL DEFAULT '',
   content_hash TEXT NOT NULL DEFAULT '',
   extracted_data_json TEXT NOT NULL DEFAULT '{}',
+  content_text TEXT NOT NULL DEFAULT '',
   PRIMARY KEY (restaurant_id, page_url)
 );
 
