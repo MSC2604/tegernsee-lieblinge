@@ -22,7 +22,10 @@ function cell(value) {
 }
 function safeHttpUrl(raw) {
   let url;
-  try { url = new URL(raw); } catch { return null; }
+  const input = String(raw || "").trim();
+  try {
+    url = new URL(/^https?:\\/\\//i.test(input) ? input : "https://" + input);
+  } catch { return null; }
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
   const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (!host || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||
