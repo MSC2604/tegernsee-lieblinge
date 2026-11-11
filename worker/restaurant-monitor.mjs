@@ -72,3 +72,25 @@ export function findRestaurantChanges(current, found) {
   }
   return changes;
 }
+
+export function extractOfficialPageLinks(html, baseUrl, limit = 10) {
+  let base;
+  try { base = new URL(baseUrl); } catch { return []; }
+  if (!["http:", "https:"].includes(base.protocol)) return [];
+  const links = [];
+  const seen = new Set([base.href]);
+  const matches = String(html || "").matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi);
+  for (const match of matches) {
+    try {
+      const url = new URL(match[1], base.href);
+      if (url.origin !== base.origin || !["http:", "https:"].includes(url.protocol)) continue;
+      if (/\.(?:pdf|jpg|jpeg|png|webp|gif|zip|mp4|mp3)(?:$|\?)/i.test(url.pathname + url.search)) continue;
+      url.hash = "";
+      if (seen.has(url.href)) continue;
+      seen.add(url.href);
+      links.push(url.href);
+      if (links.length >= Math.max(1, Math.min(20, limit))) break;
+    } catch { /* ungültige Links überspringen */ }
+  }
+  return links;
+}
