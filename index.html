@@ -7259,6 +7259,17 @@ async function refreshRestaurantWebsiteMonitorStatus(password){
   const r=run.report||{};
   if(progress)progress.style.display="block";
   if(run.status==="running"){
+    const started=Date.parse(run.startedAt||"");
+    const age=Number.isFinite(started)?Date.now()-started:0;
+    if(age>30*60*1000){
+      if(label)label.textContent="Prüflauf möglicherweise festgefahren";
+      if(percent)percent.textContent="—";
+      if(current)current.textContent="Der letzte Lauf wurde am "+(run.startedAt?new Date(run.startedAt).toLocaleString("de-DE"):"unbekannt")+" gestartet und ist länger als 30 Minuten offen.";
+      if(stats)stats.textContent="Der Server erlaubt jetzt einen sicheren Neustart. Ein neuer Lauf übernimmt die Sperre; Restaurantdaten werden dabei nicht verändert.";
+      if(status)status.textContent="Der alte Prüflauf antwortet nicht mehr. Sie können die Webseitenprüfung erneut starten.";
+      if(button)button.disabled=false;
+      return;
+    }
     if(status)status.textContent="Eine Webseitenprüfung läuft bereits (gestartet: "+new Date(run.startedAt).toLocaleString("de-DE") + "). Der aktuelle Stand wird geladen.";
     if(button)button.disabled=true;
     await pollRestaurantWebsiteMonitor(password,run.runId);
