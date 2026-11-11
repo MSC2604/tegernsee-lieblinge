@@ -186,7 +186,17 @@ export async function runRestaurantWebsiteMonitor({
 
   const list = Array.isArray(restaurants) ? restaurants : [];
   for (let i = 0; i < list.length; i += 4) {
-    await Promise.all(list.slice(i, i + 4).map(processRestaurant));
+    await Promise.all(list.slice(i, i + 4).map(async restaurant => {
+      try {
+        await processRestaurant(restaurant);
+      } catch (error) {
+        report.errors.push({
+          restaurantId: String(restaurant?.id ?? ""),
+          name: String(restaurant?.name || ""),
+          error: String(error?.message || error).slice(0, 220)
+        });
+      }
+    }));
   }
   return report;
 }
