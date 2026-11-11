@@ -7122,17 +7122,20 @@ function renderWebsiteChanges(items,password){
     actions.append(seen,ignore);card.appendChild(actions);list.appendChild(card);
   }
 }
-function renderWebsiteMonitorErrors(errors){
+function renderWebsiteMonitorErrors(errors,withoutWebsite){
   const container=document.getElementById("websiteMonitorErrors");
   if(!container)return;
   container.replaceChildren();
   const items=Array.isArray(errors)?errors:[];
-  if(!items.length){container.style.display="none";return;}
+  const missing=Array.isArray(withoutWebsite)?withoutWebsite:[];
+  if(!items.length&&!missing.length){container.style.display="none";return;}
   container.style.display="block";
-  const heading=document.createElement("div");
-  heading.textContent=items.length+" Prüffehler – bitte ansehen";
-  heading.style.cssText="font-size:13px;font-weight:700;color:#8a4b20;margin-bottom:7px";
-  container.appendChild(heading);
+  if(items.length){
+    const heading=document.createElement("div");
+    heading.textContent=items.length+" Prüffehler – bitte ansehen";
+    heading.style.cssText="font-size:13px;font-weight:700;color:#8a4b20;margin-bottom:7px";
+    container.appendChild(heading);
+  }
   const list=document.createElement("ul");
   list.style.cssText="margin:0;padding-left:18px;display:grid;gap:8px;color:#394b41;font-size:12px";
   items.forEach(item=>{
@@ -7159,7 +7162,21 @@ function renderWebsiteMonitorErrors(errors){
     li.appendChild(message);
     list.appendChild(li);
   });
-  container.appendChild(list);
+  if(items.length)container.appendChild(list);
+  if(missing.length){
+    const missingHeading=document.createElement("div");
+    missingHeading.textContent=missing.length+" Restaurants ohne hinterlegte Website";
+    missingHeading.style.cssText="font-size:13px;font-weight:700;color:#63736a;margin:12px 0 6px";
+    container.appendChild(missingHeading);
+    const missingList=document.createElement("ul");
+    missingList.style.cssText="margin:0;padding-left:18px;display:grid;gap:4px;color:#394b41;font-size:12px";
+    missing.forEach(name=>{
+      const li=document.createElement("li");
+      li.textContent=String(name||"Unbenannter Eintrag");
+      missingList.appendChild(li);
+    });
+    container.appendChild(missingList);
+  }
 }
 async function startRestaurantWebsiteMonitor(authenticatedPassword){
   const button=document.getElementById("startWebsiteMonitor");
@@ -7217,7 +7234,7 @@ async function pollRestaurantWebsiteMonitor(password,runId){
     const run=data.run;
     if(!run||run.runId!==runId)throw new Error("Der aktuelle Prüflauf ist nicht mehr verfügbar.");
     const r=run.report||{};
-    renderWebsiteMonitorErrors(r.errors);
+    renderWebsiteMonitorErrors(r.errors,r.withoutWebsite);
     if(run.status==="running"){
       if(progress)progress.style.display="block";
       const total=Number(r.total)||0,done=Number(r.completed)||0;
@@ -7226,7 +7243,7 @@ async function pollRestaurantWebsiteMonitor(password,runId){
       if(percent)percent.textContent=total?pct+" %":"…";
       if(bar)bar.style.width=pct+"%";
       if(current)current.textContent=(r.activeRestaurants||[]).length?"Aktuell: "+r.activeRestaurants.join(", "):"Warte auf die nächsten Webseiten …";
-      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(Array.isArray(r.errors)?r.errors.length:(r.errors||0))+" Fehler";
+      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(Array.isArray(r.errors)?r.errors.length:(r.errors||0))+" Fehler · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website";
       if(status)status.textContent="Die Prüfung läuft schrittweise. Der Fortschritt wird nach jedem Restaurant gespeichert.";
       const stepResponse=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"processRestaurantWebsiteMonitorBatch",runId})});
       let stepData={};try{stepData=await stepResponse.json();}catch(_){}
@@ -7241,8 +7258,8 @@ async function pollRestaurantWebsiteMonitor(password,runId){
       if(percent)percent.textContent="100 %";
       if(bar)bar.style.width="100%";
       if(current)current.textContent="Alle Webseiten dieses Prüflaufs wurden bearbeitet.";
-      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(r.errors||[]).length+" Fehler";
-      if(status)status.textContent="Fertig: "+(r.restaurants||0)+" Restaurants geprüft.";
+      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(r.errors||[]).length+" Fehler · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website";
+      if(status)status.textContent="Fertig: "+(r.restaurants||0)+" Restaurants mit Website geprüft · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website.";
       await loadRestaurantWebsiteChanges(password);
     }else{
       if(status)status.textContent="Prüfung fehlgeschlagen: "+(r.error||"Unbekannter Fehler");
