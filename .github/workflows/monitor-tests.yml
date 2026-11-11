@@ -3,6 +3,7 @@ name: Restaurant monitoring tests
 on:
   push:
     branches:
+      - main
       - feature/restaurant-change-review-prototype
     paths:
       - "worker/restaurant-monitor*.mjs"
@@ -20,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feature/restaurant-change-review-prototype
+          ref: ${{ github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
