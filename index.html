@@ -2220,6 +2220,69 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 /* Kartenansicht: horizontale, mobil angepasste Restaurantnamen ohne Zahlencluster */
 .leaflet-tooltip.map-place-label{display:block;width:max-content;max-width:min(150px,42vw);white-space:normal;overflow-wrap:anywhere;word-break:normal;writing-mode:horizontal-tb;text-orientation:mixed;text-align:center;font-size:clamp(10px,2.8vw,11px);font-weight:800;line-height:1.25;padding:4px 6px;border:1px solid #cbded5;border-radius:8px;background:rgba(255,255,255,.98);color:#17352d;box-shadow:0 2px 8px rgba(23,53,45,.2)}
 .leaflet-tooltip.map-place-label:before{display:none}
+
+/* Titelbild und Willkommenstext bewusst getrennt – Premium-Layout */
+#welcomeHero.welcome-hero{
+  display:block!important;
+  position:relative;
+  isolation:isolate;
+  height:clamp(250px,38vw,390px);
+  min-height:250px;
+  margin:4px 0 0!important;
+  padding:0!important;
+  border:1px solid rgba(45,106,86,.12);
+  border-radius:24px;
+  overflow:hidden;
+  background-color:#e8eee8;
+  background-image:var(--welcome-image,none)!important;
+  background-position:center 48%;
+  background-size:cover;
+  background-repeat:no-repeat;
+  box-shadow:0 16px 38px rgba(28,53,42,.14);
+}
+#welcomeCopy.welcome-copy{
+  display:block;
+  position:relative;
+  z-index:1;
+  width:auto;
+  max-width:none;
+  margin:0 0 24px!important;
+  padding:19px clamp(20px,3.5vw,30px) 21px!important;
+  border:1px solid #e8e2d5;
+  border-top:0;
+  border-radius:0 0 18px 18px;
+  background:linear-gradient(180deg,#fffdf8 0%,#f8f6ef 100%);
+  box-shadow:0 9px 23px rgba(35,55,44,.065);
+  color:#244a3b;
+  text-shadow:none!important;
+}
+#welcomeCopy h2{
+  margin:0 0 5px!important;
+  color:#244a3b!important;
+  font-family:'Playfair Display',Georgia,serif!important;
+  font-size:clamp(30px,4.4vw,42px)!important;
+  font-weight:700!important;
+  line-height:1.12;
+  letter-spacing:-.025em;
+  text-shadow:none!important;
+}
+#welcomeCopy p{
+  margin:0!important;
+  color:#65766b!important;
+  font-family:system-ui,sans-serif!important;
+  font-size:clamp(14px,2vw,18px)!important;
+  font-weight:500!important;
+  line-height:1.45;
+  letter-spacing:.025em;
+  text-shadow:none!important;
+}
+@media(max-width:560px){
+  #welcomeHero.welcome-hero{height:clamp(215px,62vw,290px);min-height:215px;margin-top:3px!important;border-radius:19px}
+  #welcomeCopy.welcome-copy{margin-bottom:19px!important;padding:16px 18px 18px!important;border-radius:0 0 15px 15px}
+  #welcomeCopy h2{font-size:clamp(28px,8vw,36px)!important}
+  #welcomeCopy p{font-size:14px!important}
+}
+
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2279,13 +2342,13 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 
 <main id="home">
 
-  <section class="welcome-hero" id="welcomeHero" aria-label="Willkommen am Tegernsee">
-    <div class="welcome-copy">
-      <h2 id="welcomeHeroTitle">Tegernsee</h2>
-      <p id="welcomeHeroSubtitle">Entdecken. Genießen. Wohlfühlen.</p>
-    </div>
+  <section class="welcome-hero" id="welcomeHero" aria-label="Titelbild am Tegernsee">
     <input type="file" id="heroImagePicker" accept="image/*" hidden>
   </section>
+  <div class="welcome-copy" id="welcomeCopy">
+    <h2 id="welcomeHeroTitle">Tegernsee</h2>
+    <p id="welcomeHeroSubtitle">Entdecken. Genießen. Wohlfühlen.</p>
+  </div>
 
   <div class="home-actions" aria-label="App-Aktionen">
     <div class="primary-actions">
@@ -6612,7 +6675,7 @@ async function loadWelcomeHeroText() {
 }
 
 function getWelcomeTextStyles() {
-  const defaults={title:{size:40,font:"system-ui",color:"#ffffff",weight:"700",italic:false,align:"left"},subtitle:{size:20,font:"system-ui",color:"#ffffff",weight:"400",italic:false,align:"left"}};
+  const defaults={title:{size:40,font:"'Playfair Display',Georgia,serif",color:"#244a3b",weight:"700",italic:false,align:"left"},subtitle:{size:18,font:"system-ui",color:"#65766b",weight:"400",italic:false,align:"left"}};
   try { const saved=JSON.parse(localStorage.getItem("tegernseeWelcomeTextStyles")||"null"); return {title:{...defaults.title,...(saved&&saved.title||{})},subtitle:{...defaults.subtitle,...(saved&&saved.subtitle||{})}}; } catch(_){return defaults;}
 }
 function applyWelcomeTextStyles() {
@@ -6657,7 +6720,7 @@ function editWelcomeHeroText() {
     $("wteTitle").addEventListener("input",render);$("wteSubtitle").addEventListener("input",render);
     $("wteTitleTab").onclick=()=>{active="title";render();};$("wteSubtitleTab").onclick=()=>{active="subtitle";render();};
     const close=()=>overlay.remove();$("wteClose").onclick=close;$("wteCancel").onclick=close;overlay.addEventListener("click",e=>{if(e.target===overlay)close();});
-    $("wteReset").onclick=()=>{working={title:{size:40,font:"system-ui",color:"#ffffff",weight:"700",italic:false,align:"left"},subtitle:{size:20,font:"system-ui",color:"#ffffff",weight:"400",italic:false,align:"left"}};render();};
+    $("wteReset").onclick=()=>{working={title:{size:40,font:"'Playfair Display',Georgia,serif",color:"#244a3b",weight:"700",italic:false,align:"left"},subtitle:{size:18,font:"system-ui",color:"#65766b",weight:"400",italic:false,align:"left"}};render();};
     $("wteSave").onclick=async()=>{const title=$("wteTitle").value.trim().slice(0,120),subtitle=$("wteSubtitle").value.trim().slice(0,240);if(!title||!subtitle){alert("Bitte Überschrift und Untertitel ausfüllen.");return;}const b=$("wteSave");b.disabled=true;b.textContent="Speichert …";
       try{const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"saveTitleText",title,subtitle})});let data={};try{data=await response.json();}catch(_){}
         if(!response.ok||data.success!==true||data.verified!==true)throw new Error(data.error||"Titeltext konnte nicht zentral gespeichert werden.");
