@@ -1,5 +1,5 @@
 // Isolierter Helfer für die spätere tägliche Restaurant-Datenprüfung.
-// Noch nicht in worker.js eingebunden und nicht produktiv aktiv.
+// Wird nur vom isolierten Entwicklungszweig-Worker verwendet; main bleibt unverändert.
 function clean(value) {
   return typeof value === 'string' || typeof value === 'number' ? String(value).replace(/\s+/g, ' ').trim() : '';
 }
