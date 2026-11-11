@@ -7103,6 +7103,21 @@ function renderWebsiteChangesContext(report){
     note.textContent="Der letzte Prüflauf meldete "+proposals+" mögliche Änderungshinweise. Die Liste darunter zeigt alle noch offenen Hinweise – auch aus früheren Prüfläufen.";
   }
 }
+async function reviewWebsiteChangeGroup(ids,status,password,button){
+  if(button)button.disabled=true;
+  try{
+    for(const id of ids){
+      const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"reviewRestaurantWebsiteChange",id,status})});
+      let data={};try{data=await response.json();}catch(_){}
+      if(!response.ok||!data.success)throw new Error(data.error||"Ein Hinweis konnte nicht markiert werden.");
+    }
+    await loadRestaurantWebsiteChanges(password);
+  }catch(error){
+    alert(error.message||"Speichern fehlgeschlagen.");
+    if(button)button.disabled=false;
+    await loadRestaurantWebsiteChanges(password).catch(()=>{});
+  }
+}
 function renderWebsiteChanges(items,password){
   const list=document.getElementById("websiteChangesList");
   if(!list)return;
@@ -7112,12 +7127,24 @@ function renderWebsiteChanges(items,password){
     empty.textContent="Zurzeit liegen keine offenen Website-Änderungen vor.";
     list.appendChild(empty);return;
   }
+  const normalize=value=>String(value??"").replace(/\\s+/g," ").trim().toLocaleLowerCase("de-DE");
+  const groups=new Map();
   for(const item of items){
+    const key=[item.restaurantName,item.field,item.oldValue,item.newValue].map(normalize).join("\\u241f");
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(item);
+  }
+  for(const group of groups.values()){
+    const item=group[group.length-1];
+    const ids=group.map(entry=>entry.id).filter(id=>id!==undefined&&id!==null);
     const card=document.createElement("article");card.className="website-change-card";
     const title=document.createElement("h3");title.textContent=(item.restaurantName||"Restaurant")+" · "+websiteChangeFieldLabel(item.field);card.appendChild(title);
     const meta=document.createElement("div");meta.className="website-change-meta";
-    const date=item.detectedAt?new Date(item.detectedAt).toLocaleString("de-DE"):"Zeitpunkt unbekannt";
-    meta.textContent="Erkannt am "+date;card.appendChild(meta);
+    const dates=group.map(entry=>entry.detectedAt).filter(Boolean).map(value=>new Date(value)).filter(date=>!Number.isNaN(date.getTime())).sort((a,b)=>a-b);
+    meta.textContent=group.length>1
+      ? group.length+" identische offene Hinweise · zuletzt erkannt am "+(dates.length?dates[dates.length-1].toLocaleString("de-DE"):"Zeitpunkt unbekannt")
+      : "Erkannt am "+(dates.length?dates[0].toLocaleString("de-DE"):"Zeitpunkt unbekannt");
+    card.appendChild(meta);
     const values=document.createElement("div");values.className="website-change-values";
     for(const [label,value] of [["Bisher",item.oldValue],["Auf der Website gefunden",item.newValue]]){
       const cell=document.createElement("div");cell.className="website-change-value";
@@ -7125,14 +7152,14 @@ function renderWebsiteChanges(items,password){
       const span=document.createElement("span");span.textContent=value||"Keine Angabe";cell.appendChild(span);values.appendChild(cell);
     }
     card.appendChild(values);
-    if(/^https?:\/\//i.test(item.sourceUrl||"")){
+    if(/^https?:\\/\\//i.test(item.sourceUrl||"")){
       const source=document.createElement("a");source.className="website-change-source";source.href=item.sourceUrl;source.target="_blank";source.rel="noopener noreferrer";source.textContent="Offizielle Quelle öffnen";card.appendChild(source);
     }
     const actions=document.createElement("div");actions.className="website-change-actions";
-    const seen=document.createElement("button");seen.type="button";seen.textContent="Gesehen – ich kümmere mich";
-    seen.addEventListener("click",()=>reviewWebsiteChange(item.id,"accepted",password,seen));
-    const ignore=document.createElement("button");ignore.type="button";ignore.className="secondary";ignore.textContent="Nicht relevant";
-    ignore.addEventListener("click",()=>reviewWebsiteChange(item.id,"rejected",password,ignore));
+    const seen=document.createElement("button");seen.type="button";seen.textContent=group.length>1?"Alle "+group.length+" Hinweise gesehen":"Gesehen – ich kümmere mich";
+    seen.addEventListener("click",()=>reviewWebsiteChangeGroup(ids,"accepted",password,seen));
+    const ignore=document.createElement("button");ignore.type="button";ignore.className="secondary";ignore.textContent=group.length>1?"Alle "+group.length+" nicht relevant":"Nicht relevant";
+    ignore.addEventListener("click",()=>reviewWebsiteChangeGroup(ids,"rejected",password,ignore));
     actions.append(seen,ignore);card.appendChild(actions);list.appendChild(card);
   }
 }
