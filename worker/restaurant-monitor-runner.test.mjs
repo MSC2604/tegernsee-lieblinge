@@ -90,4 +90,31 @@ const unreachable = await runRestaurantWebsiteMonitor({
 });
 assert.equal(unreachable.pages, 0);
 assert.equal(unreachable.errors.length, 1);
-console.log("Restaurant-Monitor-Lauf: Baseline, unveränderte Seite, Änderung und Fehlerfall erfolgreich.");
+
+// Pages above the former 1 MB limit are now accepted up to the strict 3 MB cap.
+const largeHtml = '<html><body><h1>Gasthof am See</h1>' + 'x'.repeat(1_200_000) + '</body></html>';
+const largePage = await runRestaurantWebsiteMonitor({
+  db: makeDb().db, restaurants,
+  fetchImpl: async () => new Response(largeHtml, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } })
+});
+assert.equal(largePage.pages, 1);
+assert.equal(largePage.errors.length, 0);
+
+// HTML served with a generic content type is accepted only when its body looks like HTML.
+const mislabeledHtml = await runRestaurantWebsiteMonitor({
+  db: makeDb().db, restaurants,
+  fetchImpl: async () => new Response('<!doctype html><html><body><h1>Gasthof</h1></body></html>', {
+    status: 200, headers: { "Content-Type": "application/octet-stream" }
+  })
+});
+assert.equal(mislabeledHtml.pages, 1);
+assert.equal(mislabeledHtml.errors.length, 0);
+
+// Explicit PDF responses remain excluded from HTML parsing.
+const pdfResponse = await runRestaurantWebsiteMonitor({
+  db: makeDb().db, restaurants,
+  fetchImpl: async () => new Response("%PDF-1.7", { status: 200, headers: { "Content-Type": "application/pdf" } })
+});
+assert.equal(pdfResponse.pages, 0);
+assert.equal(pdfResponse.errors.length, 1);
+console.log("Restaurant-Monitor-Lauf: Baseline, Änderungen, Fehler und HTML-Grenzfälle erfolgreich.");
