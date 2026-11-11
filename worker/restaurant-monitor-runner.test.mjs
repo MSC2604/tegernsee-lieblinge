@@ -217,7 +217,7 @@ assert.equal(httpsUpgrade.errors.length, 0);
 // A secure retry must not hide a genuine contact change, but ignores tracking/query text.
 const contactNormalization = findRestaurantChanges(
   { externe_links: "E-Mail: mailto:info%40firstalm%2Ede?subject=Servus\nTelefon: tel:+49%208029%20%E2%80%93%20386" },
-  { externe_links: "E-Mail: mailto:info@firstalm.de?subject=Kontakt\nTelefon: tel:+49 8029 386" }
+  { externe_links: "E-Mail: mailto:info@firstalm.de?subject=Kontakt\nTelefon: tel:+498029386" }
 );
 assert.equal(contactNormalization.length, 0);
 assert.equal(findRestaurantChanges(
