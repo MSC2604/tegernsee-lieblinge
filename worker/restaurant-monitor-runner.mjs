@@ -60,9 +60,8 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
     if (!url || url.origin !== origin) throw new Error("Weiterleitung außerhalb der offiziellen Website blockiert.");
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    let response;
     try {
-      response = await fetchImpl(url.href, {
+      const response = await fetchImpl(url.href, {
         method: "GET",
         redirect: "manual",
         signal: controller.signal,
@@ -71,7 +70,21 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
           "Accept": "text/html,application/xhtml+xml;q=0.9"
         }
       });
-  
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
+        const location = response.headers.get("Location");
+        if (!location || hop === 3) throw new Error("Weiterleitung nicht auflösbar.");
+        current = new URL(location, url.href).href;
+        continue;
+      }
+      if (!response.ok) throw new Error("Website antwortet mit HTTP " + response.status + ".");
+      const type = response.headers.get("Content-Type") || "";
+      if (!/text\\/html|application\\/xhtml\\+xml/i.test(type)) {
+        throw new Error("Die verlinkte Seite liefert kein HTML.");
+      }
+      return await readLimited(response);
+    } finally {
+      clearTimeout(timer);
+    }
   }
   throw new Error("Zu viele Weiterleitungen.");
 }
