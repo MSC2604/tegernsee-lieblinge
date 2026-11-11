@@ -1263,7 +1263,13 @@ console.log("Tavily usage account:", {
                 name: String(rowValue(row[1]) || ""),
                 website: String(rowValue(row[2]) || "")
               })).filter(item => item.id && item.website);
-              const report = await runRestaurantWebsiteMonitor({ db: turso, restaurants });
+              const report = await runRestaurantWebsiteMonitor({
+                db: turso, restaurants,
+                onProgress: progress => turso(
+                  "UPDATE restaurant_website_monitor_runs SET report_json = ? WHERE id = 1 AND run_id = ? AND status = 'running'",
+                  [textArg(JSON.stringify(progress)), textArg(runId)]
+                )
+              });
               await turso(
                 "UPDATE restaurant_website_monitor_runs SET status = 'completed', finished_at = ?, report_json = ? WHERE id = 1 AND run_id = ?",
                 [textArg(new Date().toISOString()), textArg(JSON.stringify(report)), textArg(runId)]
