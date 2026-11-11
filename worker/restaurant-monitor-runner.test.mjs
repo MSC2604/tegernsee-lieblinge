@@ -225,4 +225,20 @@ assert.equal(findRestaurantChanges(
   { externe_links: "E-Mail: mailto:reservierung@firstalm.de" }
 ).length, 1);
 
+// A legacy .html menu endpoint that actually serves a PDF is not a crawl error.
+const pdfBehindHtml = await runRestaurantWebsiteMonitor({
+  db: makeDb().db,
+  restaurants,
+  fetchImpl: async url => {
+    if (String(url).endsWith("/speisekarte.html")) {
+      return new Response("%PDF-1.7", { status: 200, headers: { "Content-Type": "application/pdf" } });
+    }
+    return new Response('<html><body><h1>Gasthof</h1><a href="/speisekarte.html">Speisekarte</a><a href="/kontakt">Kontakt</a></body></html>', {
+      status: 200, headers: { "Content-Type": "text/html" }
+    });
+  }
+});
+assert.equal(pdfBehindHtml.errors.length, 0);
+assert.equal(pdfBehindHtml.pages, 2);
+
 console.log("Restaurant-Monitor-Lauf: Baseline, Änderungen, Fehler und HTML-Grenzfälle erfolgreich.");
