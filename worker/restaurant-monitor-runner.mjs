@@ -113,14 +113,28 @@ export async function runRestaurantWebsiteMonitor({
   db,
   restaurants,
   fetchImpl = fetch,
-  now = () => new Date().toISOString()
+  now = () => new Date().toISOString(),
+  onProgress
 }) {
   if (typeof db !== "function") throw new Error("Datenbankfunktion fehlt.");
+  const list = Array.isArray(restaurants) ? restaurants : [];
   const report = { restaurants: 0, pages: 0, baselines: 0, proposals: 0, errors: [] };
+  let completed = 0;
+  const active = new Set();
+  const publishProgress = async () => {
+    if (typeof onProgress !== "function") return;
+    try {
+      await onProgress({ phase: "running", completed, total: list.length, activeRestaurants: [...active], restaurants: report.restaurants, pages: report.pages, baselines: report.baselines, proposals: report.proposals, errors: report.errors.length });
+    } catch (error) {
+      console.error("Website-Monitor-Fortschritt konnte nicht gespeichert werden:", String(error?.message || error));
+    }
+  };
+  await publishProgress();
   const processRestaurant = async restaurant => {
     const id = String(restaurant?.id ?? "").trim();
     const website = String(restaurant?.website ?? "").trim();
     if (!id || !website) return;
+    active.add(String(restaurant.name || "Restaurant"));
     const root = safeHttpUrl(website);
     if (!root) {
       report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), error: "Website-Adresse ist ungültig oder aus Sicherheitsgründen gesperrt." });
@@ -197,17 +211,17 @@ export async function runRestaurantWebsiteMonitor({
     }
   };
 
-  const list = Array.isArray(restaurants) ? restaurants : [];
   for (let i = 0; i < list.length; i += 4) {
     await Promise.all(list.slice(i, i + 4).map(async restaurant => {
+      const name = String(restaurant?.name || "Restaurant");
       try {
         await processRestaurant(restaurant);
       } catch (error) {
-        report.errors.push({
-          restaurantId: String(restaurant?.id ?? ""),
-          name: String(restaurant?.name || ""),
-          error: String(error?.message || error).slice(0, 220)
-        });
+        report.errors.push({ restaurantId: String(restaurant?.id ?? ""), name, error: String(error?.message || error).slice(0, 220) });
+      } finally {
+        active.delete(name);
+        completed++;
+        await publishProgress();
       }
     }));
   }
