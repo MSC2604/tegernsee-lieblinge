@@ -34,7 +34,7 @@ function makeDb() {
 
 const dbState = makeDb();
 let contactHtml = '<html><body><h1>Kontakt</h1><p>Telefon: 08022 111111</p><p>E-Mail: info@example.de</p></body></html>';
-const homeHtml = '<html><body><h1>Gasthof am See</h1><a href="/kontakt">Kontakt</a><a href="https://fremd.example/">Extern</a></body></html>';
+let homeHtml = '<html><body><h1>Gasthof am See</h1><a href="/kontakt">Kontakt</a><a href="/speisekarte.pdf">Speisekarte</a><a href="https://fremd.example/">Extern</a></body></html>';
 const fetchImpl = async url => new Response(
   String(url).endsWith("/kontakt") ? contactHtml : homeHtml,
   { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } }
@@ -60,6 +60,11 @@ contactHtml = '<html><body><script type="application/ld+json">{"@type":"Restaura
 const structuredOnly = await runRestaurantWebsiteMonitor({ db: dbState.db, restaurants, fetchImpl });
 assert.ok(structuredOnly.proposals >= 1);
 assert.ok([...dbState.proposals.values()].some(row => row[1] === "telefon" && row[3] === "08022 333333"));
+
+homeHtml = '<html><body><h1>Gasthof am See</h1><a href="/kontakt">Kontakt</a><a href="/speisekarte-neu.pdf">Speisekarte</a><a href="https://fremd.example/">Extern</a></body></html>';
+const pdfLinkChange = await runRestaurantWebsiteMonitor({ db: dbState.db, restaurants, fetchImpl });
+assert.ok(pdfLinkChange.proposals >= 1);
+assert.ok([...dbState.proposals.values()].some(row => row[1] === "dokumente" && row[3].includes("speisekarte-neu.pdf")));
 
 const unreachable = await runRestaurantWebsiteMonitor({
   db: dbState.db, restaurants,
