@@ -89,12 +89,8 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
       // Some hosts mislabel HTML as text/plain or application/octet-stream.
       // Read it with the same strict size cap and verify the actual document
       // before parsing; explicit binary media types are rejected immediately.
-      if (/^(application\\/(?:pdf|zip|octet-stream)|image\\/|audio\\/|video\\/)/i.test(type)) {
-        const prefix = await readLimited(response);
-        if (!/^\\s*(?:<!doctype\\s+html|<html\\b|<head\\b|<body\\b)/i.test(prefix)) {
-          throw new Error("Die verlinkte Seite liefert kein HTML.");
-        }
-        return prefix;
+      if (/^(application\\/(?:pdf|zip)|image\\/|audio\\/|video\\/)/i.test(type)) {
+        throw new Error("Die verlinkte Seite liefert kein HTML.");
       }
       const html = await readLimited(response);
       if (type.includes("text/html") || type.includes("application/xhtml+xml") ||
