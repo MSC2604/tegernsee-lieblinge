@@ -327,6 +327,7 @@ main{
 .status.open{color:#278253}
 .status.closed{color:#b94b45}
 .status.unknown{color:#7c837f}
+.status.upcoming{color:#89620d}
 
 .cardbottom{
   display:flex;
@@ -1771,6 +1772,10 @@ main#home{max-width:1040px;padding:22px 18px 112px}
   color:#6f786f;
   background:#f0f0eb;
 }
+#cards .status.upcoming{
+  color:#89620d;
+  background:#fff4d8;
+}
 #cards .tile-hours{
   border-top:1px solid #e9e5db;
 }
@@ -1963,6 +1968,7 @@ main#home{max-width:1040px;padding:22px 18px 112px}
 #cards .card .status.open{color:#216b45;background:#eaf5ed}
 #cards .card .status.closed{color:#a3423b;background:#fbefed}
 #cards .card .status.unknown{color:#68766f;background:#f0f2ef}
+#cards .card .status.upcoming{color:#89620d;background:#fff4d8}
 #cards .card .fav{top:13px;right:13px;width:42px;height:42px;backdrop-filter:blur(8px)}
 #cards .card .tile-hours{
   gap:7px;
@@ -3692,7 +3698,7 @@ function getOpeningStatus(place, referenceDate){
     }
     const laterToday = todayTimes.find(period => period.start > currentMinutes);
     if(laterToday){
-      return {type:"unknown",text:"🟡 Öffnet heute um " + formatOpeningTime(laterToday.start)};
+      return {type:"upcoming",text:"🟡 Öffnet heute um " + formatOpeningTime(laterToday.start)};
     }
   }else if(!parsed.hasWeekdays){
     return {type:"unknown",text:"⚪ Öffnungszeiten prüfen"};
@@ -3704,7 +3710,7 @@ function getOpeningStatus(place, referenceDate){
     if(parsed.closedDays.has(day) || !parsed.schedule[day].length) continue;
     const firstPeriod = parsed.schedule[day][0];
     const label = offset === 1 ? "morgen" : weekdayNames[day];
-    return {type:"unknown",text:"🟡 Öffnet " + label + " um " + formatOpeningTime(firstPeriod.start)};
+    return {type:"upcoming",text:"🟡 Öffnet " + label + " um " + formatOpeningTime(firstPeriod.start)};
   }
 
   if(parsed.closedDays.has(today) && !todayTimes.length){
