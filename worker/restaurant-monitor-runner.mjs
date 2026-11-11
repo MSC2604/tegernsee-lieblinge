@@ -110,14 +110,14 @@ export async function runRestaurantWebsiteMonitor({
 }) {
   if (typeof db !== "function") throw new Error("Datenbankfunktion fehlt.");
   const report = { restaurants: 0, pages: 0, baselines: 0, proposals: 0, errors: [] };
-  for (const restaurant of restaurants || []) {
+  const processRestaurant = async restaurant => {
     const id = String(restaurant?.id ?? "").trim();
     const website = String(restaurant?.website ?? "").trim();
-    if (!id || !website) continue;
+    if (!id || !website) return;
     const root = safeHttpUrl(website);
     if (!root) {
       report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), error: "Website-Adresse ist ungültig oder aus Sicherheitsgründen gesperrt." });
-      continue;
+      return;
     }
     report.restaurants++;
     let homepage;
@@ -125,7 +125,7 @@ export async function runRestaurantWebsiteMonitor({
       homepage = await fetchOfficialHtml(root.href, root.origin, fetchImpl);
     } catch (error) {
       report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: root.href, error: String(error?.message || error).slice(0, 220) });
-      continue;
+      return;
     }
     const pages = [root.href, ...extractOfficialPageLinks(homepage, root.href, MAX_PAGES - 1)];
     for (const pageUrl of pages) {
@@ -182,6 +182,11 @@ export async function runRestaurantWebsiteMonitor({
       );
       report.pages++;
     }
+  };
+
+  const list = Array.isArray(restaurants) ? restaurants : [];
+  for (let i = 0; i < list.length; i += 4) {
+    await Promise.all(list.slice(i, i + 4).map(processRestaurant));
   }
   return report;
 }
