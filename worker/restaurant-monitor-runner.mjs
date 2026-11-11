@@ -50,7 +50,7 @@ async function readLimited(response) {
     total += part.value.byteLength;
     if (total > MAX_BYTES) {
       await reader.cancel();
-      throw new Error("Website-Seite ist größer als 1 MB.");
+      throw new Error("Website-Seite ist größer als 3 MB.");
     }
     chunks.push(part.value);
   }
