@@ -14,8 +14,11 @@ function makeDb() {
       return result(item ? [[cell(item.hash), cell(item.data), cell(item.text)]] : []);
     }
     if (sql.startsWith("INSERT OR IGNORE INTO restaurant_change_proposals")) {
-      const proposalKey = values.join("|");
-      if (!proposals.has(proposalKey)) proposals.set(proposalKey, values);
+      const stored = sql.includes("VALUES (?, 'website_text'")
+        ? [values[0], "website_text", ...values.slice(1)]
+        : values;
+      const proposalKey = stored.join("|");
+      if (!proposals.has(proposalKey)) proposals.set(proposalKey, stored);
       return result([]);
     }
     if (sql.includes("INSERT INTO restaurant_site_snapshots")) {
