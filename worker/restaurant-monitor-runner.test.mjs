@@ -144,4 +144,60 @@ assert.equal(findRestaurantChanges(
   { dokumente: "Getränke: https://example.de/drinks.pdf\nSpeisekarte: https://example.de/menu.pdf?a=1&b=2" }
 ).length, 0);
 
+// A short network failure is retried once before the monitor records an error.
+let retryCalls = 0;
+const retryResult = await runRestaurantWebsiteMonitor({
+  db: makeDb().db, restaurants,
+  fetchImpl: async () => {
+    retryCalls++;
+    if (retryCalls === 1) throw new TypeError("temporary network failure");
+    return new Response("<html><body><h1>Gasthof</h1></body></html>", {
+      status: 200, headers: { "Content-Type": "text/html" }
+    });
+  }
+});
+assert.equal(retryResult.pages, 1);
+assert.equal(retryResult.errors.length, 0);
+assert.equal(retryCalls, 2);
+
+// An official PDF menu makes a broken legacy HTML menu page unnecessary to crawl.
+const menuFallback = await runRestaurantWebsiteMonitor({
+  db: makeDb().db, restaurants,
+  fetchImpl: async url => {
+    if (String(url).endsWith("/speisekarte.html")) {
+      return new Response("unavailable", { status: 503, headers: { "Content-Type": "text/html" } });
+    }
+    if (String(url).endsWith("/kontakt")) {
+      return new Response("<html><body><h1>Kontakt</h1></body></html>", { status: 200, headers: { "Content-Type": "text/html" } });
+    }
+    return new Response('<html><body><h1>Gasthof</h1><a href="/speisekarte.html">Speisekarte</a><a href="/speisekarte.pdf">Speisekarte PDF</a><a href="/kontakt">Kontakt</a></body></html>', {
+      status: 200, headers: { "Content-Type": "text/html" }
+    });
+  }
+});
+assert.equal(menuFallback.errors.length, 0);
+assert.equal(menuFallback.pages, 2);
+
+// If a legacy contact.php endpoint fails, try its same-host .html equivalent.
+const contactFallbackState = makeDb();
+const contactFallback = await runRestaurantWebsiteMonitor({
+  db: contactFallbackState.db, restaurants,
+  fetchImpl: async url => {
+    if (String(url).endsWith("/kontakt.php")) {
+      return new Response("server error", { status: 500, headers: { "Content-Type": "text/html" } });
+    }
+    if (String(url).endsWith("/kontakt.html")) {
+      return new Response("<html><body><h1>Kontakt</h1><p>Telefon: 08022 123456</p></body></html>", {
+        status: 200, headers: { "Content-Type": "text/html" }
+      });
+    }
+    return new Response('<html><body><h1>Gasthof</h1><a href="/kontakt.php">Kontakt</a></body></html>', {
+      status: 200, headers: { "Content-Type": "text/html" }
+    });
+  }
+});
+assert.equal(contactFallback.errors.length, 0);
+assert.equal(contactFallback.pages, 2);
+assert.ok([...contactFallbackState.snapshots.keys()].some(key => key.endsWith("|https://restaurant.example/kontakt.html")));
+
 console.log("Restaurant-Monitor-Lauf: Baseline, Änderungen, Fehler und HTML-Grenzfälle erfolgreich.");
