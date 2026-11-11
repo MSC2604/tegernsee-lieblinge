@@ -78,7 +78,7 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
       }
       if (!response.ok) throw new Error("Website antwortet mit HTTP " + response.status + ".");
       const type = response.headers.get("Content-Type") || "";
-      if (!/text\\/html|application\\/xhtml\\+xml/i.test(type)) {
+      if (!type.toLowerCase().includes("text/html") && !type.toLowerCase().includes("application/xhtml+xml")) {
         throw new Error("Die verlinkte Seite liefert kein HTML.");
       }
       return await readLimited(response);
