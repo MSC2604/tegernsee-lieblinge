@@ -26,6 +26,8 @@ jobs:
           node-version: 22
       - name: Check worker syntax
         run: node --check worker.js
+      - name: Check extraction module syntax
+        run: node --check worker/restaurant-monitor.mjs
       - name: Check monitoring module syntax
         run: node --check worker/restaurant-monitor-runner.mjs
       - name: Test data extraction
