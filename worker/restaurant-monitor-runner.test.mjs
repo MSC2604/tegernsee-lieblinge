@@ -56,6 +56,11 @@ assert.ok(changed.proposals >= 2);
 assert.ok([...dbState.proposals.values()].some(row => row[1] === "telefon" && row[3] === "08022 222222"));
 assert.ok([...dbState.proposals.values()].some(row => row[1] === "website_text"));
 
+contactHtml = '<html><body><script type="application/ld+json">{"@type":"Restaurant","telephone":"08022 333333"}</script><h1>Kontakt</h1><p>Telefon: 08022 222222</p><p>E-Mail: info@example.de</p><p>Neue Telefonnummer ab sofort</p></body></html>';
+const structuredOnly = await runRestaurantWebsiteMonitor({ db: dbState.db, restaurants, fetchImpl });
+assert.ok(structuredOnly.proposals >= 1);
+assert.ok([...dbState.proposals.values()].some(row => row[1] === "telefon" && row[3] === "08022 333333"));
+
 const unreachable = await runRestaurantWebsiteMonitor({
   db: dbState.db, restaurants,
   fetchImpl: async () => new Response("Fehler", { status: 503, headers: { "Content-Type": "text/html" } })
