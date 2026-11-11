@@ -1340,6 +1340,7 @@ console.log("Tavily usage account:", {
             activeRestaurants: [String(restaurant.name || "Restaurant")],
             restaurants: Number(cumulative.restaurants) || 0, pages: Number(cumulative.pages) || 0,
             baselines: Number(cumulative.baselines) || 0, proposals: Number(cumulative.proposals) || 0,
+            withoutWebsite: Array.isArray(cumulative.withoutWebsite) ? cumulative.withoutWebsite : [],
             errors: Array.isArray(cumulative.errors) ? cumulative.errors : []
           };
           await turso("UPDATE restaurant_website_monitor_runs SET report_json=? WHERE id=1 AND run_id=? AND batch_lock=?",
