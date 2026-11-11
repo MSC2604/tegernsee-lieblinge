@@ -2910,6 +2910,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
       <div id="websiteMonitorProgressStats" style="margin-top:7px;font-size:12px;color:#63736a"></div>
       <div id="websiteMonitorErrors" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid #dce7e0"></div>
     </div>
+    <div id="websiteChangesContext" style="display:none;margin:0 0 12px;padding:11px 13px;border:1px solid #dce7e0;border-radius:11px;background:#f4f8f5;color:#365447;font-size:13px;line-height:1.45" role="status" aria-live="polite"></div>
     <div id="websiteChangesList" aria-live="polite"><div class="website-changes-empty">Änderungen werden geladen …</div></div>
   </section>
 </div>
@@ -7089,6 +7090,19 @@ function websiteChangeFieldLabel(field){
     dokumente:"Speisekarten- und PDF-Links",externe_links:"Reservierungs- und Kontaktlinks"
   })[field]||field;
 }
+function renderWebsiteChangesContext(report){
+  const note=document.getElementById("websiteChangesContext");
+  if(!note)return;
+  const proposals=Number(report&&report.proposals)||0;
+  const phase=String(report&&report.phase||"");
+  if(phase!=="completed"){note.style.display="none";note.textContent="";return;}
+  note.style.display="block";
+  if(proposals===0){
+    note.textContent="Im letzten Prüflauf wurden keine neuen Änderungshinweise erkannt. Die darunter angezeigten offenen Hinweise stammen aus früheren Prüfläufen und wurden diesmal nicht erneut gemeldet. Sie bleiben zur Prüfung erhalten.";
+  }else{
+    note.textContent="Der letzte Prüflauf meldete "+proposals+" mögliche Änderungshinweise. Die Liste darunter zeigt alle noch offenen Hinweise – auch aus früheren Prüfläufen.";
+  }
+}
 function renderWebsiteChanges(items,password){
   const list=document.getElementById("websiteChangesList");
   if(!list)return;
@@ -7254,6 +7268,7 @@ async function pollRestaurantWebsiteMonitor(password,runId){
     }
     if(progress)progress.style.display="block";
     if(run.status==="completed"){
+      renderWebsiteChangesContext(r);
       if(label)label.textContent="Prüfung abgeschlossen";
       if(percent)percent.textContent="100 %";
       if(bar)bar.style.width="100%";
@@ -7262,6 +7277,7 @@ async function pollRestaurantWebsiteMonitor(password,runId){
       if(status)status.textContent="Fertig: "+(r.restaurants||0)+" Restaurants mit Website geprüft · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website.";
       await loadRestaurantWebsiteChanges(password);
     }else{
+      renderWebsiteChangesContext(null);
       if(status)status.textContent="Prüfung fehlgeschlagen: "+(r.error||"Unbekannter Fehler");
       if(label)label.textContent="Prüfung fehlgeschlagen";
     }
@@ -7340,6 +7356,7 @@ async function refreshRestaurantWebsiteMonitorStatus(password){
   }
   if(button)button.disabled=false;
   if(run.status==="completed"){
+    renderWebsiteChangesContext(r);
     if(label)label.textContent="Letzte Prüfung abgeschlossen";
     if(percent)percent.textContent="100 %";
     if(bar)bar.style.width="100%";
