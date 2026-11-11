@@ -7121,12 +7121,25 @@ function renderWebsiteChanges(items,password){
     actions.append(seen,ignore);card.appendChild(actions);list.appendChild(card);
   }
 }
-async function startRestaurantWebsiteMonitor(){
+async function startRestaurantWebsiteMonitor(authenticatedPassword){
   const button=document.getElementById("startWebsiteMonitor");
   const status=document.getElementById("websiteMonitorRunStatus");
-  const password=await askAdminPassword("Bitte Admin-Passwort eingeben, um die Webseitenprüfung zu starten.");
+  const progress=document.getElementById("websiteMonitorProgress");
+  const label=document.getElementById("websiteMonitorProgressLabel");
+  const percent=document.getElementById("websiteMonitorProgressPercent");
+  const bar=document.getElementById("websiteMonitorProgressBar");
+  const current=document.getElementById("websiteMonitorProgressCurrent");
+  const stats=document.getElementById("websiteMonitorProgressStats");
+  let password=authenticatedPassword;
+  if(!password)password=await askAdminPassword("Bitte Admin-Passwort eingeben, um die Webseitenprüfung zu starten.");
   if(password===null||!password)return;
   if(button)button.disabled=true;
+  if(progress)progress.style.display="block";
+  if(label)label.textContent="Prüflauf wird gestartet …";
+  if(percent)percent.textContent="…";
+  if(bar)bar.style.width="0%";
+  if(current)current.textContent="Verbindung zur Prüfstation wird hergestellt …";
+  if(stats)stats.textContent="Bitte einen Moment warten.";
   if(status)status.textContent="Prüflauf wird gestartet …";
   try{
     const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"startRestaurantWebsiteMonitor"})});
@@ -7135,6 +7148,10 @@ async function startRestaurantWebsiteMonitor(){
     if(status)status.textContent="Prüfung läuft im Hintergrund. Diese Ansicht kann geöffnet bleiben.";
     await pollRestaurantWebsiteMonitor(password,data.runId);
   }catch(error){
+    if(progress)progress.style.display="block";
+    if(label)label.textContent="Prüfung konnte nicht gestartet werden";
+    if(current)current.textContent=error.message||"Unbekannter Fehler";
+    if(stats)stats.textContent="Bitte später erneut versuchen oder den Administrator kontaktieren.";
     if(status)status.textContent=error.message||"Start fehlgeschlagen.";
     if(button)button.disabled=false;
   }
@@ -7208,6 +7225,8 @@ async function showRestaurantWebsiteChanges(){
   if(password===null||!password)return;
   const overlay=document.getElementById("websiteChangesOverlay");
   if(overlay)overlay.style.display="flex";
+  const startButton=document.getElementById("startWebsiteMonitor");
+  if(startButton)startButton.onclick=()=>startRestaurantWebsiteMonitor(password);
   try{await loadRestaurantWebsiteChanges(password);}
   catch(error){const list=document.getElementById("websiteChangesList");if(list)list.textContent=error.message||"Laden fehlgeschlagen.";}
 }
