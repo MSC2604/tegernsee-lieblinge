@@ -85,9 +85,6 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
         });
         break;
       } catch (error) {
-        lastError = error;
-        if (attempt === FETCH_ATTEMPTS) throw error;
-      } catch (error) {
         clearTimeout(activeTimer);
         lastError = error;
         if (attempt === FETCH_ATTEMPTS) throw error;
