@@ -117,4 +117,13 @@ const pdfResponse = await runRestaurantWebsiteMonitor({
 });
 assert.equal(pdfResponse.pages, 0);
 assert.equal(pdfResponse.errors.length, 1);
+
+const entityState = makeDb();
+let entityHome = '<html><body><h1>Firstalm</h1><a href="mailto:info&#64;firstalm&#46;de">E-Mail</a></body></html>';
+const entityFetch = async () => new Response(entityHome, { status: 200, headers: { "Content-Type": "text/html" } });
+await runRestaurantWebsiteMonitor({ db: entityState.db, restaurants, fetchImpl: entityFetch });
+entityHome = '<html><body><h1>Firstalm</h1><a href="mailto:info&#064;firstalm&#046;de">E-Mail</a></body></html>';
+const entityOnlyDifference = await runRestaurantWebsiteMonitor({ db: entityState.db, restaurants, fetchImpl: entityFetch });
+assert.equal(entityOnlyDifference.proposals, 0, "Equivalent HTML-entity encodings must not create a false change");
+
 console.log("Restaurant-Monitor-Lauf: Baseline, Änderungen, Fehler und HTML-Grenzfälle erfolgreich.");
