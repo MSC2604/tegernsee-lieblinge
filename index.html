@@ -3580,165 +3580,134 @@ function isBetriebsferienActive(start, end){
 }
 
 
-function getOpeningStatus(place)
-{
-
-  // Während des eingetragenen Betriebsferien-Zeitraums hat dieser
-  // Status Vorrang vor den normalen Öffnungszeiten.
-  if(isBetriebsferienActive(place.betriebsferien_start, place.betriebsferien_ende)){
-    return {
-      type:"closed",
-      text:"🔴 Aktuell geschlossen · Betriebsferien"
-    };
+function getMentionedWeekdays(text){
+  const names = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"];
+  const aliases = ["mo(?:ntag)?","di(?:enstag)?","mi(?:ttwoch)?","do(?:nnerstag)?","fr(?:eitag)?","sa(?:mstag)?","so(?:nntag)?"];
+  const regex = new RegExp("\\b(" + aliases.join("|") + ")\\.?\\b","gi");
+  const matches = [];
+  let match;
+  while((match = regex.exec(String(text || ""))) !== null){
+    const token = match[1].toLowerCase().replace(/\.$/,"");
+    const index = aliases.findIndex(alias => new RegExp("^" + alias + "$","i").test(token));
+    if(index >= 0) matches.push({index,start:match.index,end:regex.lastIndex});
   }
-
-  const hours =
-    cleanValue(
-      place.oeffnungszeiten
-    );
-
-  const closed =
-    cleanValue(
-      place.ruhetag
-    );
-
-  const today =
-    getDayName();
-
-  if(!hours){
-
-    return {
-      type:"unknown",
-      text:"⚪ Öffnungszeit nicht hinterlegt"
-    };
-
-  }
-
-  const closedLower =
-    closed.toLowerCase();
-
-  if(
-    closedLower.includes(
-      today.toLowerCase()
-    ) &&
-    !closedLower.includes(
-      "kein ruhetag"
-    )
-  ){
-
-    return {
-      type:"closed",
-      text:"🔴 Heute geschlossen"
-    };
-
-  }
-
-  if(
-    /aktuelle öffnungszeiten bitte/i.test(
-      hours
-    ) ||
-    /vorab telefonisch/i.test(
-      hours
-    )
-  ){
-
-    return {
-      type:"unknown",
-      text:"⚪ Öffnungszeiten prüfen"
-    };
-
-  }
-
-
-let relevantText = hours;
-
-const parts = hours
-  .split(/[;,\n\r]+/)
-  .map(part => part.trim())
-  .filter(Boolean);
-
-const weekdays = [
-  "Montag", "Dienstag", "Mittwoch",
-  "Donnerstag", "Freitag", "Samstag", "Sonntag"
-];
-
-const hasWeekdayInfo = weekdays.some(
-  day => parts.some(part => dayIsMentioned(part, day))
-);
-
-const todayParts = parts.filter(
-  part => dayIsMentioned(part, today)
-);
-
-if (todayParts.some(
-  part => /\bgeschlossen\b|\bruhetag\b/i.test(part)
-)) {
-  return {
-    type: "closed",
-    text: "🔴 Heute geschlossen"
-  };
-}
-
-if (todayParts.length) {
-  relevantText = todayParts.join(" ");
-} else if (hasWeekdayInfo) {
-  return {
-    type: "unknown",
-    text: "⚪ Öffnungszeiten prüfen"
-  };
-} else if (
-  /\b(heute\s+)?geschlossen\b/i.test(hours) &&
-  !parseTimes(hours).length
-) {
-  return {
-    type: "closed",
-    text: "🔴 Heute geschlossen"
-  };
-}
-
-  const times =
-    parseTimes(
-      relevantText
-    );
-
-  if(!times.length){
-
-    return {
-      type:"unknown",
-      text:"⚪ Öffnungszeit prüfen"
-    };
-
-  }
-
-  const now =
-    new Date();
-
-  const minutes =
-    now.getHours() *
-    60 +
-    now.getMinutes();
-
-  const open =
-    times.some(
-      t =>
-        minutes >= t.start &&
-        minutes < t.end
-    );
-
-  return open
-
-    ? {
-        type:"open",
-        text:"🟢 Jetzt geöffnet"
+  const days = new Set();
+  matches.forEach((item,index) => {
+    days.add(item.index);
+    const next = matches[index + 1];
+    if(next && /\s*(?:-|–|—|bis)\s*/i.test(String(text).slice(item.end,next.start))){
+      let day = item.index;
+      while(day !== next.index){
+        day = (day + 1) % 7;
+        days.add(day);
       }
-
-    : {
-        type:"closed",
-        text:"🔴 Jetzt geschlossen"
-      };
-
+    }
+  });
+  return days.size ? Array.from(days) : null;
 }
 
+function formatOpeningTime(minutes){
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return String(hour).padStart(2,"0") + ":" + String(minute).padStart(2,"0") + " Uhr";
+}
+
+function getOpeningSchedule(place){
+  const hours = cleanValue(place && place.oeffnungszeiten)
+    .replace(/(\d{1,2})\.(\d{2})/g,"$1:$2");
+  const schedule = Array.from({length:7},() => []);
+  const closedDays = new Set();
+  if(!hours) return {schedule,closedDays,hasWeekdays:false,hasTimes:false};
+
+  let activeDays = null;
+  let hasWeekdays = false;
+  let hasTimes = false;
+  const parts = hours.split(/[;,\\n\\r]+/).map(part => part.trim()).filter(Boolean);
+
+  parts.forEach(part => {
+    const mentioned = getMentionedWeekdays(part);
+    if(mentioned){
+      activeDays = mentioned;
+      hasWeekdays = true;
+    }
+    const days = activeDays || [0,1,2,3,4,5,6];
+    const times = parseTimes(part);
+    if(/\\bgeschlossen\\b|\\bruhetag\\b/i.test(part) && !/kein\\s+ruhetag/i.test(part)){
+      days.forEach(day => closedDays.add(day));
+    }
+    if(times.length){
+      hasTimes = true;
+      days.forEach(day => schedule[day].push(...times));
+    }
+  });
+
+  const restDays = cleanValue(place && place.ruhetag);
+  if(restDays && !/kein\\s+ruhetag/i.test(restDays)){
+    const restDayIndexes = getMentionedWeekdays(restDays);
+    if(restDayIndexes) restDayIndexes.forEach(day => closedDays.add(day));
+  }
+  schedule.forEach(dayTimes => dayTimes.sort((a,b) => a.start - b.start));
+  return {schedule,closedDays,hasWeekdays,hasTimes};
+}
+
+function getOpeningStatus(place, referenceDate){
+  const now = referenceDate instanceof Date ? referenceDate : new Date();
+
+  // Betriebsferien haben immer Vorrang vor den regulären Öffnungszeiten.
+  if(isBetriebsferienActive(place.betriebsferien_start, place.betriebsferien_ende)){
+    return {type:"closed",text:"🔴 Betriebsferien"};
+  }
+
+  const hours = cleanValue(place.oeffnungszeiten);
+  if(!hours || /aktuelle öffnungszeiten bitte|vorab telefonisch/i.test(hours)){
+    return {type:"unknown",text:"⚪ Keine verlässlichen Öffnungszeiten"};
+  }
+
+  const parsed = getOpeningSchedule(place);
+  if(!parsed.hasTimes){
+    const todayName = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"][now.getDay()];
+    if(parsed.closedDays.has(now.getDay())) return {type:"closed",text:"🔴 Heute Ruhetag"};
+    return {type:"unknown",text:"⚪ Öffnungszeiten prüfen"};
+  }
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const today = now.getDay();
+  const todayTimes = parsed.schedule[today];
+
+  if(parsed.closedDays.has(today) && !todayTimes.length){
+    return {type:"closed",text:"🔴 Heute Ruhetag"};
+  }
+
+  if(todayTimes.length){
+    const active = todayTimes.find(period => currentMinutes >= period.start && currentMinutes < period.end);
+    if(active){
+      return {type:"open",text:"🟢 Jetzt geöffnet · bis " + formatOpeningTime(active.end)};
+    }
+    const laterToday = todayTimes.find(period => period.start > currentMinutes);
+    if(laterToday){
+      return {type:"unknown",text:"🟡 Öffnet heute um " + formatOpeningTime(laterToday.start)};
+    }
+  }else if(!parsed.hasWeekdays){
+    return {type:"unknown",text:"⚪ Öffnungszeiten prüfen"};
+  }
+
+  // Nächste bekannte Öffnungszeit innerhalb der kommenden sieben Tage suchen.
+  for(let offset = 1; offset <= 7; offset++){
+    const day = (today + offset) % 7;
+    if(parsed.closedDays.has(day) || !parsed.schedule[day].length) continue;
+    const firstPeriod = parsed.schedule[day][0];
+    const label = offset === 1 ? "morgen" : ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"][day];
+    return {type:"unknown",text:"🟡 Öffnet " + label + " um " + formatOpeningTime(firstPeriod.start)};
+  }
+
+  if(parsed.closedDays.has(today) && !todayTimes.length){
+    return {type:"closed",text:"🔴 Heute Ruhetag"};
+  }
+  if(parsed.hasWeekdays && !todayTimes.length){
+    return {type:"unknown",text:"⚪ Öffnungszeiten prüfen"};
+  }
+  return {type:"closed",text:"🔴 Heute geschlossen"};
+}
 
 /* --------------------------------------------------
    LOKALE BILDER
@@ -4401,6 +4370,7 @@ function render(){
 
                 <div
                   class="status ${status.type}"
+                  data-opening-status="${escapeAttr(place.id)}"
                 >
                   ${status.text}
                 </div>
@@ -7029,6 +6999,23 @@ async function deleteRestaurantGalleryImage(imageId){
     await loadRestaurantGallery(editId);if(currentPlace)loadRestaurantPhotoGallery(currentPlace.id);
   }catch(error){if(status)status.textContent=error.message||"Löschen fehlgeschlagen.";}
 }
+
+
+// Öffnungsanzeigen regelmäßig aktualisieren, ohne die Restaurantkarten neu aufzubauen.
+function refreshOpeningStatusLabels(){
+  document.querySelectorAll("[data-opening-status]").forEach(element => {
+    const id = element.getAttribute("data-opening-status");
+    const place = restaurants.find(item => String(item.id) === String(id));
+    if(!place) return;
+    const status = getOpeningStatus(place);
+    element.className = "status " + status.type;
+    element.textContent = status.text;
+  });
+}
+window.setInterval(refreshOpeningStatusLabels, 60000);
+document.addEventListener("visibilitychange",() => {
+  if(!document.hidden) refreshOpeningStatusLabels();
+});
 
 </script>
 
