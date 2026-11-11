@@ -40,7 +40,7 @@ export async function sendRestaurantWebsiteDigest({
   const fieldNames = {
     telefon: "Telefonnummer", email: "E-Mail-Adresse", website: "Website",
     adresse: "Adresse", oeffnungszeiten: "Öffnungszeiten", ruhetag: "Ruhetag",
-    betriebsferien: "Betriebsferien", website_text: "Website-Inhalt"
+    betriebsferien: "Betriebsferien", website_text: "Website-Inhalt", dokumente: "Speisekarten- und PDF-Links"
   };
   const textBody = [
     "Auf offiziellen Restaurant-Webseiten wurden neue Änderungen erkannt.",
