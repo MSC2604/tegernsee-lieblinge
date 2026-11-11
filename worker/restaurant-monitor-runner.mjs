@@ -138,8 +138,8 @@ export async function runRestaurantWebsiteMonitor({
       }
       const pageText = extractPageText(html);
       if (!pageText) continue;
-      const hash = await fingerprintPage(html);
       const found = extractRestaurantData(html);
+      const hash = await fingerprintPage(html, found);
       const oldResult = await db(
         "SELECT content_hash, extracted_data_json, content_text FROM restaurant_site_snapshots WHERE restaurant_id = ? AND page_url = ?",
         [textArg(id), textArg(pageUrl)], true
