@@ -98,7 +98,11 @@ function normalizeLinkEntry(entry) {
   return value;
 }
 function normalize(field, value) {
-  const decoded = decodeHtmlEntities(clean(value));
+  const decoded = decodeHtmlEntities(
+    (field === 'dokumente' || field === 'externe_links')
+      ? String(value ?? '').replace(/\\r\\n?/g, '\\n').trim()
+      : clean(value)
+  );
   const text = decoded.toLocaleLowerCase('de');
   if (field === 'telefon') return text.replace(/[^+\d]/g, '');
   if (field === 'email') return text.replace(/[\s\u00a0]+/g, '');
