@@ -10,7 +10,7 @@ import {
   fingerprintPage
 } from "./restaurant-monitor.mjs";
 
-const MAX_BYTES = 1024 * 1024;
+const MAX_BYTES = 3 * 1024 * 1024;
 const MAX_PAGES = 6;
 const TIMEOUT_MS = 8000;
 
@@ -85,11 +85,23 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
         continue;
       }
       if (!response.ok) throw new Error("Website antwortet mit HTTP " + response.status + ".");
-      const type = response.headers.get("Content-Type") || "";
-      if (!type.toLowerCase().includes("text/html") && !type.toLowerCase().includes("application/xhtml+xml")) {
-        throw new Error("Die verlinkte Seite liefert kein HTML.");
+      const type = (response.headers.get("Content-Type") || "").toLowerCase();
+      // Some hosts mislabel HTML as text/plain or application/octet-stream.
+      // Read it with the same strict size cap and verify the actual document
+      // before parsing; explicit binary media types are rejected immediately.
+      if (/^(application\\/(?:pdf|zip|octet-stream)|image\\/|audio\\/|video\\/)/i.test(type)) {
+        const prefix = await readLimited(response);
+        if (!/^\\s*(?:<!doctype\\s+html|<html\\b|<head\\b|<body\\b)/i.test(prefix)) {
+          throw new Error("Die verlinkte Seite liefert kein HTML.");
+        }
+        return prefix;
       }
-      return await readLimited(response);
+      const html = await readLimited(response);
+      if (type.includes("text/html") || type.includes("application/xhtml+xml") ||
+          /^\\s*(?:<!doctype\\s+html|<html\\b|<head\\b|<body\\b)/i.test(html)) {
+        return html;
+      }
+      throw new Error("Die verlinkte Seite liefert kein HTML.");
     } finally {
       clearTimeout(timer);
     }
