@@ -31,9 +31,11 @@ function safeHttpUrl(raw) {
   const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (!host || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||
       /^127\./.test(host) || /^10\./.test(host) || /^192\.168\./.test(host) ||
-      /^172\.(1[6-9]|2\d|3[01])\./.test(host) || host === "::1" ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host) || /^169\.254\./.test(host) ||
+      /^224\./.test(host) || /^240\./.test(host) || host === "0.0.0.0" ||
+      host === "::1" || host.startsWith("::ffff:") ||
       host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:") ||
-      host === "169.254.169.254") return null;
+      host.startsWith("ff") || host === "169.254.169.254") return null;
   return url;
 }
 
