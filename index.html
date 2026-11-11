@@ -7130,7 +7130,9 @@ function renderWebsiteChanges(items,password){
   const normalize=value=>String(value??"").replace(/\\s+/g," ").trim().toLocaleLowerCase("de-DE");
   const groups=new Map();
   for(const item of items){
-    const key=[item.restaurantName,item.field,item.oldValue,item.newValue].map(normalize).join("\\u241f");
+    // Eine Karte je Restaurant und Änderungsbereich: wechselnde HTML-Kodierung,
+    // Tracking-Parameter und leicht andere Seitenauszüge erzeugen keine Kartenflut.
+    const key=[item.restaurantName,item.field].map(normalize).join("\\u241f");
     if(!groups.has(key))groups.set(key,[]);
     groups.get(key).push(item);
   }
@@ -7142,7 +7144,7 @@ function renderWebsiteChanges(items,password){
     const meta=document.createElement("div");meta.className="website-change-meta";
     const dates=group.map(entry=>entry.detectedAt).filter(Boolean).map(value=>new Date(value)).filter(date=>!Number.isNaN(date.getTime())).sort((a,b)=>a-b);
     meta.textContent=group.length>1
-      ? group.length+" identische offene Hinweise · zuletzt erkannt am "+(dates.length?dates[dates.length-1].toLocaleString("de-DE"):"Zeitpunkt unbekannt")
+      ? group.length+" offene Hinweise zu diesem Thema · zuletzt erkannt am "+(dates.length?dates[dates.length-1].toLocaleString("de-DE"):"Zeitpunkt unbekannt")
       : "Erkannt am "+(dates.length?dates[0].toLocaleString("de-DE"):"Zeitpunkt unbekannt");
     card.appendChild(meta);
     const values=document.createElement("div");values.className="website-change-values";
