@@ -150,16 +150,16 @@ export async function runRestaurantWebsiteMonitor({
       return;
     }
     const pages = [root.href, ...extractOfficialPageLinks(homepage, root.href, MAX_PAGES - 1)];
-    for (const pageUrl of pages) {
-      let html;
+    const processPage = async (pageUrl, knownHtml) => {
+      let html = knownHtml;
       try {
-        html = pageUrl === root.href ? homepage : await fetchOfficialHtml(pageUrl, root.origin, fetchImpl);
+        if (html == null) html = await fetchOfficialHtml(pageUrl, root.origin, fetchImpl);
       } catch (error) {
         report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: pageUrl, error: String(error?.message || error).slice(0, 220) });
-        continue;
+        return;
       }
       const pageText = extractPageText(html);
-      if (!pageText) continue;
+      if (!pageText) return;
       const found = extractRestaurantData(html);
       const documents = extractOfficialDocumentLinks(html, pageUrl);
       if (documents.length) found.dokumente = documents.join("\n");
@@ -168,10 +168,7 @@ export async function runRestaurantWebsiteMonitor({
       const externalLinks = extractRelevantExternalLinks(html, pageUrl);
       if (externalLinks.length) found.externe_links = externalLinks.join("\n");
       const hash = await fingerprintPage(html, found);
-      const oldResult = await db(
-        "SELECT content_hash, extracted_data_json, content_text FROM restaurant_site_snapshots WHERE restaurant_id = ? AND page_url = ?",
-        [textArg(id), textArg(pageUrl)], true
-      );
+      const oldResult = await db("SELECT content_hash, extracted_data_json, content_text FROM restaurant_site_snapshots WHERE restaurant_id = ? AND page_url = ?", [textArg(id), textArg(pageUrl)], true);
       const oldRow = oldResult?.results?.[0]?.response?.result?.rows?.[0];
       const oldHash = oldRow ? String(cell(oldRow[0]) || "") : "";
       let oldData = {};
@@ -183,32 +180,23 @@ export async function runRestaurantWebsiteMonitor({
       } else if (oldHash && oldHash !== hash) {
         const changes = findRestaurantChanges(oldData, found);
         for (const change of changes) {
-          await db(
-            "INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')",
-            [textArg(id), textArg(change.field), textArg(change.oldValue), textArg(change.newValue), textArg(pageUrl), textArg(stamp)]
-          );
+          await db("INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')", [textArg(id), textArg(change.field), textArg(change.oldValue), textArg(change.newValue), textArg(pageUrl), textArg(stamp)]);
           report.proposals++;
         }
         if (oldText !== pageText) {
           const excerpt = changedExcerpt(oldText, pageText);
-          await db(
-            "INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, 'website_text', ?, ?, ?, ?, 'pending')",
-            [textArg(id), textArg(excerpt.oldValue), textArg(excerpt.newValue), textArg(pageUrl), textArg(stamp)]
-          );
+          await db("INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, 'website_text', ?, ?, ?, ?, 'pending')", [textArg(id), textArg(excerpt.oldValue), textArg(excerpt.newValue), textArg(pageUrl), textArg(stamp)]);
           report.proposals++;
         }
       }
-      await db(
-        `INSERT INTO restaurant_site_snapshots (restaurant_id, page_url, checked_at, content_hash, extracted_data_json, content_text)
-         VALUES (?, ?, ?, ?, ?, ?)
-         ON CONFLICT(restaurant_id, page_url) DO UPDATE SET
-           checked_at=excluded.checked_at,
-           content_hash=excluded.content_hash,
-           extracted_data_json=excluded.extracted_data_json,
-           content_text=excluded.content_text`,
-        [textArg(id), textArg(pageUrl), textArg(stamp), textArg(hash), textArg(JSON.stringify(found)), textArg(pageText.slice(0, 50000))]
-      );
+      await db("INSERT INTO restaurant_site_snapshots (restaurant_id, page_url, checked_at, content_hash, extracted_data_json, content_text) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(restaurant_id, page_url) DO UPDATE SET checked_at=excluded.checked_at, content_hash=excluded.content_hash, extracted_data_json=excluded.extracted_data_json, content_text=excluded.content_text", [textArg(id), textArg(pageUrl), textArg(stamp), textArg(hash), textArg(JSON.stringify(found)), textArg(pageText.slice(0, 50000))]);
       report.pages++;
+    };
+    // Homepage first to discover subpages; then check up to three subpages in parallel.
+    await processPage(root.href, homepage);
+    const subpages = pages.slice(1);
+    for (let i = 0; i < subpages.length; i += 3) {
+      await Promise.all(subpages.slice(i, i + 3).map(pageUrl => processPage(pageUrl, null)));
     }
   };
 
