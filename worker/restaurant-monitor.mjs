@@ -49,7 +49,7 @@ export function extractRestaurantData(html) {
   const holidays = text.match(/(?:Betriebsferien|Urlaub|geschlossen vom)\s*[:：]?\s*(.{4,100}?)(?=\s+(?:Öffnungszeiten|Ruhetag|Telefon|Tel\.?|E-Mail|Adresse)\b|$)/i);
   const values = {
     telefon: clean(restaurant.telephone) || (phone ? clean(phone[1]) : ''),
-    email: clean(restaurant.email) || (email ? clean(email[0]) : ''),
+    email: clean(restaurant.email) || (email ? clean(email[1]) : ''),
     website: clean(restaurant.url),
     adresse: addressText(restaurant.address) || (address ? clean(address[1]) : ''),
     oeffnungszeiten: openingHoursText(restaurant) || (hours ? clean(hours[1]) : ''),
