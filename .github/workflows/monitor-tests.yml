@@ -7,6 +7,7 @@ on:
     paths:
       - "worker/restaurant-monitor*.mjs"
       - "worker/restaurant-monitor-schema.sql"
+      - "worker.js"
       - ".github/workflows/monitor-tests.yml"
   workflow_dispatch:
 
@@ -23,7 +24,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Test data extraction
+      - name: Check worker syntax
+        run: node --check worker.js
+      - name: Check monitoring module syntax
+        run: node --check worker/restaurant-monitor-runner.mjs\n      - name: Test data extraction
         run: node worker/restaurant-monitor.test.mjs
       - name: Test daily monitoring runner
         run: node worker/restaurant-monitor-runner.test.mjs
