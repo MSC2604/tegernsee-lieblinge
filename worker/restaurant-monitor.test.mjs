@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { extractPageText, extractRestaurantData, findRestaurantChanges } from './restaurant-monitor.mjs';
+import { extractOfficialPageLinks, extractPageText, extractRestaurantData, findRestaurantChanges } from './restaurant-monitor.mjs';
 const html = '<html><body><script type="application/ld+json">{"@type":"Restaurant","telephone":"+49 8022 12345","email":"info@example.de","address":{"streetAddress":"Seestraße 4","postalCode":"83700","addressLocality":"Tegernsee"},"openingHoursSpecification":[{"dayOfWeek":["Monday"],"opens":"11:00","closes":"22:00"}]}</script><h1>Gasthof am See</h1><p>Ruhetag: Montag</p><p>Betriebsferien: 10. bis 20. Januar</p></body></html>';
 const found = extractRestaurantData(html);
 assert.equal(found.telefon, '+49 8022 12345');
@@ -12,3 +12,4 @@ assert.doesNotMatch(extractPageText(html), /application\/ld\+json/);
 assert.deepEqual(extractRestaurantData('<html>keine strukturierten Daten</html>'), {});
 assert.deepEqual(findRestaurantChanges({ telefon: '08022 99999' }, { telefon: '08022 99999' }), []);
 console.log('Restaurant-Monitor: alle Tests erfolgreich.');
+assert.deepEqual(extractOfficialPageLinks('<a href="/kontakt">Kontakt</a><a href="https://other.example">Extern</a><a href="/karte.pdf">PDF</a>', 'https://restaurant.example/'), ['https://restaurant.example/kontakt']);
