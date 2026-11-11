@@ -77,11 +77,58 @@ const MONITORED_FIELDS = new Set([
   'oeffnungszeiten', 'ruhetag', 'betriebsferien',
   'dokumente', 'externe_links'
 ]);
+function normalizeLinkEntry(entry) {
+  const value = decodeHtmlEntities(entry).replace(/\s+/g, ' ').trim();
+  const match = value.match(/^(.*?):\s*((?:https?:\/\/|mailto:|tel:).+)$/i);
+  if (!match) return value.toLocaleLowerCase('de').replace(/[\s\u00a0]+/g, ' ').trim();
+  const label = match[1].toLocaleLowerCase('de').replace(/[\s\p{P}]+/gu, '');
+  const rawUrl = match[2].trim();
+  try {
+    if (/^tel:/i.test(rawUrl)) {
+      return label + ':tel:' + rawUrl.slice(4).replace(/[^+\d]/g, '');
+    }
+    if (/^mailto:/i.test(rawUrl)) {
+      const url = new URL(rawUrl);
+      const address = decodeURIComponent(url.pathname).toLocaleLowerCase('de');
+      const params = [...url.searchParams.entries()]
+        .map(([key, val]) => [key.toLocaleLowerCase('de'), val.trim()])
+        .sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+      return label + ':mailto:' + address + (params.length
+        ? '?' + params.map(([key, val]) => key + '=' + val).join('&')
+        : '');
+    }
+    const url = new URL(rawUrl);
+    url.hash = '';
+    if ((url.protocol === 'https:' && url.port === '443') ||
+        (url.protocol === 'http:' && url.port === '80')) url.port = '';
+    const params = [...url.searchParams.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+    url.search = '';
+    for (const [key, val] of params) url.searchParams.append(key, val);
+    return label + ':' + url.href.toLocaleLowerCase('de');
+  } catch {
+    return label + ':' + rawUrl.toLocaleLowerCase('de').replace(/[\s\u00a0]+/g, '');
+  }
+}
 function normalize(field, value) {
-  const text = clean(value).toLocaleLowerCase('de');
-  if (field === 'telefon') return text.replace(/[\s()./-]/g, '');
-  if (field === 'email' || field === 'website') return text.replace(/\/$/, '');
-  return text.replace(/\s+/g, ' ');
+  const decoded = decodeHtmlEntities(clean(value));
+  const text = decoded.toLocaleLowerCase('de');
+  if (field === 'telefon') return text.replace(/[^+\d]/g, '');
+  if (field === 'email') return text.replace(/[\s\u00a0]+/g, '');
+  if (field === 'website') {
+    try {
+      const url = new URL(decoded);
+      url.hash = '';
+      if ((url.protocol === 'https:' && url.port === '443') ||
+          (url.protocol === 'http:' && url.port === '80')) url.port = '';
+      return url.href.toLocaleLowerCase('de').replace(/\/$/, '');
+    } catch { return text.replace(/\/$/, ''); }
+  }
+  if (field === 'dokumente' || field === 'externe_links') {
+    return [...new Set(decoded.split(/\r?\n/).map(normalizeLinkEntry).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'de')).join('\n');
+  }
+  return text.replace(/[\s\u00a0]+/g, ' ').trim();
 }
 export function findRestaurantChanges(current, found) {
   const changes = [];
