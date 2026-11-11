@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { extractOfficialDocumentLinks, extractOfficialPageLinks, extractPageText, extractRestaurantData, findRestaurantChanges } from './restaurant-monitor.mjs';
+import { extractOfficialDocumentLinks, extractOfficialPageLinks, extractPageText, extractRelevantExternalLinks, extractRestaurantData, findRestaurantChanges } from './restaurant-monitor.mjs';
 const html = '<html><body><script type="application/ld+json">{"@type":"Restaurant","telephone":"+49 8022 12345","email":"info@example.de","address":{"streetAddress":"Seestraße 4","postalCode":"83700","addressLocality":"Tegernsee"},"openingHoursSpecification":[{"dayOfWeek":["Monday"],"opens":"11:00","closes":"22:00"}]}</script><h1>Gasthof am See</h1><p>Ruhetag: Montag</p><p>Betriebsferien: 10. bis 20. Januar</p></body></html>';
 const found = extractRestaurantData(html);
 assert.equal(found.telefon, '+49 8022 12345');
@@ -23,4 +23,5 @@ assert.deepEqual(
 
 assert.deepEqual(extractOfficialPageLinks('<a href="/kontakt">Kontakt</a><a href="https://other.example">Extern</a><a href="/karte.pdf">PDF</a>', 'https://restaurant.example/'), ['https://restaurant.example/kontakt']);
 assert.deepEqual(extractOfficialDocumentLinks('<a href="/speisekarte.pdf">Speisekarte</a><a href="https://other.example/karte.pdf">Extern</a>', 'https://restaurant.example/'), ['Speisekarte: https://restaurant.example/speisekarte.pdf']);
+assert.deepEqual(extractRelevantExternalLinks('<a href="https://booking.example/table">Tisch reservieren</a><a href="mailto:info@example.de">E-Mail</a><a href="/kontakt">Kontakt</a>', 'https://restaurant.example/'), ['E-Mail: mailto:info@example.de', 'Tisch reservieren: https://booking.example/table']);
 console.log('Restaurant-Monitor: alle Tests erfolgreich.');
