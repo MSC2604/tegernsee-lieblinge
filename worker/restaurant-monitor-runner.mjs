@@ -24,7 +24,7 @@ function safeHttpUrl(raw) {
   let url;
   const input = String(raw || "").trim();
   try {
-    url = new URL(/^https?:\\/\\//i.test(input) ? input : "https://" + input);
+    url = new URL(/^https?:\/\//i.test(input) ? input : "https://" + input);
   } catch { return null; }
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return null;
   const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
