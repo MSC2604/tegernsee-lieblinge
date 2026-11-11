@@ -3633,7 +3633,8 @@ function getOpeningSchedule(place){
     const days = activeDays || [0,1,2,3,4,5,6];
     const times = parseTimes(part);
     if(/\bgeschlossen\b|\bruhetag\b/i.test(part) && !/kein\s+ruhetag/i.test(part)){
-      days.forEach(day => closedDays.add(day));
+      const explicitDays = mentioned || activeDays;
+      if(explicitDays) explicitDays.forEach(day => closedDays.add(day));
     }
     if(times.length){
       hasTimes = true;
@@ -3642,7 +3643,7 @@ function getOpeningSchedule(place){
   });
 
   const restDays = cleanValue(place && place.ruhetag);
-  if(restDays && !/kein\\s+ruhetag/i.test(restDays)){
+  if(restDays && !/kein\s+ruhetag/i.test(restDays)){
     const restDayIndexes = getMentionedWeekdays(restDays);
     if(restDayIndexes) restDayIndexes.forEach(day => closedDays.add(day));
   }
@@ -3665,8 +3666,12 @@ function getOpeningStatus(place, referenceDate){
 
   const parsed = getOpeningSchedule(place);
   if(!parsed.hasTimes){
-    const todayName = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"][now.getDay()];
-    if(parsed.closedDays.has(now.getDay())) return {type:"closed",text:"🔴 Heute Ruhetag"};
+    if(parsed.closedDays.has(now.getDay()) || /heute\s+(?:geschlossen|ruhetag)/i.test(hours)){
+      return {type:"closed",text:"🔴 Heute Ruhetag"};
+    }
+    if(/\bgeschlossen\b/i.test(hours)){
+      return {type:"closed",text:"🔴 Heute geschlossen"};
+    }
     return {type:"unknown",text:"⚪ Öffnungszeiten prüfen"};
   }
 
