@@ -199,6 +199,12 @@ export async function runRestaurantWebsiteMonitor({
           } catch { /* report the original endpoint failure below */ }
         }
         if (html == null) {
+          // Some restaurants expose their menu as a PDF behind a legacy
+          // .html URL. It is a document, not a broken HTML page; skip it
+          // without reporting a crawl error (PDF links remain separate data).
+          const isMenuEndpoint = /(?:speisekarte|getränkekarte|getraenkekarte|menu|menue|karte)/i.test(new URL(pageUrl).pathname);
+          const isNonHtml = /liefert kein HTML/i.test(String(error?.message || ""));
+          if (isMenuEndpoint && isNonHtml) return;
           report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: pageUrl, error: String(error?.message || error).slice(0, 220) });
           return;
         }
