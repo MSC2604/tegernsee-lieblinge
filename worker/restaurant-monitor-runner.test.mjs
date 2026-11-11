@@ -156,6 +156,22 @@ assert.equal(findRestaurantChanges(
   { externe_links: "Speisekarte: https://example.de/menu.pdf" }
 ).length, 1);
 
+// Multiple contact destinations in one extracted line are compared as a set.
+assert.equal(findRestaurantChanges(
+  { externe_links: "+49 8022 6800: tel:+49%208022%206800 info@example.de: mailto:info%40example.de?subject=Kontakt" },
+  { externe_links: "info@example.de: mailto:info@example.de +49 8022 6800: tel:+4980226800" }
+).length, 0);
+
+// Tracking parameters and typographic dash/space variants are not factual changes.
+assert.equal(findRestaurantChanges(
+  { externe_links: "Reservierung: https://example.de/book?step=date&utm_source=old" },
+  { externe_links: "Jetzt reservieren: https://example.de/book?utm_source=new&step=date" }
+).length, 0);
+assert.equal(findRestaurantChanges(
+  { betriebsferien: "9.11. &#8211; 18.12.26" },
+  { betriebsferien: "9.11. – 18.12.26" }
+).length, 0);
+
 // A short network failure is retried once before the monitor records an error.
 let retryCalls = 0;
 const retryResult = await runRestaurantWebsiteMonitor({
