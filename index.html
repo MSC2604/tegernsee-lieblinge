@@ -2901,6 +2901,8 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
       <button class="website-changes-close" type="button" aria-label="Schließen" onclick="closeWebsiteChanges()">×</button>
     </div>
     <p style="margin:0;color:#63736a;font-size:13px">Hier erscheinen erkannte Änderungen offizieller Restaurant-Webseiten. Deine Restaurant-Einträge werden nicht automatisch geändert.</p>
+    <button type="button" id="startWebsiteMonitor" onclick="startRestaurantWebsiteMonitor()" style="margin:14px 0;padding:11px 16px;border:0;border-radius:10px;background:#2d6a56;color:#fff;font-weight:700;cursor:pointer">Jetzt Webseiten prüfen</button>
+    <div id="websiteMonitorRunStatus" role="status" aria-live="polite" style="margin:0 0 12px;color:#63736a;font-size:13px"></div>
     <div id="websiteChangesList" aria-live="polite"><div class="website-changes-empty">Änderungen werden geladen …</div></div>
   </section>
 </div>
@@ -7112,6 +7114,49 @@ function renderWebsiteChanges(items,password){
     ignore.addEventListener("click",()=>reviewWebsiteChange(item.id,"rejected",password,ignore));
     actions.append(seen,ignore);card.appendChild(actions);list.appendChild(card);
   }
+}
+async function startRestaurantWebsiteMonitor(){
+  const button=document.getElementById("startWebsiteMonitor");
+  const status=document.getElementById("websiteMonitorRunStatus");
+  const password=await askAdminPassword("Bitte Admin-Passwort eingeben, um die Webseitenprüfung zu starten.");
+  if(password===null||!password)return;
+  if(button)button.disabled=true;
+  if(status)status.textContent="Prüflauf wird gestartet …";
+  try{
+    const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"startRestaurantWebsiteMonitor"})});
+    let data={};try{data=await response.json();}catch(_){}
+    if(!response.ok||!data.success)throw new Error(data.error||"Prüflauf konnte nicht gestartet werden.");
+    if(status)status.textContent="Prüfung läuft im Hintergrund. Diese Ansicht kann geöffnet bleiben.";
+    await pollRestaurantWebsiteMonitor(password,data.runId);
+  }catch(error){
+    if(status)status.textContent=error.message||"Start fehlgeschlagen.";
+    if(button)button.disabled=false;
+  }
+}
+async function pollRestaurantWebsiteMonitor(password,runId){
+  const status=document.getElementById("websiteMonitorRunStatus");
+  const button=document.getElementById("startWebsiteMonitor");
+  const check=async()=>{
+    const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"getRestaurantWebsiteMonitorRun"})});
+    let data={};try{data=await response.json();}catch(_){}
+    if(!response.ok||!data.success)throw new Error(data.error||"Prüfstatus konnte nicht geladen werden.");
+    const run=data.run;
+    if(!run||run.runId!==runId)throw new Error("Der aktuelle Prüflauf ist nicht mehr verfügbar.");
+    if(run.status==="running"){
+      if(status)status.textContent="Prüfung läuft …";
+      window.setTimeout(()=>check().catch(error=>{if(status)status.textContent=error.message;if(button)button.disabled=false;}),3000);
+      return;
+    }
+    if(run.status==="completed"){
+      const r=run.report||{};
+      if(status)status.textContent="Fertig: "+(r.restaurants||0)+" Restaurants, "+(r.pages||0)+" Seiten geprüft, "+(r.baselines||0)+" Ausgangsstände gespeichert, "+(r.proposals||0)+" Änderungshinweise. Fehler: "+(r.errors||[]).length+".";
+      await loadRestaurantWebsiteChanges(password);
+    }else{
+      if(status)status.textContent="Prüfung fehlgeschlagen: "+(run.report?.error||"Unbekannter Fehler");
+    }
+    if(button)button.disabled=false;
+  };
+  await check();
 }
 async function reviewWebsiteChange(id,status,password,button){
   if(button)button.disabled=true;
