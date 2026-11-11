@@ -71,21 +71,7 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
           "Accept": "text/html,application/xhtml+xml;q=0.9"
         }
       });
-    } finally {
-      clearTimeout(timer);
-    }
-    if ([301, 302, 303, 307, 308].includes(response.status)) {
-      const location = response.headers.get("Location");
-      if (!location || hop === 3) throw new Error("Weiterleitung nicht auflösbar.");
-      current = new URL(location, url.href).href;
-      continue;
-    }
-    if (!response.ok) throw new Error("Website antwortet mit HTTP " + response.status + ".");
-    const type = response.headers.get("Content-Type") || "";
-    if (!/text\/html|application\/xhtml\+xml/i.test(type)) {
-      throw new Error("Die verlinkte Seite liefert kein HTML.");
-    }
-    return await readLimited(response);
+  
   }
   throw new Error("Zu viele Weiterleitungen.");
 }
