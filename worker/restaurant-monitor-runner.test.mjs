@@ -42,8 +42,9 @@ const fetchImpl = async url => new Response(
 const restaurants = [{ id: 7, name: "Gasthof am See", website: "https://restaurant.example/" }];
 
 const progressUpdates = [];
+const progressState = makeDb();
 const progressReport = await runRestaurantWebsiteMonitor({
-  db: dbState.db, restaurants, fetchImpl,
+  db: progressState.db, restaurants, fetchImpl,
   onProgress: progress => progressUpdates.push(progress)
 });
 assert.equal(progressReport.pages, 2);
