@@ -65,8 +65,17 @@ function normalize(field, value) {
 }
 export function findRestaurantChanges(current, found) {
   const changes = [];
-  for (const [field, newValue] of Object.entries(found || {})) {
-    const oldValue = clean(current?.[field]), nextValue = clean(newValue);
+  const fields = new Set([
+    ...Object.keys(current || {}),
+    ...Object.keys(found || {})
+  ]);
+  for (const field of fields) {
+    const oldValue = clean(current?.[field]);
+    const nextValue = clean(found?.[field]);
+    if (oldValue && !nextValue) {
+      changes.push({ field, oldValue, newValue: "Nicht mehr angegeben" });
+      continue;
+    }
     if (!nextValue || normalize(field, oldValue) === normalize(field, nextValue)) continue;
     changes.push({ field, oldValue, newValue: nextValue });
   }
