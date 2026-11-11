@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { runRestaurantWebsiteMonitor } from "./restaurant-monitor-runner.mjs";
+import { findRestaurantChanges } from "./restaurant-monitor.mjs";
 
 function makeDb() {
   const snapshots = new Map();
@@ -125,5 +126,22 @@ await runRestaurantWebsiteMonitor({ db: entityState.db, restaurants, fetchImpl: 
 entityHome = '<html><body><h1>Firstalm</h1><a href="mailto:info&#064;firstalm&#046;de">E-Mail</a></body></html>';
 const entityOnlyDifference = await runRestaurantWebsiteMonitor({ db: entityState.db, restaurants, fetchImpl: entityFetch });
 assert.equal(entityOnlyDifference.proposals, 0, "Equivalent HTML-entity encodings must not create a false change");
+
+
+// Contact-link comparisons ignore HTML entity encoding, whitespace, and ordering.
+assert.equal(findRestaurantChanges(
+  { externe_links: "+49 8029 386: tel:08029-386 0175/4307345&nbsp;: tel:0175/4307345\nTisch reservieren: https://example.de/book?step=date&amp;source=site" },
+  { externe_links: "+49 8029 386: tel:08029-386 0175/4307345 : tel:0175/4307345\nTisch reservieren: https://example.de/book?source=site&step=date" }
+).length, 0);
+
+assert.equal(findRestaurantChanges(
+  { externe_links: "E-Mail: mailto:info&#064;firstalm&#046;de\nSpeisekarte: https://example.de/menu" },
+  { externe_links: "Speisekarte: https://example.de/menu\nE-Mail: mailto:info@firstalm.de" }
+).length, 0);
+
+assert.equal(findRestaurantChanges(
+  { dokumente: "Speisekarte: https://example.de/menu.pdf?b=2&a=1\nGetränke: https://example.de/drinks.pdf" },
+  { dokumente: "Getränke: https://example.de/drinks.pdf\nSpeisekarte: https://example.de/menu.pdf?a=1&b=2" }
+).length, 0);
 
 console.log("Restaurant-Monitor-Lauf: Baseline, Änderungen, Fehler und HTML-Grenzfälle erfolgreich.");
