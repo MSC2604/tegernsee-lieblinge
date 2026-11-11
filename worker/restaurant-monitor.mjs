@@ -77,22 +77,27 @@ export function extractOfficialPageLinks(html, baseUrl, limit = 10) {
   let base;
   try { base = new URL(baseUrl); } catch { return []; }
   if (!["http:", "https:"].includes(base.protocol)) return [];
-  const links = [];
+  const candidates = [];
   const seen = new Set([base.href]);
-  const matches = String(html || "").matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>/gi);
+  const matches = String(html || "").matchAll(/<a\\b[^>]*href\\s*=\\s*["']([^"']+)["'][^>]*>([\\s\\S]*?)<\\/a>/gi);
+  const priority = /(öffnungszeit|oeffnungszeit|zeiten|kontakt|anfahrt|speisekarte|getränkekarte|getraenkekarte|menü|menu|karte|betriebsferien|urlaub|geschlossen|aktuelles|news|impressum|reservierung)/i;
+  const ignored = /(datenschutz|privacy|cookie|barrierefreiheit|facebook|instagram|youtube|newsletter|login|warenkorb)/i;
   for (const match of matches) {
     try {
       const url = new URL(match[1], base.href);
       if (url.origin !== base.origin || !["http:", "https:"].includes(url.protocol)) continue;
-      if (/\.(?:pdf|jpg|jpeg|png|webp|gif|zip|mp4|mp3)(?:$|\?)/i.test(url.pathname + url.search)) continue;
+      if (/\\.(?:pdf|jpg|jpeg|png|webp|gif|zip|mp4|mp3)(?:$|\\?)/i.test(url.pathname + url.search)) continue;
       url.hash = "";
       if (seen.has(url.href)) continue;
       seen.add(url.href);
-      links.push(url.href);
-      if (links.length >= Math.max(1, Math.min(20, limit))) break;
+      const label = match[2].replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim();
+      const hint = url.pathname + " " + label;
+      if (ignored.test(hint) && !/impressum/i.test(hint)) continue;
+      candidates.push({ url: url.href, score: priority.test(hint) ? 2 : 1 });
     } catch { /* ungültige Links überspringen */ }
   }
-  return links;
+  candidates.sort((a, b) => b.score - a.score || a.url.localeCompare(b.url));
+  return candidates.slice(0, Math.max(1, Math.min(20, limit))).map(item => item.url);
 }
 
 
