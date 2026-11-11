@@ -1,0 +1,40 @@
+name: Restaurant monitoring tests
+
+on:
+  push:
+    branches:
+      - feature/restaurant-change-review-prototype
+    paths:
+      - "worker/restaurant-monitor*.mjs"
+      - "worker/restaurant-monitor-schema.sql"
+      - "worker.js"
+      - ".github/workflows/monitor-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/restaurant-change-review-prototype
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check worker syntax
+        run: node --check worker.js
+      - name: Check extraction module syntax
+        run: node --check worker/restaurant-monitor.mjs
+      - name: Check monitoring module syntax
+        run: node --check worker/restaurant-monitor-runner.mjs
+      - name: Test data extraction
+        run: node worker/restaurant-monitor.test.mjs
+      - name: Check email module syntax
+        run: node --check worker/restaurant-monitor-email.mjs
+      - name: Test daily monitoring runner
+        run: node worker/restaurant-monitor-runner.test.mjs
+      - name: Test email digest
+        run: node worker/restaurant-monitor-email.test.mjs
