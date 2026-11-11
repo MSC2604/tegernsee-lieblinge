@@ -64,14 +64,20 @@ assert.equal(unchanged.proposals, 0);
 
 contactHtml = '<html><body><h1>Kontakt</h1><p>Telefon: 08022 222222</p><p>E-Mail: info@example.de</p><p>Neue Telefonnummer ab sofort</p></body></html>';
 const changed = await runRestaurantWebsiteMonitor({ db: dbState.db, restaurants, fetchImpl });
-assert.ok(changed.proposals >= 2);
+assert.equal(changed.proposals, 1);
 assert.ok([...dbState.proposals.values()].some(row => row[1] === "telefon" && row[3] === "08022 222222"));
-assert.ok([...dbState.proposals.values()].some(row => row[1] === "website_text"));
+assert.ok(![...dbState.proposals.values()].some(row => row[1] === "website_text"));
 
 contactHtml = '<html><body><script type="application/ld+json">{"@type":"Restaurant","telephone":"08022 333333"}</script><h1>Kontakt</h1><p>Telefon: 08022 222222</p><p>E-Mail: info@example.de</p><p>Neue Telefonnummer ab sofort</p></body></html>';
 const structuredOnly = await runRestaurantWebsiteMonitor({ db: dbState.db, restaurants, fetchImpl });
 assert.ok(structuredOnly.proposals >= 1);
 assert.ok([...dbState.proposals.values()].some(row => row[1] === "telefon" && row[3] === "08022 333333"));
+
+
+homeHtml = '<html><body><h1>Gasthof am See</h1><a href="/kontakt">Kontakt</a><p>{"inventory_management":"shopify","qty":92,"container":"card","can_show_preorder":false}</p><div>Skibrillen-Cover "Bräustüberl"</div></body></html>';
+const irrelevantNoise = await runRestaurantWebsiteMonitor({ db: dbState.db, restaurants, fetchImpl });
+assert.equal(irrelevantNoise.proposals, 0);
+assert.ok(![...dbState.proposals.values()].some(row => row[1] === "website_text" || row[1] === "unterseiten"));
 
 homeHtml = '<html><body><h1>Gasthof am See</h1><a href="/kontakt">Kontakt</a><a href="/speisekarte-neu.pdf">Speisekarte</a><a href="https://fremd.example/">Extern</a></body></html>';
 const pdfLinkChange = await runRestaurantWebsiteMonitor({ db: dbState.db, restaurants, fetchImpl });
