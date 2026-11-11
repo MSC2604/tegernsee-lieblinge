@@ -6689,7 +6689,7 @@ function applyWelcomeTextStyles() {
   const styles=getWelcomeTextStyles();
   ["title","subtitle"].forEach(kind=>{const el=document.getElementById(kind==="title"?"welcomeHeroTitle":"welcomeHeroSubtitle"),st=styles[kind];if(!el)return;
     el.style.fontSize=Math.max(12,Math.min(72,Number(st.size)||20))+"px";el.style.fontFamily=st.font||"system-ui";
-    el.style.color=/^#[0-9a-f]{6}$/i.test(st.color||"")?st.color:"#ffffff";el.style.fontWeight=st.weight==="700"?"700":"400";
+    el.style.setProperty("color",/^#[0-9a-f]{6}$/i.test(st.color||"")?st.color:(kind==="title"?"#244a3b":"#65766b"),"important");el.style.fontWeight=st.weight==="700"?"700":"400";
     el.style.fontStyle=st.italic?"italic":"normal";el.style.textAlign=["left","center","right"].includes(st.align)?st.align:"left";
   });
 }
