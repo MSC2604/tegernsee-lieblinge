@@ -7144,6 +7144,11 @@ async function startRestaurantWebsiteMonitor(authenticatedPassword){
   try{
     const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"startRestaurantWebsiteMonitor"})});
     let data={};try{data=await response.json();}catch(_){}
+    if(response.status===409&&data.running){
+      if(status)status.textContent="Es gibt bereits einen Prüflauf. Der vorhandene Status wird jetzt geladen …";
+      await refreshRestaurantWebsiteMonitorStatus(password);
+      return;
+    }
     if(!response.ok||!data.success)throw new Error(data.error||"Prüflauf konnte nicht gestartet werden.");
     if(status)status.textContent="Prüfung läuft im Hintergrund. Diese Ansicht kann geöffnet bleiben.";
     await pollRestaurantWebsiteMonitor(password,data.runId);
@@ -7227,8 +7232,68 @@ async function showRestaurantWebsiteChanges(){
   if(overlay)overlay.style.display="flex";
   const startButton=document.getElementById("startWebsiteMonitor");
   if(startButton)startButton.onclick=()=>startRestaurantWebsiteMonitor(password);
-  try{await loadRestaurantWebsiteChanges(password);}
-  catch(error){const list=document.getElementById("websiteChangesList");if(list)list.textContent=error.message||"Laden fehlgeschlagen.";}
+  try{
+    await loadRestaurantWebsiteChanges(password);
+    await refreshRestaurantWebsiteMonitorStatus(password);
+  }catch(error){const list=document.getElementById("websiteChangesList");if(list)list.textContent=error.message||"Laden fehlgeschlagen.";}
+}
+async function refreshRestaurantWebsiteMonitorStatus(password){
+  const status=document.getElementById("websiteMonitorRunStatus");
+  const progress=document.getElementById("websiteMonitorProgress");
+  const button=document.getElementById("startWebsiteMonitor");
+  const label=document.getElementById("websiteMonitorProgressLabel");
+  const percent=document.getElementById("websiteMonitorProgressPercent");
+  const bar=document.getElementById("websiteMonitorProgressBar");
+  const current=document.getElementById("websiteMonitorProgressCurrent");
+  const stats=document.getElementById("websiteMonitorProgressStats");
+  const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"getRestaurantWebsiteMonitorRun"})});
+  let data={};try{data=await response.json();}catch(_){}
+  if(!response.ok||!data.success)throw new Error(data.error||"Prüfstatus konnte nicht geladen werden.");
+  const run=data.run;
+  if(!run){
+    if(status)status.textContent="Bisher wurde noch keine Webseitenprüfung gestartet.";
+    if(progress)progress.style.display="none";
+    if(button)button.disabled=false;
+    return;
+  }
+  const r=run.report||{};
+  if(progress)progress.style.display="block";
+  if(run.status==="running"){
+    const started=Date.parse(run.startedAt||"");
+    const age=Number.isFinite(started)?Date.now()-started:0;
+    if(age>30*60*1000){
+      if(label)label.textContent="Prüflauf möglicherweise festgefahren";
+      if(percent)percent.textContent="—";
+      if(current)current.textContent="Der letzte Lauf wurde am "+(run.startedAt?new Date(run.startedAt).toLocaleString("de-DE"):"unbekannt")+" gestartet und ist länger als 30 Minuten offen.";
+      if(stats)stats.textContent="Der Server erlaubt jetzt einen sicheren Neustart. Ein neuer Lauf übernimmt die Sperre; Restaurantdaten werden dabei nicht verändert.";
+      if(status)status.textContent="Der alte Prüflauf antwortet nicht mehr. Sie können die Webseitenprüfung erneut starten.";
+      if(button)button.disabled=false;
+      return;
+    }
+    if(status)status.textContent="Eine Webseitenprüfung läuft bereits (gestartet: "+new Date(run.startedAt).toLocaleString("de-DE") + "). Der aktuelle Stand wird geladen.";
+    if(button)button.disabled=true;
+    await pollRestaurantWebsiteMonitor(password,run.runId);
+    return;
+  }
+  if(button)button.disabled=false;
+  if(run.status==="completed"){
+    if(label)label.textContent="Letzte Prüfung abgeschlossen";
+    if(percent)percent.textContent="100 %";
+    if(bar)bar.style.width="100%";
+    if(current)current.textContent="Abgeschlossen am "+(run.finishedAt?new Date(run.finishedAt).toLocaleString("de-DE"):"ohne Zeitangabe")+".";
+    if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(Array.isArray(r.errors)?r.errors.length:(r.errors||0))+" Fehler";
+    if(status)status.textContent="Letzter Prüflauf erfolgreich abgeschlossen.";
+  }else if(run.status==="failed"){
+    if(label)label.textContent="Letzte Prüfung fehlgeschlagen";
+    if(percent)percent.textContent="—";
+    if(current)current.textContent=r.error||"Keine Fehlerdetails vorhanden.";
+    if(stats)stats.textContent="Gestartet: "+(run.startedAt?new Date(run.startedAt).toLocaleString("de-DE"):"unbekannt");
+    if(status)status.textContent="Der letzte Prüflauf ist fehlgeschlagen.";
+  }else{
+    if(label)label.textContent="Status der letzten Prüfung: "+run.status;
+    if(current)current.textContent="Gestartet: "+(run.startedAt?new Date(run.startedAt).toLocaleString("de-DE"):"unbekannt");
+    if(status)status.textContent="Status der letzten Webseitenprüfung geladen.";
+  }
 }
 
 </script>
