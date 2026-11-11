@@ -121,13 +121,14 @@ export async function runRestaurantWebsiteMonitor({
   const report = { restaurants: 0, pages: 0, baselines: 0, proposals: 0, errors: [] };
   let completed = 0;
   const active = new Set();
-  const publishProgress = async () => {
-    if (typeof onProgress !== "function") return;
-    try {
-      await onProgress({ phase: "running", completed, total: list.length, activeRestaurants: [...active], restaurants: report.restaurants, pages: report.pages, baselines: report.baselines, proposals: report.proposals, errors: report.errors.length });
-    } catch (error) {
+  let progressQueue = Promise.resolve();
+  const publishProgress = () => {
+    if (typeof onProgress !== "function") return progressQueue;
+    const snapshot = { phase: "running", completed, total: list.length, activeRestaurants: [...active], restaurants: report.restaurants, pages: report.pages, baselines: report.baselines, proposals: report.proposals, errors: report.errors.length };
+    progressQueue = progressQueue.then(() => onProgress(snapshot)).catch(error => {
       console.error("Website-Monitor-Fortschritt konnte nicht gespeichert werden:", String(error?.message || error));
-    }
+    });
+    return progressQueue;
   };
   await publishProgress();
   const processRestaurant = async restaurant => {
