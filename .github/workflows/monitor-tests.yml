@@ -30,5 +30,9 @@ jobs:
         run: node --check worker/restaurant-monitor-runner.mjs
       - name: Test data extraction
         run: node worker/restaurant-monitor.test.mjs
+      - name: Check email module syntax
+        run: node --check worker/restaurant-monitor-email.mjs
       - name: Test daily monitoring runner
         run: node worker/restaurant-monitor-runner.test.mjs
+      - name: Test email digest
+        run: node worker/restaurant-monitor-email.test.mjs
