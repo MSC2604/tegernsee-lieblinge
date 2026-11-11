@@ -146,7 +146,7 @@ export async function runRestaurantWebsiteMonitor({
     const website = String(restaurant?.website ?? "").trim();
     if (!id || !website) return;
     active.add(String(restaurant.name || "Restaurant"));
-    const root = safeHttpUrl(website);
+    let root = safeHttpUrl(website);
     if (!root) {
       report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), error: "Website-Adresse ist ungültig oder aus Sicherheitsgründen gesperrt." });
       return;
@@ -156,8 +156,22 @@ export async function runRestaurantWebsiteMonitor({
     try {
       homepage = await fetchOfficialHtml(root.href, root.origin, fetchImpl);
     } catch (error) {
-      report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: root.href, error: String(error?.message || error).slice(0, 220) });
-      return;
+      // Some older directory entries still use HTTP although the same official
+      // host now serves HTTPS. Retry the secure origin before recording a fault.
+      if (root.protocol === "http:") {
+        const secureRoot = new URL(root.href);
+        secureRoot.protocol = "https:";
+        try {
+          homepage = await fetchOfficialHtml(secureRoot.href, secureRoot.origin, fetchImpl);
+          root = secureRoot;
+        } catch {
+          report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: root.href, error: String(error?.message || error).slice(0, 220) });
+          return;
+        }
+      } else {
+        report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: root.href, error: String(error?.message || error).slice(0, 220) });
+        return;
+      }
     }
     const homepageDocuments = extractOfficialDocumentLinks(homepage, root.href);
     const hasMenuPdf = homepageDocuments.some(item => /(speisekarte|getränkekarte|getraenkekarte|menü|menu|karte)/i.test(item));
