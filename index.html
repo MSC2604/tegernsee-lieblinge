@@ -2902,7 +2902,13 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     </div>
     <p style="margin:0;color:#63736a;font-size:13px">Hier erscheinen erkannte Änderungen offizieller Restaurant-Webseiten. Deine Restaurant-Einträge werden nicht automatisch geändert.</p>
     <button type="button" id="startWebsiteMonitor" onclick="startRestaurantWebsiteMonitor()" style="margin:14px 0;padding:11px 16px;border:0;border-radius:10px;background:#2d6a56;color:#fff;font-weight:700;cursor:pointer">Jetzt Webseiten prüfen</button>
-    <div id="websiteMonitorRunStatus" role="status" aria-live="polite" style="margin:0 0 12px;color:#63736a;font-size:13px"></div>
+    <div id="websiteMonitorRunStatus" role="status" aria-live="polite" style="margin:0 0 8px;color:#63736a;font-size:13px"></div>
+    <div id="websiteMonitorProgress" style="display:none;margin:0 0 14px;padding:12px;border:1px solid #dce7e0;border-radius:12px;background:#f7faf8">
+      <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700;color:#294d3e"><span id="websiteMonitorProgressLabel">Prüfung läuft …</span><span id="websiteMonitorProgressPercent">0 %</span></div>
+      <div style="height:9px;margin:8px 0 10px;background:#e2eae5;border-radius:99px;overflow:hidden"><div id="websiteMonitorProgressBar" style="height:100%;width:0%;background:#2d6a56;border-radius:99px;transition:width .25s"></div></div>
+      <div id="websiteMonitorProgressCurrent" style="font-size:12px;color:#63736a"></div>
+      <div id="websiteMonitorProgressStats" style="margin-top:7px;font-size:12px;color:#63736a"></div>
+    </div>
     <div id="websiteChangesList" aria-live="polite"><div class="website-changes-empty">Änderungen werden geladen …</div></div>
   </section>
 </div>
@@ -7136,23 +7142,44 @@ async function startRestaurantWebsiteMonitor(){
 async function pollRestaurantWebsiteMonitor(password,runId){
   const status=document.getElementById("websiteMonitorRunStatus");
   const button=document.getElementById("startWebsiteMonitor");
+  const progress=document.getElementById("websiteMonitorProgress");
+  const label=document.getElementById("websiteMonitorProgressLabel");
+  const percent=document.getElementById("websiteMonitorProgressPercent");
+  const bar=document.getElementById("websiteMonitorProgressBar");
+  const current=document.getElementById("websiteMonitorProgressCurrent");
+  const stats=document.getElementById("websiteMonitorProgressStats");
   const check=async()=>{
     const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"getRestaurantWebsiteMonitorRun"})});
     let data={};try{data=await response.json();}catch(_){}
     if(!response.ok||!data.success)throw new Error(data.error||"Prüfstatus konnte nicht geladen werden.");
     const run=data.run;
     if(!run||run.runId!==runId)throw new Error("Der aktuelle Prüflauf ist nicht mehr verfügbar.");
+    const r=run.report||{};
     if(run.status==="running"){
-      if(status)status.textContent="Prüfung läuft …";
+      if(progress)progress.style.display="block";
+      const total=Number(r.total)||0,done=Number(r.completed)||0;
+      const pct=total?Math.min(100,Math.round(done/total*100)):0;
+      if(label)label.textContent=total?done+" von "+total+" Webseiten bearbeitet":"Prüfung wird vorbereitet …";
+      if(percent)percent.textContent=total?pct+" %":"…";
+      if(bar)bar.style.width=pct+"%";
+      if(current)current.textContent=(r.activeRestaurants||[]).length?"Aktuell: "+r.activeRestaurants.join(", "):"Warte auf die nächsten Webseiten …";
+      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(r.errors||0)+" Fehler";
+      if(status)status.textContent="Die Prüfung läuft im Hintergrund. Der Fortschritt wird laufend aktualisiert.";
       window.setTimeout(()=>check().catch(error=>{if(status)status.textContent=error.message;if(button)button.disabled=false;}),3000);
       return;
     }
+    if(progress)progress.style.display="block";
     if(run.status==="completed"){
-      const r=run.report||{};
-      if(status)status.textContent="Fertig: "+(r.restaurants||0)+" Restaurants, "+(r.pages||0)+" Seiten geprüft, "+(r.baselines||0)+" Ausgangsstände gespeichert, "+(r.proposals||0)+" Änderungshinweise. Fehler: "+(r.errors||[]).length+".";
+      if(label)label.textContent="Prüfung abgeschlossen";
+      if(percent)percent.textContent="100 %";
+      if(bar)bar.style.width="100%";
+      if(current)current.textContent="Alle Webseiten dieses Prüflaufs wurden bearbeitet.";
+      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" Ausgangsstände · "+(r.proposals||0)+" Änderungshinweise · "+(r.errors||[]).length+" Fehler";
+      if(status)status.textContent="Fertig: "+(r.restaurants||0)+" Restaurants geprüft.";
       await loadRestaurantWebsiteChanges(password);
     }else{
-      if(status)status.textContent="Prüfung fehlgeschlagen: "+(run.report?.error||"Unbekannter Fehler");
+      if(status)status.textContent="Prüfung fehlgeschlagen: "+(r.error||"Unbekannter Fehler");
+      if(label)label.textContent="Prüfung fehlgeschlagen";
     }
     if(button)button.disabled=false;
   };
