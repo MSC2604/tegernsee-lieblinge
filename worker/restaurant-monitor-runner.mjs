@@ -12,7 +12,8 @@ import {
 
 const MAX_BYTES = 3 * 1024 * 1024;
 const MAX_PAGES = 6;
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 15000;
+const FETCH_ATTEMPTS = 2;
 
 function textArg(value) {
   return { type: "text", value: value == null ? "" : String(value) };
@@ -66,18 +67,30 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
   for (let hop = 0; hop <= 3; hop++) {
     const url = safeHttpUrl(current);
     if (!url || url.origin !== origin) throw new Error("Weiterleitung außerhalb der offiziellen Website blockiert.");
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    try {
-      const response = await fetchImpl(url.href, {
-        method: "GET",
-        redirect: "manual",
-        signal: controller.signal,
-        headers: {
-          "User-Agent": "TegernseeRestaurantWebsiteMonitor/1.0",
-          "Accept": "text/html,application/xhtml+xml;q=0.9"
-        }
-      });
+    let response;
+    let lastError;
+    for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      try {
+        response = await fetchImpl(url.href, {
+          method: "GET",
+          redirect: "manual",
+          signal: controller.signal,
+          headers: {
+            "User-Agent": "TegernseeRestaurantWebsiteMonitor/1.0",
+            "Accept": "text/html,application/xhtml+xml;q=0.9"
+          }
+        });
+        break;
+      } catch (error) {
+        lastError = error;
+        if (attempt === FETCH_ATTEMPTS) throw error;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    if (!response) throw lastError || new Error("Website konnte nicht abgerufen werden.");
       if ([301, 302, 303, 307, 308].includes(response.status)) {
         const location = response.headers.get("Location");
         if (!location || hop === 3) throw new Error("Weiterleitung nicht auflösbar.");
@@ -98,9 +111,6 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
         return html;
       }
       throw new Error("Die verlinkte Seite liefert kein HTML.");
-    } finally {
-      clearTimeout(timer);
-    }
   }
   throw new Error("Zu viele Weiterleitungen.");
 }
@@ -145,25 +155,45 @@ export async function runRestaurantWebsiteMonitor({
       report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: root.href, error: String(error?.message || error).slice(0, 220) });
       return;
     }
-    const pages = [root.href, ...extractOfficialPageLinks(homepage, root.href, MAX_PAGES - 1)];
+    const homepageDocuments = extractOfficialDocumentLinks(homepage, root.href);
+    const hasMenuPdf = homepageDocuments.some(item => /(speisekarte|getränkekarte|getraenkekarte|menü|menu|karte)/i.test(item));
+    const discoveredPages = extractOfficialPageLinks(homepage, root.href, MAX_PAGES - 1);
+    // If the homepage already exposes an official menu PDF, avoid crawling a
+    // parallel legacy HTML menu endpoint that often returns broken/empty HTML.
+    const pages = [root.href, ...discoveredPages.filter(pageUrl =>
+      !(hasMenuPdf && /(?:speisekarte|getränkekarte|getraenkekarte|menu|menue|karte)/i.test(new URL(pageUrl).pathname))
+    )];
     const processPage = async (pageUrl, knownHtml, fetchError = null) => {
       let html = knownHtml;
+      let effectiveUrl = pageUrl;
       try {
         if (fetchError) throw fetchError;
         if (html == null) html = await fetchOfficialHtml(pageUrl, root.origin, fetchImpl);
       } catch (error) {
-        report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: pageUrl, error: String(error?.message || error).slice(0, 220) });
-        return;
+        // Some older sites have a broken PHP contact endpoint but retain the
+        // equivalent static HTML page. Keep the fallback within the same host.
+        if (/\/kontakt\.php(?:$|[?#])/i.test(pageUrl)) {
+          const fallbackUrl = new URL(pageUrl);
+          fallbackUrl.pathname = fallbackUrl.pathname.replace(/\.php$/i, ".html");
+          try {
+            html = await fetchOfficialHtml(fallbackUrl.href, root.origin, fetchImpl);
+            effectiveUrl = fallbackUrl.href;
+          } catch { /* report the original endpoint failure below */ }
+        }
+        if (html == null) {
+          report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: pageUrl, error: String(error?.message || error).slice(0, 220) });
+          return;
+        }
       }
       const pageText = extractPageText(html);
       if (!pageText) return;
       const found = extractRestaurantData(html);
-      const documents = extractOfficialDocumentLinks(html, pageUrl);
+      const documents = extractOfficialDocumentLinks(html, effectiveUrl);
       if (documents.length) found.dokumente = documents.join("\n");
-      const externalLinks = extractRelevantExternalLinks(html, pageUrl);
+      const externalLinks = extractRelevantExternalLinks(html, effectiveUrl);
       if (externalLinks.length) found.externe_links = externalLinks.join("\n");
       const hash = await fingerprintPage(html, found);
-      const oldResult = await db("SELECT content_hash, extracted_data_json, content_text FROM restaurant_site_snapshots WHERE restaurant_id = ? AND page_url = ?", [textArg(id), textArg(pageUrl)], true);
+      const oldResult = await db("SELECT content_hash, extracted_data_json, content_text FROM restaurant_site_snapshots WHERE restaurant_id = ? AND page_url = ?", [textArg(id), textArg(effectiveUrl)], true);
       const oldRow = oldResult?.results?.[0]?.response?.result?.rows?.[0];
       const oldHash = oldRow ? String(cell(oldRow[0]) || "") : "";
       let oldData = {};
@@ -175,11 +205,11 @@ export async function runRestaurantWebsiteMonitor({
       } else if (oldHash && oldHash !== hash) {
         const changes = findRestaurantChanges(oldData, found);
         for (const change of changes) {
-          await db("INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')", [textArg(id), textArg(change.field), textArg(change.oldValue), textArg(change.newValue), textArg(pageUrl), textArg(stamp)]);
+          await db("INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')", [textArg(id), textArg(change.field), textArg(change.oldValue), textArg(change.newValue), textArg(effectiveUrl), textArg(stamp)]);
           report.proposals++;
         }
       }
-      await db("INSERT INTO restaurant_site_snapshots (restaurant_id, page_url, checked_at, content_hash, extracted_data_json, content_text) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(restaurant_id, page_url) DO UPDATE SET checked_at=excluded.checked_at, content_hash=excluded.content_hash, extracted_data_json=excluded.extracted_data_json, content_text=excluded.content_text", [textArg(id), textArg(pageUrl), textArg(stamp), textArg(hash), textArg(JSON.stringify(found)), textArg(pageText.slice(0, 50000))]);
+      await db("INSERT INTO restaurant_site_snapshots (restaurant_id, page_url, checked_at, content_hash, extracted_data_json, content_text) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(restaurant_id, page_url) DO UPDATE SET checked_at=excluded.checked_at, content_hash=excluded.content_hash, extracted_data_json=excluded.extracted_data_json, content_text=excluded.content_text", [textArg(id), textArg(effectiveUrl), textArg(stamp), textArg(hash), textArg(JSON.stringify(found)), textArg(pageText.slice(0, 50000))]);
       report.pages++;
     };
     // Homepage first to discover subpages. Fetch up to three subpages in parallel,
