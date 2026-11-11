@@ -144,6 +144,18 @@ assert.equal(findRestaurantChanges(
   { dokumente: "Getränke: https://example.de/drinks.pdf\nSpeisekarte: https://example.de/menu.pdf?a=1&b=2" }
 ).length, 0);
 
+// Presentation-label changes alone are not restaurant-data changes.
+assert.equal(findRestaurantChanges(
+  { externe_links: "Tisch reservieren: https://example.de/book" },
+  { externe_links: "Jetzt online buchen: https://example.de/book" }
+).length, 0);
+
+// URL paths may be case-sensitive; normalization must not hide a destination change.
+assert.equal(findRestaurantChanges(
+  { externe_links: "Speisekarte: https://example.de/Menu.pdf" },
+  { externe_links: "Speisekarte: https://example.de/menu.pdf" }
+).length, 1);
+
 // A short network failure is retried once before the monitor records an error.
 let retryCalls = 0;
 const retryResult = await runRestaurantWebsiteMonitor({
