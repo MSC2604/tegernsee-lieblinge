@@ -1,3 +1,4 @@
+import { sendRestaurantWebsiteDigest } from "./worker/restaurant-monitor-email.mjs";
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
 
 export default {
@@ -1218,6 +1219,7 @@ console.log("Tavily usage account:", {
             status TEXT NOT NULL DEFAULT 'pending'
               CHECK (status IN ('pending', 'accepted', 'rejected')),
             reviewed_at TEXT NOT NULL DEFAULT '',
+    notified_at TEXT NOT NULL DEFAULT '',
             UNIQUE (restaurant_id, field_name, old_value, new_value)
           )`);
           const result = await turso(`SELECT p.id, p.restaurant_id, r.name, p.field_name,
@@ -1672,6 +1674,7 @@ console.log("Tavily usage account:", {
       old_value TEXT NOT NULL DEFAULT '', new_value TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL,
       detected_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'accepted', 'rejected')), reviewed_at TEXT NOT NULL DEFAULT '',
+    notified_at TEXT NOT NULL DEFAULT '',
       UNIQUE (restaurant_id, field_name, old_value, new_value)
     )`);
     await db("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
@@ -1693,6 +1696,12 @@ console.log("Tavily usage account:", {
     }));
     for (const issue of monitorReport.errors.slice(0, 30)) {
       console.warn("Website-Prüfung nicht möglich:", JSON.stringify(issue));
+    }
+    try {
+      const emailReport = await sendRestaurantWebsiteDigest({ db, env });
+      console.log("Website-Änderungs-E-Mail:", JSON.stringify(emailReport));
+    } catch (error) {
+      console.error("Website-Änderungs-E-Mail fehlgeschlagen:", String(error?.message || error).slice(0, 300));
     }
   }
 };
