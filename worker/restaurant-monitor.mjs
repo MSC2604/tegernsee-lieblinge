@@ -79,6 +79,23 @@ const MONITORED_FIELDS = new Set([
 ]);
 function normalizeLinkEntry(entry) {
   let value = decodeHtmlEntities(entry).replace(/[\s\u00a0]+/g, ' ').trim();
+  // Contact links often vary only because the source page obfuscates email
+  // addresses or encodes phone punctuation differently on each request.
+  value = value.replace(/mailto:[^\s<>"']+/gi, raw => {
+    const candidate = raw.replace(/[),.;]+$/, '');
+    try {
+      const url = new URL(candidate);
+      const address = decodeURIComponent(url.pathname || '').toLocaleLowerCase('de');
+      return 'mailto:' + address;
+    } catch { return candidate.toLocaleLowerCase('de').split('?')[0]; }
+  });
+  value = value.replace(/tel:[^\s<>"']+/gi, raw => {
+    const candidate = raw.replace(/[),.;]+$/, '');
+    try {
+      const number = decodeURIComponent(candidate.slice(4)).replace(/[^+\d]/g, '');
+      return 'tel:' + number;
+    } catch { return 'tel:' + candidate.slice(4).replace(/[^+\d]/g, ''); }
+  });
   value = value.replace(/https?:\/\/[^\s<>"']+/gi, raw => {
     const trailing = raw.match(/[),.;]+$/)?.[0] || '';
     const candidate = trailing ? raw.slice(0, -trailing.length) : raw;
