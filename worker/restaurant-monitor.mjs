@@ -78,37 +78,24 @@ const MONITORED_FIELDS = new Set([
   'dokumente', 'externe_links'
 ]);
 function normalizeLinkEntry(entry) {
-  const value = decodeHtmlEntities(entry).replace(/\s+/g, ' ').trim();
-  const match = value.match(/^(.*?):\s*((?:https?:\/\/|mailto:|tel:).+)$/i);
-  if (!match) return value.toLocaleLowerCase('de').replace(/[\s\u00a0]+/g, ' ').trim();
-  const label = match[1].toLocaleLowerCase('de').replace(/[\s\p{P}]+/gu, '');
-  const rawUrl = match[2].trim();
-  try {
-    if (/^tel:/i.test(rawUrl)) {
-      return label + ':tel:' + rawUrl.slice(4).replace(/[^+\d]/g, '');
-    }
-    if (/^mailto:/i.test(rawUrl)) {
-      const url = new URL(rawUrl);
-      const address = decodeURIComponent(url.pathname).toLocaleLowerCase('de');
+  let value = decodeHtmlEntities(entry).replace(/[\s\u00a0]+/g, ' ').trim();
+  value = value.replace(/https?:\/\/[^\s<>"']+/gi, raw => {
+    const trailing = raw.match(/[),.;]+$/)?.[0] || '';
+    const candidate = trailing ? raw.slice(0, -trailing.length) : raw;
+    try {
+      const url = new URL(candidate);
+      url.hash = '';
+      if ((url.protocol === 'https:' && url.port === '443') ||
+          (url.protocol === 'http:' && url.port === '80')) url.port = '';
       const params = [...url.searchParams.entries()]
-        .map(([key, val]) => [key.toLocaleLowerCase('de'), val.trim()])
         .sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
-      return label + ':mailto:' + address + (params.length
-        ? '?' + params.map(([key, val]) => key + '=' + val).join('&')
-        : '');
-    }
-    const url = new URL(rawUrl);
-    url.hash = '';
-    if ((url.protocol === 'https:' && url.port === '443') ||
-        (url.protocol === 'http:' && url.port === '80')) url.port = '';
-    const params = [...url.searchParams.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
-    url.search = '';
-    for (const [key, val] of params) url.searchParams.append(key, val);
-    return label + ':' + url.href.toLocaleLowerCase('de');
-  } catch {
-    return label + ':' + rawUrl.toLocaleLowerCase('de').replace(/[\s\u00a0]+/g, '');
-  }
+      url.search = '';
+      for (const [key, val] of params) url.searchParams.append(key, val);
+      return url.href.toLocaleLowerCase('de') + trailing;
+    } catch { return candidate.toLocaleLowerCase('de') + trailing; }
+  });
+  value = value.toLocaleLowerCase('de').replace(/[\s\u00a0]+/g, ' ').trim();
+  return value;
 }
 function normalize(field, value) {
   const decoded = decodeHtmlEntities(clean(value));
