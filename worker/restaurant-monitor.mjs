@@ -116,15 +116,15 @@ export function extractOfficialDocumentLinks(html, baseUrl, limit = 20) {
   if (!["http:", "https:"].includes(base.protocol)) return [];
   const found = [];
   const seen = new Set();
-  const matches = String(html || "").matchAll(/<a\\b[^>]*href\\s*=\\s*["']([^"']+)["'][^>]*>([\\s\\S]*?)<\\/a>/gi);
+  const matches = String(html || "").matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi);
   for (const match of matches) {
     try {
       const url = new URL(match[1], base.href);
-      if (url.origin !== base.origin || !/\\.pdf(?:$|\\?)/i.test(url.pathname + url.search)) continue;
+      if (url.origin !== base.origin || !/\.pdf(?:$|\?)/i.test(url.pathname + url.search)) continue;
       url.hash = "";
       if (seen.has(url.href)) continue;
       seen.add(url.href);
-      const label = match[2].replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim();
+      const label = match[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
       found.push((label ? label + ": " : "") + url.href);
       if (found.length >= Math.max(1, Math.min(50, limit))) break;
     } catch { /* ungültige Dokumentlinks überspringen */ }
