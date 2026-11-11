@@ -139,7 +139,7 @@ export function extractRelevantExternalLinks(html, baseUrl, limit = 30) {
   if (!["http:", "https:"].includes(base.protocol)) return [];
   const found = [];
   const seen = new Set();
-  const relevant = /(reserv|tisch|booking|speisekarte|getränkekarte|getraenkekarte|menü|menu|karte|kontakt|telefon|tel\\b|route|anfahrt|pdf|mail)/i;
+  const relevant = /(reserv|tisch|booking|speisekarte|getränkekarte|getraenkekarte|menü|menu|karte|kontakt|telefon|tel\b|route|anfahrt|pdf|mail)/i;
   const matches = String(html || "").matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi);
   for (const match of matches) {
     try {
