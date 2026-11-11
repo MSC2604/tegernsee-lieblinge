@@ -79,38 +79,44 @@ const MONITORED_FIELDS = new Set([
 ]);
 function normalizeLinkEntry(entry) {
   const value = decodeHtmlEntities(entry).replace(/[\s\u00a0]+/g, ' ').trim();
-  // Link labels are presentation text and frequently vary between website
-  // templates. Compare the actual destination instead of label typography.
-  const match = value.match(/(?:https?:\/\/|mailto:|tel:)[^\s<>"']+/i);
-  if (!match) return value.toLocaleLowerCase('de');
-  const raw = match[0];
-  const trailing = raw.match(/[),.;]+$/)?.[0] || '';
-  const candidate = trailing ? raw.slice(0, -trailing.length) : raw;
-  if (/^mailto:/i.test(candidate)) {
+  // Labels, entity encoding and mail-client subject/body text are presentation
+  // details. Compare every destination in a line, not just the first one.
+  const matches = [...value.matchAll(/(?:https?:\/\/|mailto:|tel:)[^\s<>"']+/gi)];
+  if (!matches.length) return value.toLocaleLowerCase('de');
+  const normalized = matches.map(match => {
+    const raw = match[0];
+    const trailing = raw.match(/[),.;]+$/)?.[0] || '';
+    const candidate = trailing ? raw.slice(0, -trailing.length) : raw;
+    if (/^mailto:/i.test(candidate)) {
+      try {
+        const url = new URL(candidate);
+        return 'mailto:' + decodeURIComponent(url.pathname || '').toLocaleLowerCase('de');
+      } catch { return candidate.toLocaleLowerCase('de').split('?')[0]; }
+    }
+    if (/^tel:/i.test(candidate)) {
+      try {
+        const number = decodeURIComponent(candidate.slice(4)).replace(/[^+\d]/g, '');
+        return 'tel:' + number;
+      } catch { return 'tel:' + candidate.slice(4).replace(/[^+\d]/g, ''); }
+    }
     try {
       const url = new URL(candidate);
-      return 'mailto:' + decodeURIComponent(url.pathname || '').toLocaleLowerCase('de');
-    } catch { return candidate.toLocaleLowerCase('de').split('?')[0]; }
-  }
-  if (/^tel:/i.test(candidate)) {
-    try {
-      const number = decodeURIComponent(candidate.slice(4)).replace(/[^+\d]/g, '');
-      return 'tel:' + number;
-    } catch { return 'tel:' + candidate.slice(4).replace(/[^+\d]/g, ''); }
-  }
-  try {
-    const url = new URL(candidate);
-    url.hash = '';
-    if ((url.protocol === 'https:' && url.port === '443') ||
-        (url.protocol === 'http:' && url.port === '80')) url.port = '';
-    const params = [...url.searchParams.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
-    url.search = '';
-    for (const [key, val] of params) url.searchParams.append(key, val);
-    // URL normalizes the hostname but deliberately preserves case-sensitive
-    // path and query values.
-    return url.href + trailing;
-  } catch { return candidate + trailing; }
+      url.hash = '';
+      if ((url.protocol === 'https:' && url.port === '443') ||
+          (url.protocol === 'http:' && url.port === '80')) url.port = '';
+      for (const key of [...url.searchParams.keys()]) {
+        if (/^(?:utm_.+|fbclid|gclid|dclid|msclkid|mc_cid|mc_eid)$/i.test(key)) url.searchParams.delete(key);
+      }
+      const params = [...url.searchParams.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+      url.search = '';
+      for (const [key, val] of params) url.searchParams.append(key, val);
+      // Hostnames are normalized; case-sensitive path and meaningful query
+      // values remain intact.
+      return url.href;
+    } catch { return candidate + trailing; }
+  });
+  return [...new Set(normalized)].sort((a, b) => a.localeCompare(b, 'de')).join(' | ');
 }
 function normalize(field, value) {
   const decoded = decodeHtmlEntities(
@@ -134,7 +140,11 @@ function normalize(field, value) {
     return [...new Set(decoded.split(/\r?\n/).map(normalizeLinkEntry).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, 'de')).join('\n');
   }
-  return text.replace(/[\s\u00a0]+/g, ' ').trim();
+  return text
+    .replace(/[\u00a0\u202f]/g, ' ')
+    .replace(/[\u2010-\u2015\u2212]/g, '-')
+    .replace(/[\s]+/g, ' ')
+    .trim();
 }
 export function findRestaurantChanges(current, found) {
   const changes = [];
