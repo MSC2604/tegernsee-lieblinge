@@ -1248,18 +1248,20 @@ console.log("Tavily usage account:", {
           )`);
           await turso("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
           const source = await turso(
-            "SELECT id, name, website FROM restaurants WHERE website IS NOT NULL AND TRIM(website) <> '' ORDER BY name COLLATE NOCASE",
+            "SELECT id, name, website FROM restaurants ORDER BY name COLLATE NOCASE",
             [], true
           );
           const rows = source?.results?.[0]?.response?.result?.rows || [];
-          const restaurants = rows.map(row => ({
+          const allRestaurants = rows.map(row => ({
             id: String(rowValue(row[0]) || ""),
             name: String(rowValue(row[1]) || ""),
-            website: String(rowValue(row[2]) || "")
-          })).filter(item => item.id && item.website);
+            website: String(rowValue(row[2]) || "").trim()
+          })).filter(item => item.id);
+          const restaurants = allRestaurants.filter(item => item.website);
+          const withoutWebsite = allRestaurants.filter(item => !item.website).map(item => item.name);
           const initialReport = {
             phase: "running", completed: 0, total: restaurants.length, activeRestaurants: [],
-            restaurants: 0, pages: 0, baselines: 0, proposals: 0, errors: []
+            restaurants: 0, withoutWebsite, pages: 0, baselines: 0, proposals: 0, errors: []
           };
           await turso(`INSERT INTO restaurant_website_monitor_runs
             (id, run_id, status, started_at, finished_at, report_json, queue_json, cursor, batch_lock, batch_lock_at)
