@@ -1326,6 +1326,8 @@ console.log("Tavily usage account:", {
             FROM restaurant_change_proposals p
             LEFT JOIN restaurants r ON CAST(r.id AS TEXT) = p.restaurant_id
             WHERE p.status = 'pending'
+              AND p.field_name IN ('telefon', 'email', 'website', 'adresse',
+                'oeffnungszeiten', 'ruhetag', 'betriebsferien', 'dokumente', 'externe_links')
             ORDER BY p.detected_at DESC, p.id DESC
             LIMIT 250`, [], true);
           const rows = result?.results?.[0]?.response?.result?.rows || [];

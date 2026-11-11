@@ -42,14 +42,14 @@ export function extractRestaurantData(html) {
   const restaurant = candidates.find(item => typeIsRestaurant(item['@type'])) || {};
   const text = extractPageText(source);
   const phone = text.match(/(?:Telefon|Tel\.?|Phone)\s*[:：]?\s*(\+?\s*\d[\d\s()./-]{5,}\d)/i);
-  const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  const email = text.match(/(?:E-?Mail|Email(?:adresse)?)\s*[:：]?\s*([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i);
   const hours = text.match(/(?:Öffnungszeiten|Oeffnungszeiten)\s*[:：]?\s*(.{8,220}?)(?=\s+(?:Ruhetag|Telefon|Tel\.?|E-Mail|Adresse|Betriebsferien)\b|$)/i);
   const dayOff = text.match(/(?:Ruhetag|Ruhetage)\s*[:：]?\s*([A-Za-zÄÖÜäöüß ,/-]{3,60}?)(?=\s+(?:Betriebsferien|Öffnungszeiten|Telefon|Tel\.?|E-Mail)\b|$)/i);
   const address = text.match(/(?:Adresse|Anschrift)\s*[:：]?\s*(.{6,140}?)(?=\s+(?:Telefon|Tel\.?|E-Mail|Öffnungszeiten|Ruhetag)\b|$)/i);
   const holidays = text.match(/(?:Betriebsferien|Urlaub|geschlossen vom)\s*[:：]?\s*(.{4,100}?)(?=\s+(?:Öffnungszeiten|Ruhetag|Telefon|Tel\.?|E-Mail|Adresse)\b|$)/i);
   const values = {
     telefon: clean(restaurant.telephone) || (phone ? clean(phone[1]) : ''),
-    email: clean(restaurant.email) || (email ? clean(email[0]) : ''),
+    email: clean(restaurant.email) || (email ? clean(email[1]) : ''),
     website: clean(restaurant.url),
     adresse: addressText(restaurant.address) || (address ? clean(address[1]) : ''),
     oeffnungszeiten: openingHoursText(restaurant) || (hours ? clean(hours[1]) : ''),
@@ -58,6 +58,11 @@ export function extractRestaurantData(html) {
   };
   return Object.fromEntries(Object.entries(values).filter(([, value]) => value.length > 0));
 }
+const MONITORED_FIELDS = new Set([
+  'telefon', 'email', 'website', 'adresse',
+  'oeffnungszeiten', 'ruhetag', 'betriebsferien',
+  'dokumente', 'externe_links'
+]);
 function normalize(field, value) {
   const text = clean(value).toLocaleLowerCase('de');
   if (field === 'telefon') return text.replace(/[\s()./-]/g, '');
@@ -66,18 +71,13 @@ function normalize(field, value) {
 }
 export function findRestaurantChanges(current, found) {
   const changes = [];
-  const fields = new Set([
-    ...Object.keys(current || {}),
-    ...Object.keys(found || {})
-  ]);
-  for (const field of fields) {
+  // Only compare explicitly relevant restaurant facts and links.
+  // A missing field is not evidence that a business removed the information.
+  for (const field of MONITORED_FIELDS) {
     const oldValue = clean(current?.[field]);
     const nextValue = clean(found?.[field]);
-    if (oldValue && !nextValue) {
-      changes.push({ field, oldValue, newValue: "Nicht mehr angegeben" });
-      continue;
-    }
-    if (!nextValue || normalize(field, oldValue) === normalize(field, nextValue)) continue;
+    if (!nextValue) continue;
+    if (normalize(field, oldValue) === normalize(field, nextValue)) continue;
     changes.push({ field, oldValue, newValue: nextValue });
   }
   return changes;
