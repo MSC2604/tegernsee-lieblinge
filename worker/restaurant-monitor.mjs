@@ -44,7 +44,7 @@ export function extractRestaurantData(html) {
   const phone = text.match(/(?:Telefon|Tel\.?|Phone)\s*[:：]?\s*(\+?\s*\d[\d\s()./-]{5,}\d)/i);
   const email = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
   const hours = text.match(/(?:Öffnungszeiten|Oeffnungszeiten)\s*[:：]?\s*([^.!?]{8,180})/i);
-  const dayOff = text.match(/(?:Ruhetag|Ruhetage)\s*[:：]?\s*([A-Za-zÄÖÜäöüß ,/-]{3,60})/i);
+  const dayOff = text.match(/(?:Ruhetag|Ruhetage)\s*[:：]?\s*([A-Za-zÄÖÜäöüß ,/-]{3,60}?)(?=\s+(?:Betriebsferien|Öffnungszeiten|Telefon|Tel\.?|E-Mail)\b|$)/i);
   const holidays = text.match(/(?:Betriebsferien|Urlaub|geschlossen vom)\s*[:：]?\s*([^.!?]{4,100})/i);
   const values = {
     telefon: clean(restaurant.telephone) || (phone ? clean(phone[1]) : ''),
