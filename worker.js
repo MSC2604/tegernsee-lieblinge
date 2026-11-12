@@ -1,4 +1,4 @@
-import { sendRestaurantWebsiteDigest } from "./worker/restaurant-monitor-email.mjs";
+import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./worker/restaurant-monitor-email.mjs";
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
 
 export default {
@@ -1213,6 +1213,19 @@ console.log("Tavily usage account:", {
           body = await request.json();
         } catch {
           return json({ error: "Ungültiger JSON-Inhalt" }, 400);
+        }
+
+        if (body.action === "sendRestaurantWebsiteTestEmail") {
+          const result = await sendRestaurantWebsiteTestEmail({ env });
+          if (!result.sent) {
+            return json({ success: false, error: result.reason }, 400);
+          }
+          return json({
+            success: true,
+            acceptedByProvider: true,
+            recipient: result.recipient,
+            message: "Brevo hat die Testnachricht zum Versand angenommen."
+          });
         }
 
         if (body.action === "startRestaurantWebsiteMonitor") {
