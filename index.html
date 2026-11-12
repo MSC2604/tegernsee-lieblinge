@@ -3360,6 +3360,12 @@ function normalizeRestaurant(r){
     betriebsferien_ende:
       cleanValue(r.betriebsferien_ende),
 
+    // Zahlungsarten als Array erhalten; cleanValue würde Arrays verwerfen.
+    zahlungsarten:
+      Array.isArray(r.zahlungsarten)
+        ? r.zahlungsarten.filter(type => ["girocard", "debitkarte", "kreditkarte"].includes(type))
+        : [],
+
     notizen:
       cleanValue(
         r.notizen
