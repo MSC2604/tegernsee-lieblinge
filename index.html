@@ -6732,7 +6732,7 @@ async function showManualRestaurantReview(){
     const note=document.createElement("p");note.style.cssText="margin:10px 0 0;font-size:12px;color:#66766d";
     note.textContent="Dies ist nur ein Änderungsvorschlag. Deine gespeicherten Restaurantdaten werden nicht verändert.";
     card.appendChild(note);
-    if(/^https?:\\/\\//i.test(item.sourceUrl||"")){
+    if(/^https?:\/\//i.test(item.sourceUrl||"")){
      const link=document.createElement("a");link.className="website-change-source";link.href=item.sourceUrl;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Offizielle Website ansehen";card.appendChild(link);
     }
     const actions=document.createElement("div");actions.className="website-change-actions";
