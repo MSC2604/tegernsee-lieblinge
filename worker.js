@@ -1295,7 +1295,7 @@ console.log("Tavily usage account:", {
           if (!lockRow || String(rowValue(lockRow[0])) !== runId) {
             return json({ success: false, running: true, error: "Eine Webseitenprüfung läuft bereits.", startedAt: rowValue(lockRow?.[2]) || "" }, 409);
           }
-          if (restaurants.length === 0) {
+          if (monitorQueue.length === 0) {
             const finishedAt = new Date().toISOString();
             await turso("UPDATE restaurant_website_monitor_runs SET status='completed', finished_at=? WHERE id=1 AND run_id=?",
               [textArg(finishedAt), textArg(runId)]);
