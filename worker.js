@@ -1256,20 +1256,25 @@ console.log("Tavily usage account:", {
           )`);
           await turso("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
           const source = await turso(
-            "SELECT id, name, website FROM restaurants ORDER BY name COLLATE NOCASE",
+            "SELECT id, name, website, externer_eintrag FROM restaurants ORDER BY name COLLATE NOCASE",
             [], true
           );
           const rows = source?.results?.[0]?.response?.result?.rows || [];
           const allRestaurants = rows.map(row => ({
-            id: String(rowValue(row[0]) || ""),
-            name: String(rowValue(row[1]) || ""),
-            website: String(rowValue(row[2]) || "").trim()
+            id: String(rowValue(row[0]) || ""), name: String(rowValue(row[1]) || ""),
+            website: String(rowValue(row[2]) || "").trim(),
+            externer_eintrag: String(rowValue(row[3]) || "").trim()
           })).filter(item => item.id);
           const restaurants = allRestaurants.filter(item => item.website);
+          const externalEntries = allRestaurants.filter(item => item.externer_eintrag);
           const withoutWebsite = allRestaurants.filter(item => !item.website).map(item => item.name);
+          const monitorQueue = [
+            ...restaurants.map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
+            ...externalEntries.map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
+          ];
           const initialReport = {
-            phase: "running", completed: 0, total: restaurants.length, activeRestaurants: [],
-            restaurants: 0, withoutWebsite, pages: 0, baselines: 0, proposals: 0, errors: []
+            phase: "running", completed: 0, total: monitorQueue.length, activeRestaurants: [],
+            restaurants: 0, externalEntries: 0, withoutWebsite, pages: 0, baselines: 0, proposals: 0, errors: []
           };
           await turso(`INSERT INTO restaurant_website_monitor_runs
             (id, run_id, status, started_at, finished_at, report_json, queue_json, cursor, batch_lock, batch_lock_at)
@@ -1281,7 +1286,7 @@ console.log("Tavily usage account:", {
             WHERE restaurant_website_monitor_runs.status <> 'running'
               OR restaurant_website_monitor_runs.started_at < ?`,
             [textArg(runId), textArg(startedAt), textArg(JSON.stringify(initialReport)),
-             textArg(JSON.stringify(restaurants)), textArg(staleBefore)]);
+             textArg(JSON.stringify(monitorQueue)), textArg(staleBefore)]);
           const lock = await turso(
             "SELECT run_id, status, started_at FROM restaurant_website_monitor_runs WHERE id = 1",
             [], true
@@ -1295,7 +1300,7 @@ console.log("Tavily usage account:", {
             await turso("UPDATE restaurant_website_monitor_runs SET status='completed', finished_at=? WHERE id=1 AND run_id=?",
               [textArg(finishedAt), textArg(runId)]);
           }
-          return json({ success: true, started: true, runId, startedAt, total: restaurants.length });
+          return json({ success: true, started: true, runId, startedAt, total: monitorQueue.length });
         }
 
         if (body.action === "processRestaurantWebsiteMonitorBatch") {
@@ -1346,7 +1351,9 @@ console.log("Tavily usage account:", {
           cumulative = {
             phase: "running", completed: claimedCursor, total: claimedQueue.length,
             activeRestaurants: [String(restaurant.name || "Restaurant")],
-            restaurants: Number(cumulative.restaurants) || 0, pages: Number(cumulative.pages) || 0,
+            restaurants: Number(cumulative.restaurants) || 0,
+            externalEntries: Number(cumulative.externalEntries) || 0,
+            pages: Number(cumulative.pages) || 0,
             baselines: Number(cumulative.baselines) || 0, proposals: Number(cumulative.proposals) || 0,
             withoutWebsite: Array.isArray(cumulative.withoutWebsite) ? cumulative.withoutWebsite : [],
             errors: Array.isArray(cumulative.errors) ? cumulative.errors : []
@@ -1356,6 +1363,7 @@ console.log("Tavily usage account:", {
           try {
             const result = await runRestaurantWebsiteMonitor({ db: turso, restaurants: [restaurant] });
             cumulative.restaurants += Number(result.restaurants) || 0;
+            cumulative.externalEntries += Number(result.externalEntries) || 0;
             cumulative.pages += Number(result.pages) || 0;
             cumulative.baselines += Number(result.baselines) || 0;
             cumulative.proposals += Number(result.proposals) || 0;
@@ -1927,20 +1935,23 @@ console.log("Tavily usage account:", {
     )`);
     await db("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
     const restaurantResult = await db(
-      "SELECT id, name, website FROM restaurants WHERE website IS NOT NULL AND TRIM(website) <> ''",
+      "SELECT id, name, website, externer_eintrag FROM restaurants WHERE (website IS NOT NULL AND TRIM(website) <> '') OR (externer_eintrag IS NOT NULL AND TRIM(externer_eintrag) <> '')",
       [], true
     );
     const restaurantRows = restaurantResult?.results?.[0]?.response?.result?.rows || [];
-    const websiteRestaurants = restaurantRows.map(row => ({
-      id: String(cell(row[0]) || ""),
-      name: String(cell(row[1]) || ""),
-      website: String(cell(row[2]) || "")
-    })).filter(item => item.id && item.website);
-    const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteRestaurants });
+    const allSources = restaurantRows.map(row => ({
+      id:String(cell(row[0]) || ""), name:String(cell(row[1]) || ""),
+      website:String(cell(row[2]) || ""), externer_eintrag:String(cell(row[3]) || "")
+    })).filter(item => item.id);
+    const websiteSources = [
+      ...allSources.filter(item => item.website).map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
+      ...allSources.filter(item => item.externer_eintrag).map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
+    ];
+    const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources });
     console.log("Website-Prüfung:", JSON.stringify({
-      restaurants: monitorReport.restaurants, pages: monitorReport.pages,
-      baselines: monitorReport.baselines, proposals: monitorReport.proposals,
-      errors: monitorReport.errors.length
+      restaurants:monitorReport.restaurants, externalEntries:monitorReport.externalEntries,
+      pages:monitorReport.pages, baselines:monitorReport.baselines,
+      proposals:monitorReport.proposals, errors:monitorReport.errors.length
     }));
     for (const issue of monitorReport.errors.slice(0, 30)) {
       console.warn("Website-Prüfung nicht möglich:", JSON.stringify(issue));
