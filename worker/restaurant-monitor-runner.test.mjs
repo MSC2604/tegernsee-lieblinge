@@ -269,4 +269,23 @@ const pdfBehindHtml = await runRestaurantWebsiteMonitor({
 assert.equal(pdfBehindHtml.errors.length, 0);
 assert.equal(pdfBehindHtml.pages, 2);
 
-console.log("Restaurant-Monitor-Lauf: Baseline, Änderungen, Fehler und HTML-Grenzfälle erfolgreich.");
+
+const externalState = makeDb();
+let externalHtml = '<html><body><h1>Almhof Oafach</h1><p>Eintrag im Ortsportal</p></body></html>';
+const externalFetch = async () => new Response(externalHtml, {
+  status: 200, headers: { "Content-Type": "text/html; charset=utf-8" }
+});
+const externalSource = [{ id:41, name:"Almhof Oafach", website:"https://www.tegernsee.com/a-almhof", sourceType:"external" }];
+const externalBaseline = await runRestaurantWebsiteMonitor({ db:externalState.db, restaurants:externalSource, fetchImpl:externalFetch });
+assert.equal(externalBaseline.restaurants, 0);
+assert.equal(externalBaseline.externalEntries, 1);
+assert.equal(externalBaseline.pages, 1);
+assert.equal(externalBaseline.baselines, 1);
+externalHtml = '<html><body><h1>Almhof Oafach</h1><p>Geänderter Portaltext</p><p>Telefon: 08022 999999</p></body></html>';
+const externalChanged = await runRestaurantWebsiteMonitor({ db:externalState.db, restaurants:externalSource, fetchImpl:externalFetch });
+assert.equal(externalChanged.externalEntries, 1);
+assert.equal(externalChanged.proposals, 0, "Externe Portaländerungen dürfen keine Restaurantdaten-Vorschläge erzeugen");
+assert.equal(externalState.proposals.size, 0);
+assert.equal(externalChanged.pages, 1);
+
+console.log("Restaurant-Monitor-Lauf: Baseline, eigene Websites, externe Quellen ohne Datenvorschläge, Fehler und HTML-Grenzfälle erfolgreich.");
