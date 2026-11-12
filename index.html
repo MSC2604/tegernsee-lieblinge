@@ -7365,7 +7365,7 @@ function renderWebsiteMonitorErrors(errors,withoutWebsite){
   container.style.display="block";
   if(items.length){
     const heading=document.createElement("div");
-    heading.textContent=items.length+" Webseiten konnten nicht geprüft werden";
+    heading.textContent=items.length+" Quellen konnten nicht geprüft werden";
     heading.style.cssText="font-size:13px;font-weight:700;color:#8a4b20;margin-bottom:7px";
     container.appendChild(heading);
   }
@@ -7375,7 +7375,7 @@ function renderWebsiteMonitorErrors(errors,withoutWebsite){
     const li=document.createElement("li");
     const name=document.createElement("div");
     name.style.fontWeight="700";
-    name.textContent=item&&item.name?String(item.name):"Unbekannter Restaurant-Eintrag";
+    name.textContent=(item&&item.name?String(item.name):"Unbekannter Restaurant-Eintrag")+(item&&item.sourceType==="external"?" · Externer Eintrag":" · Eigene Website");
     li.appendChild(name);
     if(item&&item.url){
       try{
@@ -7399,7 +7399,7 @@ function renderWebsiteMonitorErrors(errors,withoutWebsite){
   if(items.length)container.appendChild(list);
   if(missing.length){
     const missingHeading=document.createElement("div");
-    missingHeading.textContent=missing.length+" Restaurants ohne hinterlegte Website";
+    missingHeading.textContent=missing.length+" Restaurants ohne eigene Website";
     missingHeading.style.cssText="font-size:13px;font-weight:700;color:#63736a;margin:12px 0 6px";
     container.appendChild(missingHeading);
     const missingList=document.createElement("ul");
