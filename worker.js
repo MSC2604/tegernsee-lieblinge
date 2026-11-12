@@ -1005,6 +1005,13 @@ console.log("Tavily usage account:", {
           if (!/duplicate column name/i.test(String(error?.message || error))) throw error;
         }
       }
+      if (!existingColumns.includes("externer_eintrag")) {
+        try {
+          await turso("ALTER TABLE restaurants ADD COLUMN externer_eintrag TEXT NOT NULL DEFAULT ''");
+        } catch (error) {
+          if (!/duplicate column name/i.test(String(error?.message || error))) throw error;
+        }
+      }
 
       if (request.method === "GET") {
         const url = new URL(request.url);
@@ -1649,14 +1656,14 @@ console.log("Tavily usage account:", {
           const result = await turso(
             `INSERT INTO restaurants (
               name, ort, kategorie, adresse, telefon, website, email,
-              oeffnungszeiten, ruhetag, betriebsferien_start, betriebsferien_ende, notizen, bild, reservierung
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              oeffnungszeiten, ruhetag, betriebsferien_start, betriebsferien_ende, notizen, bild, reservierung, externer_eintrag
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               textArg(r.name), textArg(r.ort), textArg(r.kategorie),
               textArg(r.adresse), textArg(r.telefon), textArg(r.website),
               textArg(r.email), textArg(r.oeffnungszeiten),
               textArg(r.ruhetag), textArg(r.betriebsferien_start), textArg(r.betriebsferien_ende),
-              textArg(r.notizen), textArg(r.bild), textArg(r.reservierung)
+              textArg(r.notizen), textArg(r.bild), textArg(r.reservierung), textArg(r.externer_eintrag)
             ]
           );
 
@@ -1678,14 +1685,14 @@ console.log("Tavily usage account:", {
               name = ?, ort = ?, kategorie = ?, adresse = ?,
               telefon = ?, website = ?, email = ?, oeffnungszeiten = ?,
               ruhetag = ?, betriebsferien_start = ?, betriebsferien_ende = ?,
-              notizen = ?, bild = ?, reservierung = ?
+              notizen = ?, bild = ?, reservierung = ?, externer_eintrag = ?
             WHERE id = ?`,
             [
               textArg(r.name), textArg(r.ort), textArg(r.kategorie),
               textArg(r.adresse), textArg(r.telefon), textArg(r.website),
               textArg(r.email), textArg(r.oeffnungszeiten),
               textArg(r.ruhetag), textArg(r.betriebsferien_start), textArg(r.betriebsferien_ende),
-              textArg(r.notizen), textArg(r.bild), textArg(r.reservierung), integerArg(body.id)
+              textArg(r.notizen), textArg(r.bild), textArg(r.reservierung), textArg(r.externer_eintrag), integerArg(body.id)
             ]
           );
 
