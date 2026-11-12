@@ -1397,6 +1397,45 @@ console.log("Tavily usage account:", {
           }});
         }
 
+        if (body.action === "getRestaurantWebsiteMonitorCoverage") {
+          const runResult = await turso(
+            "SELECT status, started_at, finished_at FROM restaurant_website_monitor_runs WHERE id = 1",
+            [], true
+          );
+          const runRow = runResult?.results?.[0]?.response?.result?.rows?.[0];
+          if (!runRow) return json({ success: true, ready: false, status: "none" });
+          const runStatus = String(rowValue(runRow[0]) || "");
+          const startedAt = String(rowValue(runRow[1]) || "");
+          const finishedAt = String(rowValue(runRow[2]) || "");
+          if (runStatus !== "completed" || !startedAt || !finishedAt) {
+            return json({ success: true, ready: false, status: runStatus });
+          }
+          const coverageResult = await turso(
+            `SELECT r.id, r.name, r.website,
+              COUNT(CASE WHEN s.checked_at >= ? AND s.checked_at <= ? THEN s.page_url END)
+            FROM restaurants r
+            LEFT JOIN restaurant_site_snapshots s
+              ON CAST(s.restaurant_id AS TEXT) = CAST(r.id AS TEXT)
+            WHERE TRIM(COALESCE(r.website, '')) <> ''
+            GROUP BY r.id, r.name, r.website
+            ORDER BY r.name COLLATE NOCASE`,
+            [textArg(startedAt), textArg(finishedAt)], true
+          );
+          const rows = coverageResult?.results?.[0]?.response?.result?.rows || [];
+          const items = rows.map(row => ({
+            restaurantId: String(rowValue(row[0]) || ""),
+            name: String(rowValue(row[1]) || ""),
+            website: String(rowValue(row[2]) || ""),
+            snapshotPages: Number(rowValue(row[3]) || 0)
+          }));
+          const missing = items.filter(item => item.snapshotPages === 0);
+          return json({
+            success: true, ready: true, status: runStatus, startedAt, finishedAt,
+            total: items.length, covered: items.length - missing.length,
+            missing, items
+          });
+        }
+
         if (body.action === "getRestaurantWebsiteChanges") {
           await turso(`CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
