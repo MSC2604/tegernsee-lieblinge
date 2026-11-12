@@ -6655,29 +6655,15 @@ function showManualRestaurantReview(){
  const summary=document.getElementById("manualRestaurantReviewSummary");
  if(!overlay||!list||!summary)return;
  list.replaceChildren();
+ summary.textContent="";
+ summary.style.display="none";
  const done=getManualRestaurantReviewDone();
- const doneCount=MANUAL_RESTAURANT_REVIEW_ITEMS.filter((item,index)=>!!done[index]).length;
- const openCount=MANUAL_RESTAURANT_REVIEW_ITEMS.length-doneCount;
- summary.textContent=doneCount+" von "+MANUAL_RESTAURANT_REVIEW_ITEMS.length+" erledigt · "+openCount+" offen · "+MANUAL_RESTAURANT_REVIEW_ITEMS.filter(item=>item.url).length+" mit Quelle";
- const toggle=document.createElement("button");
- toggle.type="button";
- toggle.className="manual-review-action is-done";
- toggle.style.margin="0 0 12px";
- toggle.textContent=manualRestaurantReviewShowDone?"Erledigte ausblenden ("+doneCount+")":"Erledigte anzeigen ("+doneCount+")";
- toggle.disabled=doneCount===0;
- toggle.addEventListener("click",()=>{manualRestaurantReviewShowDone=!manualRestaurantReviewShowDone;showManualRestaurantReview();});
- list.appendChild(toggle);
- if(openCount===0&&!manualRestaurantReviewShowDone){
-  const note=document.createElement("p");
-  note.className="website-change-meta";
-  note.style.cssText="padding:12px;border:1px solid #dce7e1;border-radius:12px;background:#f5f8f5;color:#355447;line-height:1.5";
-  note.textContent="Alle Punkte sind als erledigt bestätigt. Du kannst sie bei Bedarf über „Erledigte anzeigen“ einblenden und dort mit „Wieder öffnen“ zurücksetzen.";
-  list.appendChild(note);
- }
+ let openCount=0;
  MANUAL_RESTAURANT_REVIEW_ITEMS.forEach((item,index)=>{
   const isDone=!!done[index];
-  if(isDone&&!manualRestaurantReviewShowDone)return;
-  const card=document.createElement("section");card.className="website-change-card"+(isDone?" manual-review-done":"");
+  if(isDone)return;
+  openCount++;
+  const card=document.createElement("section");card.className="website-change-card";
   const heading=document.createElement("h3");heading.textContent=(index+1)+". "+item.name;card.appendChild(heading);
   const meta=document.createElement("div");meta.className="website-change-meta";meta.textContent="Betroffenes Feld: "+item.field;card.appendChild(meta);
   const values=document.createElement("div");values.className="website-change-values";
@@ -6691,10 +6677,16 @@ function showManualRestaurantReview(){
   const reason=document.createElement("p");reason.style.cssText="margin:10px 0 0;font-size:13px;line-height:1.45;color:#45594e";reason.textContent=item.reason;card.appendChild(reason);
   const source=document.createElement("div");source.className="website-change-meta";source.style.marginTop="9px";source.textContent="Quelle: "+item.source;card.appendChild(source);
   if(item.url){const link=document.createElement("a");link.className="website-change-source";link.href=item.url;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Quelle öffnen";card.appendChild(link);}
-  if(isDone){const label=document.createElement("div");label.className="manual-review-done-label";label.textContent="✓ Erledigt bestätigt";card.appendChild(label);}
-  const action=document.createElement("button");action.type="button";action.className="manual-review-action"+(isDone?" is-done":"");action.textContent=isDone?"↶ Wieder öffnen":"✓ Als erledigt markieren";action.addEventListener("click",()=>toggleManualRestaurantReviewItem(index));card.appendChild(action);
+  const action=document.createElement("button");action.type="button";action.className="manual-review-action";action.textContent="✓ Als erledigt markieren";action.addEventListener("click",()=>toggleManualRestaurantReviewItem(index));card.appendChild(action);
   list.appendChild(card);
  });
+ if(openCount===0){
+  const note=document.createElement("p");
+  note.className="website-change-meta";
+  note.style.cssText="padding:12px;border:1px solid #dce7e1;border-radius:12px;background:#f5f8f5;color:#355447;line-height:1.5";
+  note.textContent="Zurzeit gibt es keine offenen Datenabweichungen.";
+  list.appendChild(note);
+ }
  overlay.style.display="flex";
 }
 function closeManualRestaurantReview(){
