@@ -4579,10 +4579,10 @@ function render(){
               ` : ""}
               <div class="tile-payment" aria-label="Zahlungsmöglichkeiten">
                 <div class="tile-payment-heading">Zahlungsmöglichkeiten</div>
-                <div class="tile-payment-list" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;width:100%;min-width:0;">
-                  <span class="tile-payment-chip" style="display:flex;align-items:center;justify-content:center;text-align:center;width:max-content;min-width:68px;justify-self:start;padding:6px 9px;white-space:nowrap;font-size:10px;letter-spacing:-.04em;">Bargeld</span>
+                <div class="tile-payment-list" style="display:flex;flex-wrap:nowrap;align-items:center;gap:6px;width:100%;min-width:0;">
+                  <span class="tile-payment-chip" style="display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:68px;padding:6px 9px;white-space:nowrap;font-size:10px;letter-spacing:-.04em;">Bargeld</span>
                   ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).map(type => `<span class="tile-payment-chip" style="display:flex;align-items:center;justify-content:center;min-width:0;padding:6px 2px;white-space:nowrap;font-size:10px;letter-spacing:-.04em;">${({girocard:"Girocard",debitkarte:"Debitkarte",kreditkarte:"Kreditkarte"})[type]}</span>`).join("")}
-                  ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).length === 0 ? '<span class="tile-payment-chip tile-payment-none" style="grid-column:1/-1;justify-content:flex-start;">Keine Kartenzahlung möglich</span>' : ""}
+                  ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).length === 0 ? '<span class="tile-payment-chip tile-payment-none" style="display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:0;padding:6px 9px;white-space:nowrap;font-size:10px;letter-spacing:-.04em;">Keine Kartenzahlung möglich</span>' : ""}
                 </div>
               </div>
             </div>
