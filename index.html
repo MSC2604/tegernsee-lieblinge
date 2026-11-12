@@ -6648,8 +6648,30 @@ function toggleManualRestaurantReviewItem(index){
  showManualRestaurantReview();
 }
 let manualRestaurantReviewShowDone=false;
-function showManualRestaurantReview(){
+async function markAutomaticRestaurantReviewItem(id,status,password,button){
+ if(button)button.disabled=true;
+ try{
+  const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"reviewRestaurantWebsiteChange",id,status})});
+  let data={};try{data=await response.json();}catch(_){}
+  if(!response.ok||!data.success)throw new Error(data.error||"Der Prüfpunkt konnte nicht gespeichert werden.");
+  const card=button&&button.closest(".website-change-card");
+  if(card)card.remove();
+  const list=document.getElementById("manualRestaurantReviewList");
+  if(list&&!list.querySelector(".website-change-card")){
+   const note=document.createElement("p");note.className="website-change-meta";
+   note.style.cssText="padding:12px;border:1px solid #dce7e1;border-radius:12px;background:#f5f8f5;color:#355447;line-height:1.5";
+   note.textContent="Alle automatisch erkannten Webseiten-Hinweise wurden geprüft.";
+   list.appendChild(note);
+  }
+ }catch(error){
+  alert(error.message||"Speichern fehlgeschlagen.");
+  if(button)button.disabled=false;
+ }
+}
+async function showManualRestaurantReview(){
  closeAppMenu();
+ const password=await askAdminPassword("Bitte Admin-Passwort eingeben, um neue erkannte Datenabweichungen zu laden.");
+ if(password===null||!password)return;
  const overlay=document.getElementById("manualRestaurantReviewOverlay");
  const list=document.getElementById("manualRestaurantReviewList");
  const summary=document.getElementById("manualRestaurantReviewSummary");
@@ -6657,11 +6679,11 @@ function showManualRestaurantReview(){
  list.replaceChildren();
  summary.textContent="";
  summary.style.display="none";
+ overlay.style.display="flex";
  const done=getManualRestaurantReviewDone();
  let openCount=0;
  MANUAL_RESTAURANT_REVIEW_ITEMS.forEach((item,index)=>{
-  const isDone=!!done[index];
-  if(isDone)return;
+  if(done[index])return;
   openCount++;
   const card=document.createElement("section");card.className="website-change-card";
   const heading=document.createElement("h3");heading.textContent=(index+1)+". "+item.name;card.appendChild(heading);
@@ -6680,14 +6702,64 @@ function showManualRestaurantReview(){
   const action=document.createElement("button");action.type="button";action.className="manual-review-action";action.textContent="✓ Als erledigt markieren";action.addEventListener("click",()=>toggleManualRestaurantReviewItem(index));card.appendChild(action);
   list.appendChild(card);
  });
+ const automaticHeading=document.createElement("h3");
+ automaticHeading.textContent="Neue Hinweise aus den Webseitenprüfungen";
+ automaticHeading.style.cssText="margin:22px 0 8px;color:#244b3d;font-size:16px";
+ list.appendChild(automaticHeading);
+ const loading=document.createElement("p");loading.className="website-change-meta";loading.textContent="Neue Hinweise werden geladen …";list.appendChild(loading);
+ try{
+  const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"getRestaurantWebsiteChanges"})});
+  let data={};try{data=await response.json();}catch(_){}
+  if(!response.ok||!data.success)throw new Error(data.error||"Neue Webseiten-Hinweise konnten nicht geladen werden.");
+  loading.remove();
+  const items=Array.isArray(data.items)?data.items:[];
+  if(items.length){
+   items.forEach(item=>{
+    openCount++;
+    const card=document.createElement("section");card.className="website-change-card";
+    const heading=document.createElement("h3");heading.textContent=(item.restaurantName||"Restaurant")+" · "+websiteChangeFieldLabel(item.field);card.appendChild(heading);
+    const meta=document.createElement("div");meta.className="website-change-meta";
+    const date=item.detectedAt?new Date(item.detectedAt):null;
+    meta.textContent="Automatisch auf der Website erkannt"+(date&&!Number.isNaN(date.getTime())?" · "+date.toLocaleString("de-DE"):"");
+    card.appendChild(meta);
+    const values=document.createElement("div");values.className="website-change-values";
+    for(const [label,value] of [["Bisheriger Stand",websiteReadableValue(item.field,item.oldValue)],["Neuer Website-Stand",websiteReadableValue(item.field,item.newValue)]]){
+     const cell=document.createElement("div");cell.className="website-change-value";
+     const strong=document.createElement("strong");strong.textContent=label;cell.appendChild(strong);
+     cell.appendChild(document.createTextNode(value));values.appendChild(cell);
+    }
+    card.appendChild(values);
+    const note=document.createElement("p");note.style.cssText="margin:10px 0 0;font-size:12px;color:#66766d";
+    note.textContent="Dies ist nur ein Änderungsvorschlag. Deine gespeicherten Restaurantdaten werden nicht verändert.";
+    card.appendChild(note);
+    if(/^https?:\\/\\//i.test(item.sourceUrl||"")){
+     const link=document.createElement("a");link.className="website-change-source";link.href=item.sourceUrl;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Offizielle Website ansehen";card.appendChild(link);
+    }
+    const actions=document.createElement("div");actions.className="website-change-actions";
+    const reviewed=document.createElement("button");reviewed.type="button";reviewed.textContent="Als geprüft markieren";
+    reviewed.addEventListener("click",()=>markAutomaticRestaurantReviewItem(item.id,"accepted",password,reviewed));
+    const ignored=document.createElement("button");ignored.type="button";ignored.className="secondary";ignored.textContent="Nicht relevant";
+    ignored.addEventListener("click",()=>markAutomaticRestaurantReviewItem(item.id,"rejected",password,ignored));
+    actions.append(reviewed,ignored);card.appendChild(actions);
+    list.appendChild(card);
+   });
+  }else{
+   const note=document.createElement("p");note.className="website-change-meta";
+   note.style.cssText="padding:12px;border:1px solid #dce7e1;border-radius:12px;background:#f5f8f5;color:#355447;line-height:1.5";
+   note.textContent="Zurzeit gibt es keine neuen offenen Hinweise aus den Webseitenprüfungen.";
+   list.appendChild(note);
+  }
+ }catch(error){
+  loading.textContent=error.message||"Neue Webseiten-Hinweise konnten nicht geladen werden.";
+  loading.style.color="#9a4b38";
+ }
  if(openCount===0){
   const note=document.createElement("p");
   note.className="website-change-meta";
   note.style.cssText="padding:12px;border:1px solid #dce7e1;border-radius:12px;background:#f5f8f5;color:#355447;line-height:1.5";
   note.textContent="Zurzeit gibt es keine offenen Datenabweichungen.";
-  list.appendChild(note);
+  list.insertBefore(note,automaticHeading);
  }
- overlay.style.display="flex";
 }
 function closeManualRestaurantReview(){
  const overlay=document.getElementById("manualRestaurantReviewOverlay");
