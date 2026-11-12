@@ -1,4 +1,4 @@
-// Isolierter Lauf der offiziellen Website-Prüfung.
+// Isolierter Lauf für eigene Websites und getrennte externe Portalquellen.
 // Wird erst nach ausdrücklicher Freigabe in den Live-Worker eingebunden.
 import {
   extractOfficialPageLinks,
