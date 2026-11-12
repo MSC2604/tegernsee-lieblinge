@@ -187,6 +187,7 @@ export async function runRestaurantWebsiteMonitor({
     const processPage = async (pageUrl, knownHtml, fetchError = null) => {
       let html = knownHtml;
       let effectiveUrl = pageUrl;
+      let snapshotUrl = pageUrl;
       try {
         if (fetchError) throw fetchError;
         if (html == null) html = await fetchOfficialHtml(pageUrl, root.origin, fetchImpl);
@@ -199,6 +200,7 @@ export async function runRestaurantWebsiteMonitor({
           try {
             html = await fetchOfficialHtml(fallbackUrl.href, root.origin, fetchImpl);
             effectiveUrl = fallbackUrl.href;
+            snapshotUrl = fallbackUrl.href;
           } catch { /* report the original endpoint failure below */ }
         }
         if (html == null) {
@@ -223,7 +225,7 @@ export async function runRestaurantWebsiteMonitor({
       const externalLinks = extractRelevantExternalLinks(html, effectiveUrl);
       if (externalLinks.length) found.externe_links = externalLinks.join("\n");
       const hash = await fingerprintPage(html, found);
-      const snapshotUrl = pageUrl; // Keep the requested source URL stable for coverage, even when the server redirects.
+      // Keep the configured source URL stable for redirect coverage; explicit same-host contact fallback uses its actual HTML URL.
       const oldResult = await db("SELECT content_hash, extracted_data_json, content_text FROM restaurant_site_snapshots WHERE restaurant_id = ? AND page_url = ?", [textArg(id), textArg(snapshotUrl)], true);
       const oldRow = oldResult?.results?.[0]?.response?.result?.rows?.[0];
       const oldHash = oldRow ? String(cell(oldRow[0]) || "") : "";
