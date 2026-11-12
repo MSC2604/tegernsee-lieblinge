@@ -2343,6 +2343,31 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 #cards .card .tile-payment-list{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
 #cards .card .tile-payment-chip{display:inline-flex;align-items:center;min-height:27px;padding:5px 9px;border:1px solid #dce5da;border-radius:999px;background:#f4f7f1;color:#456251;font-size:11px;font-weight:650;line-height:1.2;white-space:normal}
 @media(max-width:520px){#cards .card .tile-hours{padding:14px 15px 16px;gap:9px}#cards .card .tile-hours-row{font-size:13px;line-height:1.5}#cards .card .tile-payment{padding-top:11px}#cards .card .tile-payment-chip{font-size:11px;padding:5px 8px}}
+/* Premium-Feinschliff – klare Hierarchie, ruhige Flächen und gut lesbare Details */
+#cards .card{overflow:hidden;border:1px solid #e8e2d7;box-shadow:0 10px 30px rgba(34,57,45,.075)}
+#cards .card .cardtop{background:#e9ede5}
+#cards .card .icon img{display:block}
+#cards .card .cardmain{padding:20px 21px 16px;background:linear-gradient(180deg,#f2f1e9 0%,#eeeee7 100%)}
+#cards .card .cardname{font-size:26px;line-height:1.16;letter-spacing:-.45px;color:#1f4033}
+#cards .card .place{margin-top:8px;color:#77847a;font-size:13px;font-weight:650;letter-spacing:.025em}
+#cards .card .status{display:inline-flex;align-items:center;gap:8px;min-height:31px;margin-top:13px;padding:6px 12px;border:1px solid transparent;border-radius:999px;font-size:12px;font-weight:750;letter-spacing:.01em}
+#cards .card .status.closed{color:#994b45;background:#f8eae7;border-color:#f0d9d4}
+#cards .card .status.closed:before{content:"";width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#c75b53;box-shadow:0 0 0 3px rgba(199,91,83,.12)}
+#cards .card .status.open{color:#286447;background:#e9f2e9;border-color:#dbe9dc}
+#cards .card .status.open:before{content:"";width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#4e9168}
+#cards .card .tile-hours{gap:11px;padding:18px 21px 19px;background:#fffdf8}
+#cards .card .tile-hours-heading{margin-bottom:2px;color:#718075;font-size:10px;letter-spacing:.15em}
+#cards .card .tile-hours-row{gap:11px;color:#4e6256;font-size:14px;line-height:1.55}
+#cards .card .tile-hours-icon{flex-basis:18px;width:18px;color:#7d9584;font-size:14px}
+#cards .card .tile-hours-rest .tile-hours-text{color:#59695e;font-weight:550}
+#cards .card .tile-hours-holiday{padding:10px 12px;border:1px solid #f0e0da;border-radius:12px;background:#fbf2ee}
+#cards .card .tile-hours-holiday .tile-hours-icon{color:#a76a5e}
+#cards .card .tile-hours-holiday .tile-hours-text{color:#945b50;font-weight:700}
+#cards .card .tile-payment{gap:9px;margin-top:4px;padding-top:14px;border-top:1px solid #eee9df}
+#cards .card .tile-payment-heading{color:#78867b;font-size:10px;letter-spacing:.14em}
+#cards .card .tile-payment-chip{min-height:29px;padding:6px 11px;border-color:#dce5d9;background:#f3f6ef;color:#456251;font-size:11.5px;font-weight:700}
+#cards .card .fav{border:1px solid rgba(255,253,248,.9);background:rgba(255,253,248,.96);color:#315f4d;box-shadow:0 5px 16px rgba(20,35,28,.16)}
+@media(max-width:520px){#cards .card .cardmain{padding:17px 16px 14px}#cards .card .cardname{font-size:24px}#cards .card .tile-hours{padding:16px 16px 17px;gap:10px}#cards .card .tile-hours-row{font-size:13.5px}#cards .card .tile-payment-chip{font-size:11px;padding:6px 9px}}
 </style>
 </head>
 
@@ -3782,7 +3807,7 @@ function getOpeningStatus(place, referenceDate){
 
   // Betriebsferien haben immer Vorrang vor den regulären Öffnungszeiten.
   if(isBetriebsferienActive(place.betriebsferien_start, place.betriebsferien_ende)){
-    return {type:"closed",text:"🔴 Betriebsferien"};
+    return {type:"closed",text:"Betriebsferien"};
   }
 
   const hours = cleanValue(place.oeffnungszeiten);
