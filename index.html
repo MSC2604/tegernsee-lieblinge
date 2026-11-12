@@ -2360,6 +2360,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     <button class="app-menu-item" onclick="showIncompleteEntries()"><span>📋</span><span>Unvollständige Einträge <span id="incompleteMenuCount" style="font-size:12px;color:#805716;width:auto">…</span></span></button>
     <button class="app-menu-item" type="button" onclick="showRestaurantWebsiteChanges()"><span>🌐</span><span>Änderungen auf Restaurant-Webseiten</span></button>
     <button class="app-menu-item" type="button" onclick="closeAppMenu();exportRestaurantAuditCsv()"><span>📄</span><span>Prüfliste aller Restaurants exportieren</span></button>
+    <button class="app-menu-item" type="button" onclick="showManualRestaurantReview()"><span>🔎</span><span>Erkannte Datenabweichungen prüfen</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();focusSearch()"><span>🔎</span><span>Restaurants suchen</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();showFavorites()"><span>♥</span><span>Meine Favoriten</span></button>
     <button class="app-menu-item" type="button" onclick="shareRestaurantApp()"><span>↗️</span><span>App teilen</span></button>
@@ -2464,6 +2465,19 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
   <p class="incomplete-summary" id="incompleteSummary">Die Daten werden geprüft …</p>
   <div id="incompleteList"></div>
 </main>
+
+<div class="website-changes-overlay" id="manualRestaurantReviewOverlay" onclick="if(event.target===this)closeManualRestaurantReview()">
+  <section class="website-changes-panel" role="dialog" aria-modal="true" aria-labelledby="manualRestaurantReviewTitle">
+    <div class="website-changes-head">
+      <h2 id="manualRestaurantReviewTitle">Erkannte Datenabweichungen</h2>
+      <button class="website-changes-close" type="button" aria-label="Schließen" onclick="closeManualRestaurantReview()">×</button>
+    </div>
+    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Diese Liste vergleicht den exportierten App-Stand mit öffentlich auffindbaren Angaben. Sie ist ausschließlich eine Entscheidungshilfe. Es wird nichts in deinen Restaurant-Einträgen gespeichert oder automatisch geändert.</p>
+    <div class="website-change-summary" id="manualRestaurantReviewSummary">Die Prüfliste wird vorbereitet …</div>
+    <div id="manualRestaurantReviewList"></div>
+    <p style="margin:14px 0 0;color:#63736a;font-size:12px">Bitte prüfe jede Angabe selbst. Saisonale Öffnungszeiten und kurzfristige Änderungen können abweichen. Die restlichen Restaurant-Einträge sind damit nicht automatisch als vollständig verifiziert bestätigt.</p>
+  </section>
+</div>
 
 <main
   id="detail"
@@ -6602,6 +6616,50 @@ function drawMapEntries(){
  const visible=mapEntries.filter(entry=>activeMapCategory==='Alle'||mapCategoryOf(entry.place)===activeMapCategory);
  document.getElementById('mapStatus').textContent=mapEntries.length+' von '+restaurants.length+' Standorten gefunden · '+visible.length+' auf der Karte angezeigt. Tippe auf einen Namen oder Punkt für Details und Navigation.';
 }
+const MANUAL_RESTAURANT_REVIEW_ITEMS = [
+ {name:"Moni-Alm",field:"Adresse",current:"Sutten 42, 82700 Rottach-Egern",proposal:"Sutten 42, 83700 Rottach-Egern",reason:"Die Postleitzahl im Export weicht von der Anschrift auf der Website ab.",source:"Offizielle Website der Moni-Alm",url:"https://www.moni-alm.de/"},
+ {name:"Aueralm",field:"Betriebsferien",current:"Kein Zeitraum im App-Eintrag hinterlegt",proposal:"09.11.2026 bis einschließlich 24.11.2026",reason:"Die offizielle Website nennt für diesen Zeitraum Betriebsruhe.",source:"Offizielle Website der Aueralm",url:"https://aueralm.de/"},
+ {name:"Gasthof zum Hagn",field:"Öffnungszeiten / Ruhetage",current:"Montag 10:00–23:00 Uhr; Dienstag Ruhetag",proposal:"Mittwoch–Sonntag 10:00–23:00 Uhr; Montag und Dienstag Ruhetag",reason:"Die offiziellen Angaben nennen Mittwoch bis Sonntag als Öffnungstage.",source:"Offizielle Website des Gasthofs",url:"https://www.gasthofhagn.de/"},
+ {name:"Ratskeller Schliersee",field:"Öffnungszeiten",current:"Täglich 11:00–23:00 Uhr",proposal:"Täglich 11:00–22:00 Uhr; warme Küche 11:30–21:00 Uhr",reason:"Die offizielle Website nennt täglich 11:00–22:00 Uhr.",source:"Offizielle Website des Ratskellers",url:"https://www.ratskeller-schliersee.de/"},
+ {name:"Mesner Gütl",field:"E-Mail-Adresse",current:"info@mesnerguetl.de/",proposal:"info@mesnerguetl.de",reason:"Im App-Eintrag steht am Ende der E-Mail-Adresse ein überflüssiger Schrägstrich.",source:"Offizielles Impressum",url:"https://www.mesnerguetl.de/impressum"},
+ {name:"Almhof Oafach",field:"E-Mail-Adresse",current:"Kein Eintrag",proposal:"almhof.enterrottach@yahoo.com",reason:"Die regionale Tourismus-Seite führt diese Kontaktadresse. Bitte vor Übernahme kurz bestätigen.",source:"Tegernsee – offizieller Tourismuseintrag",url:"https://www.tegernsee.com/a-almhof"},
+ {name:"Gasthof Herzog Maximilian",field:"Adresse",current:"Tegernseer Straße 3 (Postleitzahl fehlt)",proposal:"Tegernseer Straße 3, 83703 Gmund am Tegernsee",reason:"Die offizielle Website nennt die vollständige Anschrift.",source:"Offizielle Website des Gasthofs",url:"https://www.gasthof-maximilian.de/"},
+ {name:"Alpenwildpark",field:"Adresse",current:"Wallberstraße 30 (PLZ und Ort fehlen)",proposal:"Bitte Postleitzahl und Ort ergänzen – vor Übernahme prüfen",reason:"Der Export enthält nur die Straße. Eine vollständige Anschrift sollte anhand des Betreibers bestätigt werden.",source:"Noch keine ausreichend bestätigte vollständige Anschrift",url:""},
+ {name:"Rainer Stuben (Rainerstüberl)",field:"Adresse",current:"Rainerweg 10 (PLZ und Ort fehlen)",proposal:"Bitte Postleitzahl und Ort ergänzen – vor Übernahme prüfen",reason:"Der Export enthält nur Straße und Hausnummer. Kein ungeprüfter Ergänzungsvorschlag.",source:"Noch keine ausreichend bestätigte vollständige Anschrift",url:""},
+ {name:"Hofhaus am See",field:"Adresse",current:"Mesnergasse 2, • 83727 Schliersee",proposal:"Mesnergasse 2, 83727 Schliersee",reason:"Im Export steht vor der Postleitzahl ein überflüssiges Aufzählungszeichen.",source:"Formale Bereinigung aus dem Export; Anschrift bitte kurz gegenprüfen",url:""}
+];
+function showManualRestaurantReview(){
+ closeAppMenu();
+ const overlay=document.getElementById("manualRestaurantReviewOverlay");
+ const list=document.getElementById("manualRestaurantReviewList");
+ const summary=document.getElementById("manualRestaurantReviewSummary");
+ if(!overlay||!list||!summary)return;
+ list.replaceChildren();
+ summary.textContent=MANUAL_RESTAURANT_REVIEW_ITEMS.length+" Prüfpunkte · davon "+MANUAL_RESTAURANT_REVIEW_ITEMS.filter(item=>item.url).length+" mit Quelle";
+ MANUAL_RESTAURANT_REVIEW_ITEMS.forEach((item,index)=>{
+  const card=document.createElement("section");card.className="website-change-card";
+  const heading=document.createElement("h3");heading.textContent=(index+1)+". "+item.name;card.appendChild(heading);
+  const meta=document.createElement("div");meta.className="website-change-meta";meta.textContent="Betroffenes Feld: "+item.field;card.appendChild(meta);
+  const values=document.createElement("div");values.className="website-change-values";
+  const current=document.createElement("div");current.className="website-change-value";
+  const currentLabel=document.createElement("strong");currentLabel.textContent="Aktueller App-Stand";current.appendChild(currentLabel);
+  current.appendChild(document.createTextNode(item.current));
+  const proposal=document.createElement("div");proposal.className="website-change-value";
+  const proposalLabel=document.createElement("strong");proposalLabel.textContent="Vorschlag zur Prüfung";proposal.appendChild(proposalLabel);
+  proposal.appendChild(document.createTextNode(item.proposal));
+  values.append(current,proposal);card.appendChild(values);
+  const reason=document.createElement("p");reason.style.cssText="margin:10px 0 0;font-size:13px;line-height:1.45;color:#45594e";reason.textContent=item.reason;card.appendChild(reason);
+  const source=document.createElement("div");source.className="website-change-meta";source.style.marginTop="9px";source.textContent="Quelle: "+item.source;card.appendChild(source);
+  if(item.url){const link=document.createElement("a");link.className="website-change-source";link.href=item.url;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Quelle öffnen";card.appendChild(link);}
+  list.appendChild(card);
+ });
+ overlay.style.display="flex";
+}
+function closeManualRestaurantReview(){
+ const overlay=document.getElementById("manualRestaurantReviewOverlay");
+ if(overlay)overlay.style.display="none";
+}
+
 function exportRestaurantAuditCsv(){
  if(!Array.isArray(restaurants)||!restaurants.length){
   alert('Bitte zuerst „Daten aktualisieren“ und warten, bis die Restaurantdaten geladen sind.');
