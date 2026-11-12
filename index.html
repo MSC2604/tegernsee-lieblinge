@@ -7671,6 +7671,35 @@ async function loadRestaurantWebsiteMonitorCoverage(password){
   if(!response.ok||!data.success)throw new Error(data.error||"Baseline-Abdeckung konnte nicht geladen werden.");
   renderWebsiteMonitorCoverage(data);
 }
+function showWebsiteMonitorCopyableError(status,message){
+  if(!status)return;
+  status.replaceChildren();
+  const heading=document.createElement("div");
+  heading.textContent="Test-E-Mail fehlgeschlagen. Du kannst die Fehlermeldung unten markieren oder kopieren:";
+  heading.style.cssText="margin:0 0 7px;color:#9b2c2c;font-weight:700";
+  const field=document.createElement("textarea");
+  field.id="websiteMonitorErrorText";
+  field.readOnly=true;
+  field.value=String(message||"Unbekannter Fehler");
+  field.rows=4;
+  field.setAttribute("aria-label","Kopierbare Fehlermeldung");
+  field.style.cssText="display:block;box-sizing:border-box;width:100%;padding:10px;border:1px solid #d6aaa5;border-radius:8px;background:#fff;color:#292929;font:12px/1.45 monospace;white-space:pre-wrap;user-select:text";
+  const copy=document.createElement("button");
+  copy.type="button";
+  copy.textContent="Fehlermeldung kopieren";
+  copy.style.cssText="margin-top:8px;padding:9px 13px;border:1px solid #cbded5;border-radius:9px;background:#f4f8f5;color:#2d6a56;font-weight:700";
+  copy.onclick=async()=>{
+    try{
+      if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(field.value);
+      else{field.focus();field.select();if(!document.execCommand("copy"))throw new Error("Kopieren nicht verfügbar");}
+      copy.textContent="Kopiert ✓";
+    }catch(_){
+      field.focus();field.select();
+      copy.textContent="Text ist markiert – bitte lange drücken und Kopieren wählen";
+    }
+  };
+  status.append(heading,field,copy);
+}
 async function sendWebsiteMonitorTestEmail(){
   const button=document.getElementById("testWebsiteMonitorEmail");
   const status=document.getElementById("websiteMonitorRunStatus");
@@ -7689,8 +7718,7 @@ async function sendWebsiteMonitorTestEmail(){
     if(status)status.textContent="Brevo hat die Test-E-Mail an "+data.recipient+" zum Versand angenommen. Bitte auch den Spam-Ordner prüfen.";
     alert("Der E-Mail-Dienst hat die Testnachricht angenommen. Bitte prüfe jetzt deinen Posteingang und gegebenenfalls den Spam-Ordner.");
   }catch(error){
-    if(status)status.textContent=error.message||"Testversand fehlgeschlagen.";
-    alert("Test-E-Mail fehlgeschlagen: "+(error.message||"Unbekannter Fehler"));
+    showWebsiteMonitorCopyableError(status,error.message||"Unbekannter Fehler");
   }finally{
     if(button)button.disabled=false;
   }
