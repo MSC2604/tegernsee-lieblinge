@@ -2942,6 +2942,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     </div>
     <p style="margin:0;color:#63736a;font-size:13px">Hier siehst du nur inhaltliche Änderungen. Technische Unterschiede werden ausgeblendet. Deine Restaurant-Einträge werden niemals automatisch geändert.</p>
     <button type="button" id="startWebsiteMonitor" onclick="startRestaurantWebsiteMonitor()" style="margin:14px 0;padding:11px 16px;border:0;border-radius:10px;background:#2d6a56;color:#fff;font-weight:700;cursor:pointer">Jetzt Webseiten prüfen</button>
+    <button type="button" id="testWebsiteMonitorEmail" onclick="sendWebsiteMonitorTestEmail()" style="margin:0 0 14px 8px;padding:11px 16px;border:1px solid #cbded5;border-radius:10px;background:#f4f8f5;color:#2d6a56;font-weight:700;cursor:pointer">Test-E-Mail senden</button>
     <div id="websiteMonitorRunStatus" role="status" aria-live="polite" style="margin:0 0 8px;color:#63736a;font-size:13px"></div>
     <div id="websiteMonitorProgress" style="display:none;margin:0 0 14px;padding:12px;border:1px solid #dce7e0;border-radius:12px;background:#f7faf8">
       <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700;color:#294d3e"><span id="websiteMonitorProgressLabel">Prüfung läuft …</span><span id="websiteMonitorProgressPercent">0 %</span></div>
@@ -7669,6 +7670,30 @@ async function loadRestaurantWebsiteMonitorCoverage(password){
   let data={};try{data=await response.json();}catch(_){}
   if(!response.ok||!data.success)throw new Error(data.error||"Baseline-Abdeckung konnte nicht geladen werden.");
   renderWebsiteMonitorCoverage(data);
+}
+async function sendWebsiteMonitorTestEmail(){
+  const button=document.getElementById("testWebsiteMonitorEmail");
+  const status=document.getElementById("websiteMonitorRunStatus");
+  const password=await askAdminPassword("Bitte Admin-Passwort eingeben, um eine Test-E-Mail zu senden.");
+  if(password===null||!password)return;
+  if(button)button.disabled=true;
+  if(status)status.textContent="Test-E-Mail wird an die hinterlegte Empfängeradresse gesendet …";
+  try{
+    const response=await fetch(API_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},
+      body:JSON.stringify({action:"sendRestaurantWebsiteTestEmail"})
+    });
+    let data={};try{data=await response.json();}catch(_){}
+    if(!response.ok||!data.success)throw new Error(data.error||"Test-E-Mail konnte nicht versendet werden.");
+    if(status)status.textContent="Brevo hat die Test-E-Mail an "+data.recipient+" zum Versand angenommen. Bitte auch den Spam-Ordner prüfen.";
+    alert("Der E-Mail-Dienst hat die Testnachricht angenommen. Bitte prüfe jetzt deinen Posteingang und gegebenenfalls den Spam-Ordner.");
+  }catch(error){
+    if(status)status.textContent=error.message||"Testversand fehlgeschlagen.";
+    alert("Test-E-Mail fehlgeschlagen: "+(error.message||"Unbekannter Fehler"));
+  }finally{
+    if(button)button.disabled=false;
+  }
 }
 async function startRestaurantWebsiteMonitor(authenticatedPassword){
   const button=document.getElementById("startWebsiteMonitor");
