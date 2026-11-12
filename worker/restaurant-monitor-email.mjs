@@ -1,5 +1,5 @@
 // Optionaler täglicher E-Mail-Sammelhinweis über Brevo.
-// Ohne die drei Cloudflare-Variablen wird nichts versendet.
+// Ohne Brevo-API-Schlüssel und verifizierte Absenderadresse wird nichts versendet.
 function arg(value) {
   return { type: "text", value: value == null ? "" : String(value) };
 }
