@@ -6609,7 +6609,7 @@ function exportMapCoordinates(){
   const lat=Number(point.lat),lon=Number(point.lon);
   rows.push([place.name||'',place.adresse||'',place.ort||'',lat.toFixed(7),lon.toFixed(7),'https://www.openstreetmap.org/?mlat='+lat+'&mlon='+lon+'#map=17/'+lat+'/'+lon]);
  });
- const csv='\\uFEFF'+rows.map(row=>row.map(quote).join(';')).join('\\r\\n');
+ const csv='\uFEFF'+rows.map(row=>row.map(quote).join(';')).join('\r\n');
  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
  const url=URL.createObjectURL(blob);
  const link=document.createElement('a');link.href=url;link.download='tegernsee-kartenkoordinaten.csv';
