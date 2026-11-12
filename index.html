@@ -7154,7 +7154,7 @@ function renderWebsiteChanges(items,password){
       const span=document.createElement("span");span.textContent=value||"Keine Angabe";cell.appendChild(span);values.appendChild(cell);
     }
     card.appendChild(values);
-    if(/^https?:\\/\\//i.test(item.sourceUrl||"")){
+    if(/^https?:\/\//i.test(item.sourceUrl||"")){
       const source=document.createElement("a");source.className="website-change-source";source.href=item.sourceUrl;source.target="_blank";source.rel="noopener noreferrer";source.textContent="Offizielle Quelle öffnen";card.appendChild(source);
     }
     const actions=document.createElement("div");actions.className="website-change-actions";
