@@ -1012,6 +1012,13 @@ console.log("Tavily usage account:", {
           if (!/duplicate column name/i.test(String(error?.message || error))) throw error;
         }
       }
+      if (!existingColumns.includes("zahlungsarten")) {
+        try {
+          await turso("ALTER TABLE restaurants ADD COLUMN zahlungsarten TEXT NOT NULL DEFAULT '[]'");
+        } catch (error) {
+          if (!/duplicate column name/i.test(String(error?.message || error))) throw error;
+        }
+      }
 
       if (request.method === "GET") {
         const url = new URL(request.url);
@@ -1174,7 +1181,7 @@ console.log("Tavily usage account:", {
         const result = await turso(
           `SELECT
             id, name, ort, kategorie, adresse, telefon, website, externer_eintrag,
-            email, oeffnungszeiten, ruhetag, betriebsferien_start, betriebsferien_ende, notizen, bild, reservierung
+            email, oeffnungszeiten, ruhetag, betriebsferien_start, betriebsferien_ende, notizen, bild, reservierung, zahlungsarten
           FROM restaurants
           ORDER BY name COLLATE NOCASE`,
           [],
@@ -1199,7 +1206,13 @@ console.log("Tavily usage account:", {
           betriebsferien_ende: rowValue(row[12]),
           notizen: rowValue(row[13]),
           bild: rowValue(row[14]),
-          reservierung: rowValue(row[15])
+          reservierung: rowValue(row[15]),
+          zahlungsarten: (() => {
+            try {
+              const value = JSON.parse(String(rowValue(row[16]) || "[]"));
+              return Array.isArray(value) ? value.filter(item => ["girocard", "debitkarte", "kreditkarte"].includes(item)) : [];
+            } catch { return []; }
+          })()
         })));
       }
 
@@ -1724,14 +1737,15 @@ console.log("Tavily usage account:", {
           const result = await turso(
             `INSERT INTO restaurants (
               name, ort, kategorie, adresse, telefon, website, email,
-              oeffnungszeiten, ruhetag, betriebsferien_start, betriebsferien_ende, notizen, bild, reservierung, externer_eintrag
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              oeffnungszeiten, ruhetag, betriebsferien_start, betriebsferien_ende, notizen, bild, reservierung, externer_eintrag, zahlungsarten
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               textArg(r.name), textArg(r.ort), textArg(r.kategorie),
               textArg(r.adresse), textArg(r.telefon), textArg(r.website),
               textArg(r.email), textArg(r.oeffnungszeiten),
               textArg(r.ruhetag), textArg(r.betriebsferien_start), textArg(r.betriebsferien_ende),
-              textArg(r.notizen), textArg(r.bild), textArg(r.reservierung), textArg(r.externer_eintrag)
+              textArg(r.notizen), textArg(r.bild), textArg(r.reservierung), textArg(r.externer_eintrag),
+              textArg(JSON.stringify(Array.isArray(r.zahlungsarten) ? r.zahlungsarten.filter(item => ["girocard", "debitkarte", "kreditkarte"].includes(item)) : []))
             ]
           );
 
@@ -1753,14 +1767,16 @@ console.log("Tavily usage account:", {
               name = ?, ort = ?, kategorie = ?, adresse = ?,
               telefon = ?, website = ?, email = ?, oeffnungszeiten = ?,
               ruhetag = ?, betriebsferien_start = ?, betriebsferien_ende = ?,
-              notizen = ?, bild = ?, reservierung = ?, externer_eintrag = ?
+              notizen = ?, bild = ?, reservierung = ?, externer_eintrag = ?, zahlungsarten = ?
             WHERE id = ?`,
             [
               textArg(r.name), textArg(r.ort), textArg(r.kategorie),
               textArg(r.adresse), textArg(r.telefon), textArg(r.website),
               textArg(r.email), textArg(r.oeffnungszeiten),
               textArg(r.ruhetag), textArg(r.betriebsferien_start), textArg(r.betriebsferien_ende),
-              textArg(r.notizen), textArg(r.bild), textArg(r.reservierung), textArg(r.externer_eintrag), integerArg(body.id)
+              textArg(r.notizen), textArg(r.bild), textArg(r.reservierung), textArg(r.externer_eintrag),
+              textArg(JSON.stringify(Array.isArray(r.zahlungsarten) ? r.zahlungsarten.filter(item => ["girocard", "debitkarte", "kreditkarte"].includes(item)) : [])),
+              integerArg(body.id)
             ]
           );
 
