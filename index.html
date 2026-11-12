@@ -6416,50 +6416,55 @@ let activeMapCategory = "Alle";
 const GEOCODE_CACHE_KEY = 'tegernseeMapCoordinates_v2';
 function openAppMenu(){document.getElementById('appMenuOverlay').style.display='block';}
 function closeAppMenu(){document.getElementById('appMenuOverlay').style.display='none';}
-window.shareRestaurantApp = async function(){
+window.shareRestaurantApp = function(){
   const shareUrl = new URL("./", window.location.href).href;
-  const shareData = {
-    title: "Meine Lieblings-Restaurants am Tegernsee",
-    text: "Entdecke meine Lieblings-Restaurants, Almen und besondere Plätze rund um den Tegernsee.",
-    url: shareUrl
-  };
-
-  // Die native Teilen-Funktion muss direkt aus dem Menü-Klick heraus gestartet werden.
-  if (typeof navigator.share === "function") {
-    try {
-      const shareAction = navigator.share(shareData);
-      closeAppMenu();
-      await shareAction;
-      return;
-    } catch (error) {
-      if (error && error.name === "AbortError") {
-        closeAppMenu();
-        return;
-      }
-      console.warn("Native Teilen-Funktion nicht verfügbar; nutze Link-Kopie.", error);
-    }
-  }
-
+  const shareText = "Entdecke meine Lieblings-Restaurants, Almen und besondere Plätze rund um den Tegernsee: " + shareUrl;
   closeAppMenu();
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(shareUrl);
-    } else {
-      const field = document.createElement("textarea");
-      field.value = shareUrl;
-      field.setAttribute("readonly", "");
-      field.style.position = "fixed";
-      field.style.left = "-9999px";
-      document.body.appendChild(field);
-      field.select();
-      const copied = document.execCommand("copy");
-      field.remove();
-      if (!copied) throw new Error("Kopieren nicht verfügbar");
-    }
-    alert("Der App-Link wurde kopiert. Du kannst ihn jetzt in WhatsApp, einer E-Mail oder einer SMS einfügen.");
-  } catch (error) {
-    prompt("Bitte kopiere diesen App-Link und teile ihn:", shareUrl);
+
+  // Eigenes Teilen-Fenster als zuverlässiger Fallback, auch wenn Androids
+  // WebView die native Teilen- oder Zwischenablage-Schnittstelle nicht anbietet.
+  let panel = document.getElementById("restaurantSharePanel");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "restaurantSharePanel";
+    panel.innerHTML = '<div class="restaurant-share-card" role="dialog" aria-modal="true" aria-labelledby="restaurantShareTitle"><div class="restaurant-share-head"><strong id="restaurantShareTitle">App teilen</strong><button type="button" id="restaurantShareClose" aria-label="Schließen">×</button></div><p>Teile „Meine Lieblings-Restaurants am Tegernsee“:</p><div class="restaurant-share-actions"><a id="restaurantShareWhatsApp" target="_blank" rel="noopener">WhatsApp</a><a id="restaurantShareEmail">E-Mail</a><a id="restaurantShareSms">SMS</a><button type="button" id="restaurantShareCopy">App-Link kopieren</button><button type="button" id="restaurantShareMore">Weitere Teilen-Optionen</button></div><label for="restaurantShareUrl">App-Adresse</label><input id="restaurantShareUrl" readonly></div>';
+    panel.style.cssText = "position:fixed;inset:0;z-index:100000;background:rgba(15,25,20,.62);display:flex;align-items:center;justify-content:center;padding:18px;";
+    const style = document.createElement("style");
+    style.textContent = "#restaurantSharePanel .restaurant-share-card{box-sizing:border-box;width:min(100%,390px);background:#fff;color:#243b32;border-radius:20px;padding:20px;box-shadow:0 16px 50px rgba(0,0,0,.28);font:16px system-ui,sans-serif}#restaurantSharePanel .restaurant-share-head{display:flex;align-items:center;justify-content:space-between;font-size:20px}#restaurantSharePanel #restaurantShareClose{border:0;border-radius:50%;width:38px;height:38px;font-size:25px;background:#edf3ef;color:#244d3c}#restaurantSharePanel p{line-height:1.45}#restaurantSharePanel .restaurant-share-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}#restaurantSharePanel .restaurant-share-actions a,#restaurantSharePanel .restaurant-share-actions button{display:flex;align-items:center;justify-content:center;min-height:46px;padding:8px;border:1px solid #cbd9d1;border-radius:12px;background:#f5f8f6;color:#244d3c;text-decoration:none;font:700 15px system-ui,sans-serif;text-align:center}#restaurantSharePanel .restaurant-share-actions #restaurantShareMore{grid-column:1/-1;background:#2d6a56;color:#fff;border-color:#2d6a56}#restaurantSharePanel label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}#restaurantSharePanel input{box-sizing:border-box;width:100%;padding:11px;border:1px solid #bdcbc3;border-radius:9px;font-size:13px;color:#243b32}";
+    document.head.appendChild(style);
+    document.body.appendChild(panel);
+    document.getElementById("restaurantShareClose").onclick = function(){ panel.remove(); };
+    panel.addEventListener("click", function(event){ if(event.target === panel) panel.remove(); });
   }
+  document.getElementById("restaurantShareWhatsApp").href = "https://wa.me/?text=" + encodeURIComponent(shareText);
+  document.getElementById("restaurantShareEmail").href = "mailto:?subject=" + encodeURIComponent("Meine Lieblings-Restaurants am Tegernsee") + "&body=" + encodeURIComponent(shareText);
+  document.getElementById("restaurantShareSms").href = "sms:?body=" + encodeURIComponent(shareText);
+  document.getElementById("restaurantShareUrl").value = shareUrl;
+  document.getElementById("restaurantShareCopy").onclick = async function(){
+    const field = document.getElementById("restaurantShareUrl");
+    field.focus(); field.select(); field.setSelectionRange(0, field.value.length);
+    try {
+      if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(shareUrl);
+      else if (!document.execCommand("copy")) throw new Error("copy failed");
+      this.textContent = "Link kopiert ✓";
+    } catch (error) {
+      this.textContent = "Adresse oben markieren und kopieren";
+    }
+  };
+  document.getElementById("restaurantShareMore").onclick = async function(){
+    if (typeof navigator.share !== "function") {
+      this.textContent = "Bitte eine der Optionen oben nutzen";
+      return;
+    }
+    try {
+      await navigator.share({title:"Meine Lieblings-Restaurants am Tegernsee",text:"Entdecke meine Lieblings-Restaurants, Almen und besondere Plätze rund um den Tegernsee.",url:shareUrl});
+      panel.remove();
+    } catch (error) {
+      if (error && error.name === "AbortError") return;
+      this.textContent = "Bitte eine der Optionen oben nutzen";
+    }
+  };
+  panel.style.display = "flex";
 };
 function loadLeaflet(){if(window.L)return Promise.resolve();if(window.__leafletLoading)return window.__leafletLoading;window.__leafletLoading=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';script.integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';script.crossOrigin='';script.onload=resolve;script.onerror=()=>reject(new Error('Kartenbibliothek konnte nicht geladen werden.'));document.head.appendChild(script);});return window.__leafletLoading;}
 function loadMarkerCluster(){if(window.L&&L.markerClusterGroup)return Promise.resolve();if(window.__clusterLoading)return window.__clusterLoading;window.__clusterLoading=new Promise((resolve,reject)=>{if(!document.getElementById('markerClusterCss')){const link=document.createElement('link');link.id='markerClusterCss';link.rel='stylesheet';link.href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';document.head.appendChild(link);const theme=document.createElement('link');theme.rel='stylesheet';theme.href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';document.head.appendChild(theme);}const script=document.createElement('script');script.src='https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';script.onload=resolve;script.onerror=()=>reject(new Error('Die Karten-Gruppierung konnte nicht geladen werden.'));document.head.appendChild(script);});return window.__clusterLoading;}
