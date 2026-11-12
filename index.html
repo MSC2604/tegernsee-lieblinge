@@ -2414,6 +2414,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     <button class="app-menu-item" onclick="openRestaurantMap()"><span>🗺️</span><span>Übersichtskarte</span></button>
     <button class="app-menu-item" onclick="showIncompleteEntries()"><span>📋</span><span>Unvollständige Einträge <span id="incompleteMenuCount" style="font-size:12px;color:#805716;width:auto">…</span></span></button>
     <button class="app-menu-item" type="button" onclick="showRestaurantWebsiteChanges()"><span>🌐</span><span>Änderungen auf Restaurant-Webseiten</span></button>
+    <button class="app-menu-item" type="button" onclick="showPaymentResearch()"><span>💳</span><span>Zahlungsarten – Prüfliste</span></button>
     <button class="app-menu-item" type="button" onclick="closeAppMenu();exportRestaurantAuditCsv()"><span>📄</span><span>Prüfliste aller Restaurants exportieren</span></button>
     <button class="app-menu-item" type="button" onclick="showManualRestaurantReview()"><span>🔎</span><span>Erkannte Datenabweichungen prüfen</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();focusSearch()"><span>🔎</span><span>Restaurants suchen</span></button>
@@ -2436,6 +2437,16 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
       <div class="tavily-usage-note" id="tavilyUsageNote">Kontingent wird abgerufen …</div>
     </section>
   </nav>
+</div>
+
+
+<div class="website-changes-overlay" id="paymentResearchOverlay" onclick="if(event.target===this)closePaymentResearch()">
+  <section class="website-changes-panel" role="dialog" aria-modal="true" aria-labelledby="paymentResearchTitle">
+    <div class="website-changes-head"><h2 id="paymentResearchTitle">💳 Zahlungsarten – Prüfliste</h2><button class="website-changes-close" type="button" aria-label="Schließen" onclick="closePaymentResearch()">×</button></div>
+    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Rechercheübersicht für deine 41 bestehenden Einträge. Die Angaben sind nur eine Entscheidungshilfe und ändern keine Restaurantdaten. Setze morgen bei jedem Restaurant einen Haken, sobald du die Zahlungsarten selbst in „Bearbeiten“ eingetragen hast. Die Haken bleiben auf diesem Gerät in diesem Browser gespeichert.</p>
+    <div class="website-change-summary" id="paymentResearchSummary">41 Restaurants · 0 erledigt</div>
+    <div id="paymentResearchList"></div>
+  </section>
 </div>
 
 <main id="home">
@@ -6541,6 +6552,56 @@ let mapOpening = false;
 let mapEntries = [];
 let activeMapCategory = "Alle";
 const GEOCODE_CACHE_KEY = 'tegernseeMapCoordinates_v2';
+
+const PAYMENT_RESEARCH_ITEMS = [
+  ["Almhof Oafach","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Almwirtschaft Siebenhütten","Bisherige Recherche: nur Bargeld","Bitte vor dem Eintragen noch einmal vor Ort oder telefonisch bestätigen."],
+  ["Alpenwildpark","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Aueralm","Keine Kartenzahlung","Laut offizieller Website nur Bargeld und PayPal; PayPal ist keine auswählbare Kartenart."],
+  ["Bäckerei und Café Tremmel","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Berggasthaus Riederstein am Galaun","Keine Kartenzahlung","In deinem bisherigen Eintrag ist „Keine Kartenzahlung möglich“ vermerkt."],
+  ["Berggasthof Lukas-Alm","Keine Kartenzahlung","Offizielle Website: nur Barzahlung."],
+  ["Berggasthof Moni-Alm","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Berggasthof Neureuth","Keine Kartenzahlung","Offizielle Kontaktseite: keine Kartenzahlung."],
+  ["Berggasthof Obere Firstalm","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Biergarten Gut Kaltenbrunn","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Bräustüberl Tegernsee","Girocard + Kreditkarte","Beide Kartenarten wurden in den recherchierten Unterlagen genannt."],
+  ["Cafe Restaurant Angermaier","Girocard / EC-Karte","EC-Kartenzahlung wurde recherchiert."],
+  ["Cristallo Café","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Dorfschänke","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Fischerei Tegernsee","Kartenzahlung erwähnt – Kartenart offen","Kreditkarte wird in einer Quelle genannt; bitte klären, ob dies für den Restaurant-/Verkaufsbereich gilt."],
+  ["Gasthaus Schießstätte","Kartenzahlung erwähnt – Kartenart offen","Drittanbieter nennen Kartenzahlung, konkrete Kartenarten sind nicht sicher belegt."],
+  ["Gasthof Batznhäusl","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Gasthof Glashütte","Widersprüchliche Angaben","Eine Quelle nennt Kartenzahlung, eine ältere Bewertung verneint Karten. Vor Ort nachfragen."],
+  ["Gasthof Herzog Maximilian","Girocard + Kreditkarte","Girocard/EC sowie Visa, Mastercard und American Express wurden genannt."],
+  ["Gasthof zum Hagn","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Gasthof zum Rosser","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Herzogliche Fischzucht Wildbad Kreuth","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Hofhaus am See","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Königslinde am Tegernsee","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Mesner Gütl","Girocard + Kreditkarte","EC-Karte und Kreditkarte wurden genannt."],
+  ["Metzgerei Trettenhann","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Naturkäserei TegernseerLand eG","Debitkarte + Kreditkarte","Diese Kartenarten werden in Verzeichnissen genannt; nicht direkt offiziell bestätigt."],
+  ["Panoramarestaurant Wallberg","Kreditkarte","Visa und Mastercard wurden in einer Quelle genannt."],
+  ["Postillion Tegernsee","Girocard / EC-Karte","EC-/Maestro-Zahlung wird in einem Branchenverzeichnis genannt."],
+  ["Rainer Stuben (Rainerstüberl)","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Ratskeller Schliersee","Kartenzahlung erwähnt – Kartenart offen","Kartenzahlung wurde in einer früheren Recherche erwähnt; konkrete Kartenart nicht gesichert."],
+  ["Restaurant & Cafe Strandbad Seeglas","Kartenzahlung erwähnt – Kartenart offen","Eine Quelle nennt gängige Bankkarten; konkrete Kartenarten nicht gesichert."],
+  ["Restaurant Café Pension Haus Göttfried","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Riedler Alm","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Schlosswirtschaft Tegernsee","Girocard + Kreditkarte","Offizielle Website nennt EC-Karte und gängige Kreditkarten."],
+  ["Schwarzentenn-Alm","Bisherige Recherche: nur Bargeld","Bitte vor dem Eintragen noch einmal vor Ort oder telefonisch bestätigen."],
+  ["Viet Cuisine","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Voitlhof 1532","Girocard + Kreditkarte","EC-Karte und Kreditkarte werden in mehreren Verzeichnissen genannt."],
+  ["Weissachalm","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Wirtshaus Aibl Alm","Girocard / EC-Karte","EC-Kartenzahlung wird in einem Branchenverzeichnis genannt."]
+];
+function getPaymentResearchDone(){try{return JSON.parse(localStorage.getItem("tegernsee_payment_research_done_v1")||"{}")||{};}catch(e){return {};}}
+function setPaymentResearchDone(name,done){const state=getPaymentResearchDone();if(done)state[name]=true;else delete state[name];try{localStorage.setItem("tegernsee_payment_research_done_v1",JSON.stringify(state));}catch(e){}renderPaymentResearch();}
+function renderPaymentResearch(){const list=document.getElementById("paymentResearchList");const summary=document.getElementById("paymentResearchSummary");if(!list||!summary)return;const done=getPaymentResearchDone();const count=PAYMENT_RESEARCH_ITEMS.filter(item=>done[item[0]]).length;summary.textContent=count+" von "+PAYMENT_RESEARCH_ITEMS.length+" Restaurants erledigt";list.innerHTML=PAYMENT_RESEARCH_ITEMS.map((item,index)=>'<section class="website-change-card" style="margin-top:9px;padding:12px"><label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer"><input type="checkbox" '+(done[item[0]]?'checked':'')+' onchange="setPaymentResearchDone('+JSON.stringify(item[0])+',this.checked)" style="width:19px;height:19px;flex:0 0 19px;margin-top:2px"><span style="min-width:0;flex:1"><strong style="display:block;font-size:15px;color:#20382e">'+(index+1)+'. '+escapeHtml(item[0])+'</strong><span style="display:block;margin-top:4px;font-size:13px;font-weight:800;color:#315f4d">'+escapeHtml(item[1])+'</span><span style="display:block;margin-top:4px;font-size:12px;line-height:1.45;color:#66766d">'+escapeHtml(item[2])+'</span></span></label></section>').join("");}
+function showPaymentResearch(){closeAppMenu();renderPaymentResearch();const overlay=document.getElementById("paymentResearchOverlay");if(overlay)overlay.style.display="flex";}
+function closePaymentResearch(){const overlay=document.getElementById("paymentResearchOverlay");if(overlay)overlay.style.display="none";}
+
 function openAppMenu(){document.getElementById('appMenuOverlay').style.display='block';}
 function closeAppMenu(){document.getElementById('appMenuOverlay').style.display='none';}
 window.shareRestaurantApp = function(){
