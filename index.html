@@ -2324,6 +2324,11 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 .website-review-note{font-size:12px;line-height:1.4;color:#68766e;margin:0 0 5px}
 .website-review-link{display:inline-block;font-size:13px;font-weight:700;color:#2d6a56;overflow-wrap:anywhere}
 .website-review-missing{font-size:12px;color:#80613b;font-weight:700}
+.manual-review-progress{margin:12px 0;padding:12px 14px;border:1px solid #dce7e1;border-radius:13px;background:#f5f8f5;color:#355447;font-size:13px;font-weight:750}
+.manual-review-done{border-color:#b8d7c8!important;background:#f2f8f4!important}
+.manual-review-done-label{display:inline-flex;align-items:center;gap:6px;margin:8px 0 0;padding:5px 9px;border-radius:999px;background:#e4f2e9;color:#246342;font-size:12px;font-weight:800}
+.manual-review-action{display:block;width:100%;margin-top:10px;padding:11px 13px;border:1px solid #2d6a56;border-radius:11px;background:#2d6a56;color:#fff;font-weight:800;font-size:13px}
+.manual-review-action.is-done{border-color:#cbd8d0;background:#fff;color:#365849}
 @media(max-width:520px){.website-changes-panel{padding:15px}.website-change-values{grid-template-columns:1fr}.website-changes-head h2{font-size:18px}}
 </style>
 </head>
@@ -2472,7 +2477,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
       <h2 id="manualRestaurantReviewTitle">Erkannte Datenabweichungen</h2>
       <button class="website-changes-close" type="button" aria-label="Schließen" onclick="closeManualRestaurantReview()">×</button>
     </div>
-    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Diese Liste vergleicht den exportierten App-Stand mit öffentlich auffindbaren Angaben. Sie ist ausschließlich eine Entscheidungshilfe. Es wird nichts in deinen Restaurant-Einträgen gespeichert oder automatisch geändert.</p>
+    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Diese Liste ist eine Entscheidungshilfe. Wenn du einen Punkt in deinen Restaurant-Einträgen geändert hast, kannst du ihn hier selbst als erledigt bestätigen. Die Bestätigung wird auf diesem Gerät in diesem Browser gespeichert; Restaurantdaten werden dabei nicht verändert.</p>
     <div class="website-change-summary" id="manualRestaurantReviewSummary">Die Prüfliste wird vorbereitet …</div>
     <div id="manualRestaurantReviewList"></div>
     <p style="margin:14px 0 0;color:#63736a;font-size:12px">Bitte prüfe jede Angabe selbst. Saisonale Öffnungszeiten und kurzfristige Änderungen können abweichen. Die restlichen Restaurant-Einträge sind damit nicht automatisch als vollständig verifiziert bestätigt.</p>
@@ -6628,6 +6633,20 @@ const MANUAL_RESTAURANT_REVIEW_ITEMS = [
  {name:"Rainer Stuben (Rainerstüberl)",field:"Adresse",current:"Rainerweg 10 (PLZ und Ort fehlen)",proposal:"Bitte Postleitzahl und Ort ergänzen – vor Übernahme prüfen",reason:"Der Export enthält nur Straße und Hausnummer. Kein ungeprüfter Ergänzungsvorschlag.",source:"Noch keine ausreichend bestätigte vollständige Anschrift",url:""},
  {name:"Hofhaus am See",field:"Adresse",current:"Mesnergasse 2, • 83727 Schliersee",proposal:"Mesnergasse 2, 83727 Schliersee",reason:"Im Export steht vor der Postleitzahl ein überflüssiges Aufzählungszeichen.",source:"Formale Bereinigung aus dem Export; Anschrift bitte kurz gegenprüfen",url:""}
 ];
+const MANUAL_RESTAURANT_REVIEW_STORAGE_KEY = "tegernsee_manual_restaurant_review_v1";
+function getManualRestaurantReviewDone(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(MANUAL_RESTAURANT_REVIEW_STORAGE_KEY)||"{}");
+  return saved&&typeof saved==="object"&&!Array.isArray(saved)?saved:{};
+ }catch(_){return {};}
+}
+function toggleManualRestaurantReviewItem(index){
+ const done=getManualRestaurantReviewDone();
+ if(done[index])delete done[index];else done[index]=true;
+ try{localStorage.setItem(MANUAL_RESTAURANT_REVIEW_STORAGE_KEY,JSON.stringify(done));}
+ catch(_){alert("Die Erledigt-Markierung konnte auf diesem Gerät nicht gespeichert werden. Bitte prüfe die Browser-Speichereinstellungen.");}
+ showManualRestaurantReview();
+}
 function showManualRestaurantReview(){
  closeAppMenu();
  const overlay=document.getElementById("manualRestaurantReviewOverlay");
@@ -6635,14 +6654,17 @@ function showManualRestaurantReview(){
  const summary=document.getElementById("manualRestaurantReviewSummary");
  if(!overlay||!list||!summary)return;
  list.replaceChildren();
- summary.textContent=MANUAL_RESTAURANT_REVIEW_ITEMS.length+" Prüfpunkte · davon "+MANUAL_RESTAURANT_REVIEW_ITEMS.filter(item=>item.url).length+" mit Quelle";
+ const done=getManualRestaurantReviewDone();
+ const doneCount=MANUAL_RESTAURANT_REVIEW_ITEMS.filter((item,index)=>!!done[index]).length;
+ summary.textContent=doneCount+" von "+MANUAL_RESTAURANT_REVIEW_ITEMS.length+" erledigt · "+(MANUAL_RESTAURANT_REVIEW_ITEMS.length-doneCount)+" offen · "+MANUAL_RESTAURANT_REVIEW_ITEMS.filter(item=>item.url).length+" mit Quelle";
  MANUAL_RESTAURANT_REVIEW_ITEMS.forEach((item,index)=>{
-  const card=document.createElement("section");card.className="website-change-card";
+  const isDone=!!done[index];
+  const card=document.createElement("section");card.className="website-change-card"+(isDone?" manual-review-done":"");
   const heading=document.createElement("h3");heading.textContent=(index+1)+". "+item.name;card.appendChild(heading);
   const meta=document.createElement("div");meta.className="website-change-meta";meta.textContent="Betroffenes Feld: "+item.field;card.appendChild(meta);
   const values=document.createElement("div");values.className="website-change-values";
   const current=document.createElement("div");current.className="website-change-value";
-  const currentLabel=document.createElement("strong");currentLabel.textContent="Aktueller App-Stand";current.appendChild(currentLabel);
+  const currentLabel=document.createElement("strong");currentLabel.textContent="Bisheriger App-Stand";current.appendChild(currentLabel);
   current.appendChild(document.createTextNode(item.current));
   const proposal=document.createElement("div");proposal.className="website-change-value";
   const proposalLabel=document.createElement("strong");proposalLabel.textContent="Vorschlag zur Prüfung";proposal.appendChild(proposalLabel);
@@ -6651,6 +6673,8 @@ function showManualRestaurantReview(){
   const reason=document.createElement("p");reason.style.cssText="margin:10px 0 0;font-size:13px;line-height:1.45;color:#45594e";reason.textContent=item.reason;card.appendChild(reason);
   const source=document.createElement("div");source.className="website-change-meta";source.style.marginTop="9px";source.textContent="Quelle: "+item.source;card.appendChild(source);
   if(item.url){const link=document.createElement("a");link.className="website-change-source";link.href=item.url;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Quelle öffnen";card.appendChild(link);}
+  if(isDone){const label=document.createElement("div");label.className="manual-review-done-label";label.textContent="✓ Erledigt bestätigt";card.appendChild(label);}
+  const action=document.createElement("button");action.type="button";action.className="manual-review-action"+(isDone?" is-done":"");action.textContent=isDone?"↶ Wieder öffnen":"✓ Als erledigt markieren";action.addEventListener("click",()=>toggleManualRestaurantReviewItem(index));card.appendChild(action);
   list.appendChild(card);
  });
  overlay.style.display="flex";
