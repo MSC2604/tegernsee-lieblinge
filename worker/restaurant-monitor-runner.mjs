@@ -187,7 +187,10 @@ export async function runRestaurantWebsiteMonitor({
     const processPage = async (pageUrl, knownHtml, fetchError = null) => {
       let html = knownHtml;
       let effectiveUrl = pageUrl;
-      let snapshotUrl = pageUrl;
+      // The coverage endpoint compares against restaurants.website verbatim (trimmed).
+      // Store the homepage under that configured value, not URL.href, which may
+      // normalize the scheme, hostname, IDN, or trailing slash.
+      let snapshotUrl = pageUrl === root.href ? website : pageUrl;
       try {
         if (fetchError) throw fetchError;
         if (html == null) html = await fetchOfficialHtml(pageUrl, root.origin, fetchImpl);
