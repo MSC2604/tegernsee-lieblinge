@@ -7127,12 +7127,17 @@ function renderWebsiteChanges(items,password){
     empty.textContent="Zurzeit liegen keine offenen Website-Änderungen vor.";
     list.appendChild(empty);return;
   }
-  const normalize=value=>String(value??"").replace(/\\s+/g," ").trim().toLocaleLowerCase("de-DE");
+  const normalize=value=>String(value??"")
+    .normalize("NFKC")
+    .replace(/[\\s\\u00a0\\u2007\\u202f]+/g," ")
+    .trim()
+    .toLocaleLowerCase("de-DE");
   const groups=new Map();
   for(const item of items){
-    // Eine Karte je Restaurant und Änderungsbereich: wechselnde HTML-Kodierung,
-    // Tracking-Parameter und leicht andere Seitenauszüge erzeugen keine Kartenflut.
-    const key=[item.restaurantName,item.field].map(normalize).join("\\u241f");
+    // Gruppiert nach sichtbarem Änderungsbereich statt internem Feldcode.
+    // Unsichtbare Leerzeichen und Unicode-Varianten in Restaurantnamen werden vereinheitlicht.
+    const visibleField=websiteChangeFieldLabel(item.field);
+    const key=[item.restaurantName,visibleField].map(normalize).join("|");
     if(!groups.has(key))groups.set(key,[]);
     groups.get(key).push(item);
   }
