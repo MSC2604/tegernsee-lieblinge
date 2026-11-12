@@ -7545,7 +7545,7 @@ async function pollRestaurantWebsiteMonitor(password,runId){
       if(label)label.textContent="Prüfung abgeschlossen";
       if(percent)percent.textContent="100 %";
       if(bar)bar.style.width="100%";
-      if(current)current.textContent="Alle Webseiten dieses Prüflaufs wurden bearbeitet.";
+      if(current)current.textContent="Alle Quellen dieses Prüflaufs wurden abgearbeitet. Die Baseline-Abdeckung zeigt separat, für welche Quellen ein Vergleichsstand gespeichert wurde.";
       if(stats)stats.textContent=(r.restaurants||0)+" eigene Websites · "+(r.externalEntries||0)+" externe Einträge geprüft · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne eigene Website · "+(Array.isArray(r.errors)?r.errors.length:0)+" Fehler";
       if(status)status.textContent="Fertig: "+(r.restaurants||0)+" eigene Websites und "+(r.externalEntries||0)+" externe Einträge geprüft.";
       await loadRestaurantWebsiteMonitorCoverage(password).catch(error=>{
