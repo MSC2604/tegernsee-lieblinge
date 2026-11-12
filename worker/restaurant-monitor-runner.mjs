@@ -128,7 +128,7 @@ export async function runRestaurantWebsiteMonitor({
 }) {
   if (typeof db !== "function") throw new Error("Datenbankfunktion fehlt.");
   const list = Array.isArray(restaurants) ? restaurants : [];
-  const report = { restaurants: 0, pages: 0, baselines: 0, proposals: 0, errors: [] };
+  const report = { restaurants: 0, externalEntries: 0, pages: 0, baselines: 0, proposals: 0, errors: [] };
   let completed = 0;
   const active = new Set();
   let progressQueue = Promise.resolve();
@@ -143,15 +143,18 @@ export async function runRestaurantWebsiteMonitor({
   await publishProgress();
   const processRestaurant = async restaurant => {
     const id = String(restaurant?.id ?? "").trim();
+    const sourceType = restaurant?.sourceType === "external" ? "external" : "official";
     const website = String(restaurant?.website ?? "").trim();
     if (!id || !website) return;
-    active.add(String(restaurant.name || "Restaurant"));
+    const displayName = String(restaurant.name || "Restaurant") + (sourceType === "external" ? " (externer Eintrag)" : "");
+    active.add(displayName);
     let root = safeHttpUrl(website);
     if (!root) {
-      report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), error: "Website-Adresse ist ungültig oder aus Sicherheitsgründen gesperrt." });
+      report.errors.push({ restaurantId:id, name:String(restaurant.name || ""), sourceType, url:website, error:"Quelladresse ist ungültig oder aus Sicherheitsgründen gesperrt." });
       return;
     }
-    report.restaurants++;
+    if (sourceType === "external") report.externalEntries++;
+    else report.restaurants++;
     let homepage;
     try {
       homepage = await fetchOfficialHtml(root.href, root.origin, fetchImpl);
@@ -178,7 +181,7 @@ export async function runRestaurantWebsiteMonitor({
     const discoveredPages = extractOfficialPageLinks(homepage, root.href, MAX_PAGES - 1);
     // If the homepage already exposes an official menu PDF, avoid crawling a
     // parallel legacy HTML menu endpoint that often returns broken/empty HTML.
-    const pages = [root.href, ...discoveredPages.filter(pageUrl =>
+    const pages = sourceType === "external" ? [root.href] : [root.href, ...discoveredPages.filter(pageUrl =>
       !(hasMenuPdf && /(?:speisekarte|getränkekarte|getraenkekarte|menu|menue|karte)/i.test(new URL(pageUrl).pathname))
     )];
     const processPage = async (pageUrl, knownHtml, fetchError = null) => {
@@ -226,7 +229,7 @@ export async function runRestaurantWebsiteMonitor({
       const stamp = now();
       if (!oldRow) {
         report.baselines++;
-      } else if (oldHash && oldHash !== hash) {
+      } else if (sourceType === "official" && oldHash && oldHash !== hash) {
         const changes = findRestaurantChanges(oldData, found);
         for (const change of changes) {
           await db("INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')", [textArg(id), textArg(change.field), textArg(change.oldValue), textArg(change.newValue), textArg(effectiveUrl), textArg(stamp)]);
