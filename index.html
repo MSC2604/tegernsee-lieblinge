@@ -3285,6 +3285,9 @@ function normalizeRestaurant(r){
     website:
       cleanValue(r.website),
 
+    externer_eintrag:
+      cleanValue(r.externer_eintrag),
+
     reservierung:
       cleanValue(r.reservierung),
 
@@ -5631,6 +5634,8 @@ function editPlace(){
     "f_website"
   ).value =
     currentPlace.website;
+
+  document.getElementById("f_externer_eintrag").value = currentPlace.externer_eintrag || "";
 
   document.getElementById("f_externer_eintrag").value = currentPlace.externer_eintrag || "";
 
