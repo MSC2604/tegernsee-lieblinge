@@ -93,3 +93,63 @@ export async function sendRestaurantWebsiteDigest({
   }
   return { sent: true, acceptedByProvider: true, count: items.length };
 }
+
+
+/**
+ * Sendet eine feste Testnachricht an die konfigurierte Benachrichtigungsadresse.
+ * Diese Funktion liest oder verändert keinerlei Restaurant- oder Prüfdaten.
+ */
+export async function sendRestaurantWebsiteTestEmail({
+  env,
+  fetchImpl = fetch
+}) {
+  const notificationEmail = String(
+    env?.MONITOR_NOTIFICATION_EMAIL || "msc4021@arcor.de"
+  ).trim();
+  if (!env?.BREVO_API_KEY || !env?.BREVO_FROM_EMAIL || !notificationEmail) {
+    return {
+      sent: false,
+      reason: "Brevo-API-Schlüssel, Absenderadresse oder Empfängeradresse fehlt."
+    };
+  }
+
+  const response = await fetchImpl("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": env.BREVO_API_KEY,
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    body: JSON.stringify({
+      sender: {
+        email: env.BREVO_FROM_EMAIL,
+        name: env.BREVO_FROM_NAME || "Restaurant-Webseitenprüfung"
+      },
+      to: [{ email: notificationEmail }],
+      subject: "Test-E-Mail – Restaurant-Webseitenprüfung",
+      textContent: [
+        "Dies ist eine Testnachricht deiner Tegernsee-Restaurant-App.",
+        "",
+        "Der E-Mail-Versand über Brevo wurde vom Dienst angenommen.",
+        "Diese Testnachricht hat keine Restaurantdaten, Prüfergebnisse oder Änderungsvorschläge verändert.",
+        "",
+        "Wenn du diese Nachricht erhältst, funktioniert die Zustellung an dieses Postfach."
+      ].join("\n"),
+      htmlContent: "<h2>Test-E-Mail erfolgreich angestoßen</h2><p>Der E-Mail-Versand deiner Tegernsee-Restaurant-App wurde von Brevo angenommen.</p><p>Diese Testnachricht hat keine Restaurantdaten, Prüfergebnisse oder Änderungsvorschläge verändert.</p><p>Wenn du diese Nachricht erhältst, funktioniert die Zustellung an dieses Postfach.</p>"
+    })
+  });
+
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 300);
+    throw new Error(
+      "Brevo hat den Testversand abgelehnt (HTTP " +
+      response.status + "): " + detail
+    );
+  }
+
+  return {
+    sent: true,
+    acceptedByProvider: true,
+    recipient: notificationEmail
+  };
+}
