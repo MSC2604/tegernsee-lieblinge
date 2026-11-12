@@ -2311,6 +2311,19 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 .website-change-actions button{border:0;border-radius:9px;padding:9px 12px;font-weight:700;background:#2d6a56;color:#fff}
 .website-change-actions button.secondary{background:#e8eee9;color:#2d5142}
 .website-changes-empty{padding:24px 8px;text-align:center;color:#607168}
+.website-review-details{margin-top:20px;border:1px solid #dce6df;border-radius:13px;background:#fff;overflow:hidden}
+.website-review-details summary{cursor:pointer;list-style:none;padding:15px 16px;font-weight:800;color:#244b3d;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.website-review-details summary::-webkit-details-marker{display:none}
+.website-review-details summary:after{content:"＋";font-size:20px;color:#2d6a56}
+.website-review-details[open] summary:after{content:"−"}
+.website-review-intro{margin:0;padding:0 16px 12px;color:#63736a;font-size:12px;line-height:1.5}
+.website-review-list{padding:0 12px 12px;display:grid;gap:8px}
+.website-review-card{border:1px solid #e2e9e4;border-radius:10px;padding:11px 12px;background:#fbfcfa;min-width:0}
+.website-review-card h3{font-size:14px;margin:0 0 5px;color:#20382e}
+.website-review-kind{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.02em;text-transform:uppercase;color:#426452;background:#eaf2ec;border-radius:99px;padding:4px 7px;margin-bottom:6px}
+.website-review-note{font-size:12px;line-height:1.4;color:#68766e;margin:0 0 5px}
+.website-review-link{display:inline-block;font-size:13px;font-weight:700;color:#2d6a56;overflow-wrap:anywhere}
+.website-review-missing{font-size:12px;color:#80613b;font-weight:700}
 @media(max-width:520px){.website-changes-panel{padding:15px}.website-change-values{grid-template-columns:1fr}.website-changes-head h2{font-size:18px}}
 </style>
 </head>
@@ -2919,6 +2932,11 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     </div>
     <div id="websiteChangesContext" style="display:none;margin:0 0 12px;padding:11px 13px;border:1px solid #dce7e0;border-radius:11px;background:#f4f8f5;color:#365447;font-size:13px;line-height:1.45" role="status" aria-live="polite"></div>
     <div id="websiteChangesList" aria-live="polite"><div class="website-changes-empty">Änderungen werden geladen …</div></div>
+    <details class="website-review-details">
+      <summary>Website-Prüfliste – 41 Restaurants</summary>
+      <p class="website-review-intro">Separate Rechercheübersicht mit gefundenen eigenen Websites, Betreiberseiten und externen Einträgen. Diese Liste wird nicht mit deinen gespeicherten Restaurantdaten synchronisiert und übernimmt oder ändert nichts. Bitte prüfe jeden Vorschlag selbst.</p>
+      <div id="websiteReviewList" class="website-review-list"></div>
+    </details>
   </section>
 </div>
 
@@ -7137,6 +7155,66 @@ document.addEventListener("visibilitychange",() => {
 /* --------------------------------------------------
    OFFIZIELLE RESTAURANT-WEBSITES: ÄNDERUNGSHINWEISE
 -------------------------------------------------- */
+const restaurantWebsiteReviewList = [
+  {name:"Almhof Oafach",kind:"Externer Eintrag",url:"https://www.tegernsee.com/a-almhof"},
+  {name:"Almwirtschaft Siebenhütten",kind:"Betreiberwebsite",url:"https://tegernseer-gastro.de/",note:"Betreiberwebsite; keine eigenständige Alm-Homepage bestätigt."},
+  {name:"Alpenwildpark",kind:"Eigene Website",url:"https://www.alpenwildpark.com/"},
+  {name:"Aueralm",kind:"Eigene Website",url:"https://aueralm.de/"},
+  {name:"Bäckerei und Café Tremmel",kind:"Externer Eintrag",url:"https://www.tegernsee.com/a-tremmel",note:"Keine eigene Homepage bestätigt."},
+  {name:"Berggasthaus Riederstein am Galaun",kind:"Eigene Website",url:"https://www.berggasthaus-riederstein-am-galaun.de/"},
+  {name:"Berggasthof Lukas-Alm",kind:"Eigene Website",url:"https://www.lukas-alm.de/"},
+  {name:"Berggasthof Moni-Alm",kind:"Eigene Website",url:"https://www.moni-alm.de/"},
+  {name:"Berggasthof Neureuth",kind:"Eigene Website",url:"https://www.neureuth.com/"},
+  {name:"Berggasthof Obere Firstalm",kind:"Eigene Website",url:"https://firstalm.de/"},
+  {name:"Biergarten Gut Kaltenbrunn",kind:"Betreiberwebsite",url:"https://www.feinkost-kaefer.de/pages/gutkaltenbrunn",note:"Website des Betreibers Feinkost Käfer."},
+  {name:"Bräustüberl Tegernsee",kind:"Eigene Website",url:"https://braustuberl.de/"},
+  {name:"Cafe Restaurant Angermaier",kind:"Eigene Website",url:"https://cafe-angermaier.de/"},
+  {name:"Cristallo Café",kind:"Eigene Website",url:"https://cristallo-cafe.de/"},
+  {name:"Dorfschänke",kind:"Externer Eintrag",url:"https://www.tegernsee.com/a-dorfschaenke",note:"Betriebsstatus separat prüfen; diese Liste ändert keinen Status."},
+  {name:"Fischerei Tegernsee",kind:"Eigene Website",url:"https://www.fischerei-tegernsee.com/"},
+  {name:"Gasthaus Schießstätte",kind:"Eigene Website",url:"https://www.gasthaus-tegernsee.de/"},
+  {name:"Gasthof Batznhäusl",kind:"Eigene Website",url:"https://www.gasthof-batznhaeusl-kreuth.de/"},
+  {name:"Gasthof Glashütte",kind:"Eigene Website",url:"https://www.gasthof-glashuette-kreuth.de/"},
+  {name:"Gasthof Herzog Maximilian",kind:"Eigene Website",url:"https://www.gasthof-maximilian.de/"},
+  {name:"Gasthof zum Hagn",kind:"Eigene Website",url:"https://www.gasthofhagn.de/"},
+  {name:"Gasthof zum Rosser",kind:"Gehostete Geschäftsseite",url:"https://gaststattezumrosser.eatbu.com/?lang=de",note:"Eatbu-Seite; keine eigenständige Homepage bestätigt."},
+  {name:"Herzogliche Fischzucht Wildbad Kreuth",kind:"Eigene Website",url:"https://fischerei-kreuth.de/"},
+  {name:"Hofhaus am See",kind:"Eigene Website",url:"https://www.hofhaus-am-see.de/"},
+  {name:"Königslinde am Tegernsee",kind:"Eigene Website",url:"https://www.xn--dieknigslinde-lmb.de/"},
+  {name:"Mesner Gütl",kind:"Eigene Website",url:"https://www.mesnerguetl.de/"},
+  {name:"Metzgerei Trettenhann",kind:"Eigene Website",url:"https://www.metzgereitrettenhann.de/"},
+  {name:"Naturkäserei TegernseerLand eG",kind:"Eigene Website",url:"https://www.naturkaeserei.de/"},
+  {name:"Panoramarestaurant Wallberg",kind:"Betreiberwebsite",url:"https://www.wallbergbahn.de/de/panoramarestaurant.html",note:"Restaurantseite auf der offiziellen Website der Wallbergbahn."},
+  {name:"Postillion Tegernsee",kind:"Website-Zuordnung bestätigt · Erreichbarkeit offen",url:"https://www.postillion-tegernsee.de/",note:"Vom regionalen Eintrag verlinkt; beim letzten Abruf technischer Serverfehler."},
+  {name:"Rainer Stuben (Rainerstüberl)",kind:"Betreiberwebsite",url:"https://www.campingplatz-wallberg.de/rainerstueberl/"},
+  {name:"Ratskeller Schliersee",kind:"Eigene Website",url:"https://www.ratskeller-schliersee.de/"},
+  {name:"Restaurant & Cafe Strandbad Seeglas",kind:"Eigene Website",url:"https://strandbad-seeglas.de/"},
+  {name:"Restaurant Café Pension Haus Göttfried",kind:"Eigene Website",url:"https://www.hausgoettfried.de/"},
+  {name:"Riedler Alm",kind:"Eigene Website",url:"https://riedler-alm.de/"},
+  {name:"Schlosswirtschaft Tegernsee",kind:"Eigene Website",url:"https://schlosswirtschaft-tegernsee.de/"},
+  {name:"Schwarzentenn-Alm",kind:"Eigene Website",url:"https://www.schwarzentennalm.de/"},
+  {name:"Viet Cuisine",kind:"Eigene Website",url:"https://viet-cuisine.de/"},
+  {name:"Voitlhof 1532",kind:"Betreiberwebsite",url:"https://tegernseer-gastro.de/voitlhof/"},
+  {name:"Weissachalm",kind:"Externer Eintrag",url:"https://www.tegernsee.com/a-weissachalm",note:"Keine eigene Homepage bestätigt."},
+  {name:"Wirtshaus Aibl Alm",kind:"Eigene Website",url:"https://aibl.de/"}
+];
+function renderRestaurantWebsiteReviewList(){
+  const container=document.getElementById("websiteReviewList");
+  if(!container||container.dataset.rendered==="true")return;
+  container.dataset.rendered="true";
+  restaurantWebsiteReviewList.forEach((item,index)=>{
+    const card=document.createElement("article");card.className="website-review-card";
+    const title=document.createElement("h3");title.textContent=(index+1)+". "+item.name;card.appendChild(title);
+    const kind=document.createElement("span");kind.className="website-review-kind";kind.textContent=item.kind;card.appendChild(kind);
+    if(item.note){const note=document.createElement("p");note.className="website-review-note";note.textContent=item.note;card.appendChild(note);}
+    if(item.url){
+      const link=document.createElement("a");link.className="website-review-link";link.href=item.url;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Website / Eintrag öffnen";card.appendChild(link);
+    }else{
+      const missing=document.createElement("div");missing.className="website-review-missing";missing.textContent="Bisher kein verlässlicher Link gefunden.";card.appendChild(missing);
+    }
+    container.appendChild(card);
+  });
+}
 function closeWebsiteChanges(){
   const overlay=document.getElementById("websiteChangesOverlay");
   const list=document.getElementById("websiteChangesList");
@@ -7448,6 +7526,7 @@ async function showRestaurantWebsiteChanges(){
   if(password===null||!password)return;
   const overlay=document.getElementById("websiteChangesOverlay");
   if(overlay)overlay.style.display="flex";
+  renderRestaurantWebsiteReviewList();
   const startButton=document.getElementById("startWebsiteMonitor");
   if(startButton)startButton.onclick=()=>startRestaurantWebsiteMonitor(password);
   try{
