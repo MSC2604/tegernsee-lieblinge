@@ -2814,6 +2814,14 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
       <input id="f_ruhetag" autocomplete="off">
 
       <div class="card-edit-box">
+        <strong>💳 Zahlungsarten</strong>
+        <small>Bargeld wird grundsätzlich auf jeder Restaurantkachel angezeigt. Wähle hier nur die zusätzlich akzeptierten Karten aus.</small>
+        <label><input type="checkbox" id="f_payment_girocard"> Girocard (EC-Karte)</label>
+        <label><input type="checkbox" id="f_payment_debitkarte"> Debitkarte (Visa Debit / Mastercard Debit)</label>
+        <label><input type="checkbox" id="f_payment_kreditkarte"> Kreditkarte (z. B. Visa, Mastercard, American Express)</label>
+      </div>
+
+      <div class="card-edit-box">
         <strong>🏖 Betriebsferien</strong>
         <small>Zeitraum eintragen. Die Zeile erscheint auf der Kachel ab dem Startdatum bis einschließlich Enddatum und verschwindet danach automatisch. Zum vorzeitigen Löschen beide Datumsfelder leeren und speichern.</small>
         <label for="f_betriebsferien_start">Von</label>
@@ -4515,6 +4523,10 @@ function render(){
               ` : ""}
             </div>
 
+            <div class="tile-hours-row tile-payment" aria-label="Zahlungsarten">
+              <span class="tile-hours-icon" aria-hidden="true">💶</span>
+              <div class="tile-hours-text">Bargeld${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).map(type => " · " + ({girocard:"Girocard",debitkarte:"Debitkarte",kreditkarte:"Kreditkarte"}[type])).join("")}</div>
+            </div>
             <div class="tile-card-links" id="tile-card-links-${escapeAttr(place.id)}" aria-label="Speise-, Getränke- und weitere Karten"></div>
 
             ${place.reservierung ? `
@@ -5703,6 +5715,10 @@ function editPlace(){
 
   document.getElementById("f_betriebsferien_start").value = currentPlace.betriebsferien_start || "";
   document.getElementById("f_betriebsferien_ende").value = currentPlace.betriebsferien_ende || "";
+  const savedPaymentTypes = Array.isArray(currentPlace.zahlungsarten) ? currentPlace.zahlungsarten : [];
+  document.getElementById("f_payment_girocard").checked = savedPaymentTypes.includes("girocard");
+  document.getElementById("f_payment_debitkarte").checked = savedPaymentTypes.includes("debitkarte");
+  document.getElementById("f_payment_kreditkarte").checked = savedPaymentTypes.includes("kreditkarte");
 
   document.getElementById(
     "f_notizen"
@@ -5791,6 +5807,10 @@ function clearForm(){
 
   document.getElementById("f_kategorie_custom").value = "";
   toggleCustomCategory();
+  ["f_payment_girocard","f_payment_debitkarte","f_payment_kreditkarte"].forEach(id => {
+    const checkbox = document.getElementById(id);
+    if(checkbox) checkbox.checked = false;
+  });
 
   document.getElementById(
     "imagepreview"
@@ -5904,6 +5924,11 @@ function getFormData(){
 
     betriebsferien_start: document.getElementById("f_betriebsferien_start").value,
     betriebsferien_ende: document.getElementById("f_betriebsferien_ende").value,
+    zahlungsarten: [
+      ["f_payment_girocard","girocard"],
+      ["f_payment_debitkarte","debitkarte"],
+      ["f_payment_kreditkarte","kreditkarte"]
+    ].filter(([id]) => document.getElementById(id).checked).map(([,value]) => value),
 
     notizen:
       document.getElementById(
