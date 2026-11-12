@@ -2375,6 +2375,10 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 #cards .card .tile-payment-list{gap:7px}
 #cards .card .tile-payment-chip{min-height:28px;padding:5px 9px;border-radius:10px;font-size:11px;font-weight:650}
 @media(max-width:520px){#cards .card .tile-hours{gap:10px}#cards .card .tile-hours-rest .tile-hours-text{font-weight:550}#cards .card .tile-payment-chip{min-height:27px;padding:5px 8px;font-size:10.5px}}
+/* Zahlungsmittel auf allen Bildschirmbreiten in einer einzigen Reihe */
+#cards .card .tile-payment-list{display:flex;flex-wrap:nowrap;align-items:stretch;gap:5px;width:100%;min-width:0}
+#cards .card .tile-payment-chip{flex:1 1 0;min-width:0;justify-content:center;padding:6px 3px;white-space:nowrap;text-align:center;font-size:10px;letter-spacing:-.025em}
+@media(max-width:520px){#cards .card .tile-payment-list{gap:4px}#cards .card .tile-payment-chip{flex:1 1 0;padding:6px 2px;font-size:9.5px;letter-spacing:-.035em}}
 </style>
 </head>
 
