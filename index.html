@@ -6631,7 +6631,7 @@ async function openRestaurantMap(embedded=false){
   renderMapFilters();updateMapLabels();
   const points=mapEntries.map(x=>[x.point.lat,x.point.lon]);
   if(points.length>1)restaurantMap.fitBounds(points,{padding:[35,35],maxZoom:13});else if(points.length===1)restaurantMap.setView(points[0],14);
-  if(failed)status.textContent+=' Nicht auf der Karte: '+failedNames.join(' · ')+'.';
+  status.textContent=mapEntries.length+' von '+places.length+' Standorten gefunden · '+mapEntries.length+' auf der Karte angezeigt.'+(failed?' Nicht auf der Karte: '+failedNames.join(' · ')+'.':'');
  }catch(error){console.error(error);document.getElementById('mapStatus').textContent='Die Karte konnte nicht geladen werden. Bitte Internetverbindung prüfen und erneut versuchen.';}
  finally{mapOpening=false;}
 }
