@@ -1173,7 +1173,7 @@ console.log("Tavily usage account:", {
 
         const result = await turso(
           `SELECT
-            id, name, ort, kategorie, adresse, telefon, website,
+            id, name, ort, kategorie, adresse, telefon, website, externer_eintrag,
             email, oeffnungszeiten, ruhetag, betriebsferien_start, betriebsferien_ende, notizen, bild, reservierung
           FROM restaurants
           ORDER BY name COLLATE NOCASE`,
@@ -1191,14 +1191,15 @@ console.log("Tavily usage account:", {
           adresse: rowValue(row[4]),
           telefon: rowValue(row[5]),
           website: rowValue(row[6]),
-          email: rowValue(row[7]),
-          oeffnungszeiten: rowValue(row[8]),
-          ruhetag: rowValue(row[9]),
-          betriebsferien_start: rowValue(row[10]),
-          betriebsferien_ende: rowValue(row[11]),
-          notizen: rowValue(row[12]),
-          bild: rowValue(row[13]),
-          reservierung: rowValue(row[14])
+          externer_eintrag: rowValue(row[7]),
+          email: rowValue(row[8]),
+          oeffnungszeiten: rowValue(row[9]),
+          ruhetag: rowValue(row[10]),
+          betriebsferien_start: rowValue(row[11]),
+          betriebsferien_ende: rowValue(row[12]),
+          notizen: rowValue(row[13]),
+          bild: rowValue(row[14]),
+          reservierung: rowValue(row[15])
         })));
       }
 
