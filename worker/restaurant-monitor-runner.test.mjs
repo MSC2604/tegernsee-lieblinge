@@ -229,8 +229,9 @@ assert.equal(contactFallback.pages, 2);
 assert.ok([...contactFallbackState.snapshots.keys()].some(key => key.endsWith("|https://restaurant.example/kontakt.html")));
 
 // HTTP-only legacy entries are retried once on the same host over HTTPS.
+const httpsUpgradeState = makeDb();
 const httpsUpgrade = await runRestaurantWebsiteMonitor({
-  db: makeDb().db,
+  db: httpsUpgradeState.db,
   restaurants: [{ id: 8, name: "Postillion", website: "http://postillion.example/" }],
   fetchImpl: async url => {
     if (String(url).startsWith("http://")) throw new TypeError("The operation was aborted");
@@ -241,6 +242,8 @@ const httpsUpgrade = await runRestaurantWebsiteMonitor({
 });
 assert.equal(httpsUpgrade.pages, 1);
 assert.equal(httpsUpgrade.errors.length, 0);
+assert.ok([...httpsUpgradeState.snapshots.keys()].some(key => key.endsWith("|http://postillion.example/")),
+  "Homepage baseline must use the configured website URL even after HTTPS upgrade");
 
 // A secure retry must not hide a genuine contact change, but ignores tracking/query text.
 const contactNormalization = findRestaurantChanges(
