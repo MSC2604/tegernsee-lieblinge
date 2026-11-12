@@ -1697,7 +1697,24 @@ console.log("Tavily usage account:", {
             ]
           );
 
-          return json({ success: true, action: "update", result });
+          // Nach dem UPDATE den gespeicherten Wert direkt aus Turso zurücklesen.
+          // So melden wir keinen Erfolg, wenn der externe Link nicht dauerhaft angekommen ist.
+          const verification = await turso(
+            "SELECT externer_eintrag FROM restaurants WHERE id = ?",
+            [integerArg(body.id)],
+            true
+          );
+          const verifiedRows = verification?.results?.[0]?.response?.result?.rows || [];
+          const storedExternalEntry = String(rowValue(verifiedRows?.[0]?.[0]) || "").trim();
+          const expectedExternalEntry = String(r.externer_eintrag || "").trim();
+          if (verifiedRows.length === 0 || storedExternalEntry !== expectedExternalEntry) {
+            return json({
+              error: "Der externe Eintrag konnte nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen.",
+              verified: false
+            }, 500);
+          }
+
+          return json({ success: true, action: "update", verified: true, result });
         }
 
         if (body.action === "delete") {
