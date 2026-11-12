@@ -2330,6 +2330,19 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 .manual-review-action{display:block;width:100%;margin-top:10px;padding:11px 13px;border:1px solid #2d6a56;border-radius:11px;background:#2d6a56;color:#fff;font-weight:800;font-size:13px}
 .manual-review-action.is-done{border-color:#cbd8d0;background:#fff;color:#365849}
 @media(max-width:520px){.website-changes-panel{padding:15px}.website-change-values{grid-template-columns:1fr}.website-changes-head h2{font-size:18px}}
+/* Einheitlicher Premium-Informationsbereich der Restaurant-Kacheln */
+#cards .card .tile-hours{display:grid;gap:10px;padding:16px 19px 17px;background:#fffdf8;border-top:1px solid #eee9df}
+#cards .card .tile-hours-heading{display:flex;align-items:center;gap:9px;margin:0 0 1px;color:#718075;font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase}
+#cards .card .tile-hours-heading:before{content:"";display:block;width:17px;height:1px;background:#9bad9d}
+#cards .card .tile-hours-row{display:flex;align-items:flex-start;gap:10px;min-width:0;color:#536258;font-size:13px;line-height:1.5}
+#cards .card .tile-hours-icon{flex:0 0 17px;width:17px;padding-top:1px;color:#829487;font-size:13px;text-align:center}
+#cards .card .tile-hours-rest .tile-hours-text{color:#42594c;font-weight:600}
+#cards .card .tile-hours-holiday .tile-hours-text{color:#9a5d4d;font-weight:650}
+#cards .card .tile-payment{display:grid;gap:8px;min-width:0;margin-top:3px;padding-top:12px;border-top:1px solid #eee9df}
+#cards .card .tile-payment-heading{color:#718075;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+#cards .card .tile-payment-list{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+#cards .card .tile-payment-chip{display:inline-flex;align-items:center;min-height:27px;padding:5px 9px;border:1px solid #dce5da;border-radius:999px;background:#f4f7f1;color:#456251;font-size:11px;font-weight:650;line-height:1.2;white-space:normal}
+@media(max-width:520px){#cards .card .tile-hours{padding:14px 15px 16px;gap:9px}#cards .card .tile-hours-row{font-size:13px;line-height:1.5}#cards .card .tile-payment{padding-top:11px}#cards .card .tile-payment-chip{font-size:11px;padding:5px 8px}}
 </style>
 </head>
 
@@ -4523,15 +4536,17 @@ function render(){
               </div>
               ${shouldShowBetriebsferien(place.betriebsferien_start, place.betriebsferien_ende) ? `
                 <div class="tile-hours-row tile-hours-holiday">
-                  <span class="tile-hours-icon" aria-hidden="true">🏖</span>
+                  <span class="tile-hours-icon" aria-hidden="true">◌</span>
                   <div class="tile-hours-text">Betriebsferien: ${escapeHtml(formatBetriebsferienDate(place.betriebsferien_start))} – ${escapeHtml(formatBetriebsferienDate(place.betriebsferien_ende))}</div>
                 </div>
               ` : ""}
-            </div>
-
-            <div class="tile-hours-row tile-payment" aria-label="Zahlungsarten">
-              <span class="tile-hours-icon" aria-hidden="true">💶</span>
-              <div class="tile-hours-text">Bargeld${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).map(type => " · " + ({girocard:"Girocard",debitkarte:"Debitkarte",kreditkarte:"Kreditkarte"}[type])).join("")}</div>
+              <div class="tile-payment" aria-label="Zahlungsmöglichkeiten">
+                <div class="tile-payment-heading">Zahlungsmöglichkeiten</div>
+                <div class="tile-payment-list">
+                  <span class="tile-payment-chip">Bargeld</span>
+                  ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).map(type => `<span class="tile-payment-chip">${({girocard:"Girocard",debitkarte:"Debitkarte",kreditkarte:"Kreditkarte"})[type]}</span>`).join("")}
+                </div>
+              </div>
             </div>
             <div class="tile-card-links" id="tile-card-links-${escapeAttr(place.id)}" aria-label="Speise-, Getränke- und weitere Karten"></div>
 
