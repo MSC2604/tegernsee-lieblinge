@@ -4579,7 +4579,7 @@ function render(){
               <div class="tile-payment" aria-label="Zahlungsmöglichkeiten">
                 <div class="tile-payment-heading">Zahlungsmöglichkeiten</div>
                 <div class="tile-payment-list" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;width:100%;min-width:0;">
-                  <span class="tile-payment-chip" style="display:flex;align-items:center;justify-content:flex-start;min-width:0;padding:6px 2px;white-space:nowrap;font-size:10px;letter-spacing:-.04em;">Bargeld</span>
+                  <span class="tile-payment-chip" style="display:flex;align-items:center;justify-content:center;text-align:center;min-width:0;padding:6px 2px;white-space:nowrap;font-size:10px;letter-spacing:-.04em;">Bargeld</span>
                   ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).map(type => `<span class="tile-payment-chip" style="display:flex;align-items:center;justify-content:center;min-width:0;padding:6px 2px;white-space:nowrap;font-size:10px;letter-spacing:-.04em;">${({girocard:"Girocard",debitkarte:"Debitkarte",kreditkarte:"Kreditkarte"})[type]}</span>`).join("")}
                 </div>
               </div>
