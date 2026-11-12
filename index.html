@@ -7700,10 +7700,11 @@ function showWebsiteMonitorCopyableError(status,message){
   };
   status.append(heading,field,copy);
 }
-async function sendWebsiteMonitorTestEmail(){
+async function sendWebsiteMonitorTestEmail(authenticatedPassword){
   const button=document.getElementById("testWebsiteMonitorEmail");
   const status=document.getElementById("websiteMonitorRunStatus");
-  const password=await askAdminPassword("Bitte Admin-Passwort eingeben, um eine Test-E-Mail zu senden.");
+  let password=authenticatedPassword;
+  if(!password)password=await askAdminPassword("Bitte Admin-Passwort eingeben, um eine Test-E-Mail zu senden.");
   if(password===null||!password)return;
   if(button)button.disabled=true;
   if(status)status.textContent="Test-E-Mail wird an die hinterlegte Empfängeradresse gesendet …";
@@ -7846,6 +7847,8 @@ async function showRestaurantWebsiteChanges(){
   renderRestaurantWebsiteReviewList();
   const startButton=document.getElementById("startWebsiteMonitor");
   if(startButton)startButton.onclick=()=>startRestaurantWebsiteMonitor(password);
+  const testButton=document.getElementById("testWebsiteMonitorEmail");
+  if(testButton)testButton.onclick=()=>sendWebsiteMonitorTestEmail(password);
   try{
     await loadRestaurantWebsiteChanges(password);
     await refreshRestaurantWebsiteMonitorStatus(password);
