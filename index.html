@@ -6416,30 +6416,51 @@ let activeMapCategory = "Alle";
 const GEOCODE_CACHE_KEY = 'tegernseeMapCoordinates_v2';
 function openAppMenu(){document.getElementById('appMenuOverlay').style.display='block';}
 function closeAppMenu(){document.getElementById('appMenuOverlay').style.display='none';}
-async function shareRestaurantApp(){
-  closeAppMenu();
-  const shareUrl=window.location.origin+window.location.pathname;
-  const shareData={title:"Meine Lieblings-Restaurants am Tegernsee",text:"Entdecke meine Lieblings-Restaurants, Almen und besondere Plätze rund um den Tegernsee.",url:shareUrl};
-  if(navigator.share){
-    try{await navigator.share(shareData);return;}
-    catch(error){if(error&&error.name==="AbortError")return;}
+window.shareRestaurantApp = async function(){
+  const shareUrl = new URL("./", window.location.href).href;
+  const shareData = {
+    title: "Meine Lieblings-Restaurants am Tegernsee",
+    text: "Entdecke meine Lieblings-Restaurants, Almen und besondere Plätze rund um den Tegernsee.",
+    url: shareUrl
+  };
+
+  // Die native Teilen-Funktion muss direkt aus dem Menü-Klick heraus gestartet werden.
+  if (typeof navigator.share === "function") {
+    try {
+      const shareAction = navigator.share(shareData);
+      closeAppMenu();
+      await shareAction;
+      return;
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        closeAppMenu();
+        return;
+      }
+      console.warn("Native Teilen-Funktion nicht verfügbar; nutze Link-Kopie.", error);
+    }
   }
-  try{
-    if(navigator.clipboard&&window.isSecureContext){
+
+  closeAppMenu();
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(shareUrl);
-    }else{
-      const field=document.createElement("textarea");
-      field.value=shareUrl;field.setAttribute("readonly","");
-      field.style.position="fixed";field.style.opacity="0";
-      document.body.appendChild(field);field.select();
-      const copied=document.execCommand("copy");field.remove();
-      if(!copied)throw new Error("Kopieren nicht verfügbar");
+    } else {
+      const field = document.createElement("textarea");
+      field.value = shareUrl;
+      field.setAttribute("readonly", "");
+      field.style.position = "fixed";
+      field.style.left = "-9999px";
+      document.body.appendChild(field);
+      field.select();
+      const copied = document.execCommand("copy");
+      field.remove();
+      if (!copied) throw new Error("Kopieren nicht verfügbar");
     }
     alert("Der App-Link wurde kopiert. Du kannst ihn jetzt in WhatsApp, einer E-Mail oder einer SMS einfügen.");
-  }catch(error){
-    prompt("Kopiere diesen App-Link zum Teilen:",shareUrl);
+  } catch (error) {
+    prompt("Bitte kopiere diesen App-Link und teile ihn:", shareUrl);
   }
-}
+};
 function loadLeaflet(){if(window.L)return Promise.resolve();if(window.__leafletLoading)return window.__leafletLoading;window.__leafletLoading=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';script.integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';script.crossOrigin='';script.onload=resolve;script.onerror=()=>reject(new Error('Kartenbibliothek konnte nicht geladen werden.'));document.head.appendChild(script);});return window.__leafletLoading;}
 function loadMarkerCluster(){if(window.L&&L.markerClusterGroup)return Promise.resolve();if(window.__clusterLoading)return window.__clusterLoading;window.__clusterLoading=new Promise((resolve,reject)=>{if(!document.getElementById('markerClusterCss')){const link=document.createElement('link');link.id='markerClusterCss';link.rel='stylesheet';link.href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';document.head.appendChild(link);const theme=document.createElement('link');theme.rel='stylesheet';theme.href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';document.head.appendChild(theme);}const script=document.createElement('script');script.src='https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';script.onload=resolve;script.onerror=()=>reject(new Error('Die Karten-Gruppierung konnte nicht geladen werden.'));document.head.appendChild(script);});return window.__clusterLoading;}
 function readMapCache(){try{return JSON.parse(localStorage.getItem(GEOCODE_CACHE_KEY)||'{}')}catch(e){return {}}}
