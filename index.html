@@ -2744,9 +2744,15 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
       <input id="f_telefon" autocomplete="off">
 
 
-      <label>Website</label>
+      <label>Eigene Website</label>
 
-      <input id="f_website" autocomplete="off">
+      <input id="f_website" autocomplete="off" placeholder="https://…">
+
+      <label>Externer Eintrag (z. B. Tegernsee.com)</label>
+
+      <input id="f_externer_eintrag" autocomplete="off" placeholder="https://www.tegernsee.com/…">
+
+      <small style="grid-column:1/-1;color:#66766d;line-height:1.45">Hier kannst du einen Eintrag auf einem Orts- oder Branchenportal hinterlegen, wenn keine eigene Website vorhanden ist. Dieser Link zählt nicht als eigene Website bei der automatischen Prüfung.</small>
 
 
       <label>
@@ -4658,29 +4664,18 @@ function openDetail(
       "dweb"
     );
 
-  if(
-    currentPlace.website
-  ){
-
-    web.innerHTML = `
-
-      <a
-        href="${escapeAttr(
-          currentPlace.website
-        )}"
-        target="_blank"
-        rel="noopener"
-      >
-        Webseite öffnen
-      </a>
-
-    `;
-
+  web.replaceChildren();
+  if(currentPlace.website){
+    const ownLink=document.createElement("a");
+    ownLink.href=currentPlace.website;ownLink.target="_blank";ownLink.rel="noopener noreferrer";
+    ownLink.textContent="Eigene Website öffnen";web.appendChild(ownLink);
   }else{
-
-    web.textContent =
-      "Noch ergänzen";
-
+    const noOwn=document.createElement("span");noOwn.textContent="Keine eigene Website hinterlegt";web.appendChild(noOwn);
+  }
+  if(currentPlace.externer_eintrag){
+    const external=document.createElement("div");external.style.marginTop="6px";
+    const externalLink=document.createElement("a");externalLink.href=currentPlace.externer_eintrag;externalLink.target="_blank";externalLink.rel="noopener noreferrer";
+    externalLink.textContent="Externer Eintrag öffnen";external.appendChild(externalLink);web.appendChild(external);
   }
 
 
@@ -5637,6 +5632,8 @@ function editPlace(){
   ).value =
     currentPlace.website;
 
+  document.getElementById("f_externer_eintrag").value = currentPlace.externer_eintrag || "";
+
 
   document.getElementById(
     "f_reservierung"
@@ -5724,6 +5721,7 @@ function clearForm(){
     "f_adresse",
     "f_telefon",
     "f_website",
+    "f_externer_eintrag",
     "f_reservierung",
     "f_email",
     "f_oeffnungszeiten",
@@ -5830,6 +5828,8 @@ function getFormData(){
       )
       .value
       .trim(),
+
+    externer_eintrag: document.getElementById("f_externer_eintrag").value.trim(),
 
     reservierung:
       document.getElementById(
