@@ -106,10 +106,14 @@ export async function sendRestaurantWebsiteTestEmail({
   const notificationEmail = String(
     env?.MONITOR_NOTIFICATION_EMAIL || "msc4021@arcor.de"
   ).trim();
-  if (!env?.BREVO_API_KEY || !env?.BREVO_FROM_EMAIL || !notificationEmail) {
+  const missingSettings = [];
+  if (!String(env?.BREVO_API_KEY || "").trim()) missingSettings.push("BREVO_API_KEY");
+  if (!String(env?.BREVO_FROM_EMAIL || "").trim()) missingSettings.push("BREVO_FROM_EMAIL");
+  if (!notificationEmail) missingSettings.push("MONITOR_NOTIFICATION_EMAIL");
+  if (missingSettings.length) {
     return {
       sent: false,
-      reason: "Brevo-API-Schlüssel, Absenderadresse oder Empfängeradresse fehlt."
+      reason: "In der Cloudflare-Worker-Umgebung fehlen diese Einstellungen: " + missingSettings.join(", ") + ". Bitte unter Einstellungen > Variablen und Geheimnisse für Produktion prüfen."
     };
   }
 
