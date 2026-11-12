@@ -2300,7 +2300,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 .website-changes-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
 .website-changes-head h2{font-size:21px;margin:0}
 .website-changes-close{border:0;background:#e8eee9;border-radius:50%;width:38px;height:38px;font-size:24px;color:#244b3d}
-.website-change-card{border:1px solid #dce6df;border-radius:13px;background:#fff;padding:14px;margin-top:12px}
+.website-change-summary{margin:12px 0 4px;padding:12px 14px;border-radius:12px;background:#eaf3ed;color:#24533f;font-size:15px;font-weight:800}.website-change-card{border:1px solid #dce6df;border-radius:13px;background:#fff;padding:14px;margin-top:12px}
 .website-change-card h3{font-size:16px;margin:0 0 5px}
 .website-change-meta{font-size:12px;color:#66766d;margin-bottom:10px}
 .website-change-values{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -2900,7 +2900,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
       <h2 id="websiteChangesTitle">Änderungen auf Restaurant-Webseiten</h2>
       <button class="website-changes-close" type="button" aria-label="Schließen" onclick="closeWebsiteChanges()">×</button>
     </div>
-    <p style="margin:0;color:#63736a;font-size:13px">Hier erscheinen erkannte Änderungen offizieller Restaurant-Webseiten. Deine Restaurant-Einträge werden nicht automatisch geändert.</p>
+    <p style="margin:0;color:#63736a;font-size:13px">Hier siehst du nur inhaltliche Änderungen. Technische Unterschiede werden ausgeblendet. Deine Restaurant-Einträge werden niemals automatisch geändert.</p>
     <button type="button" id="startWebsiteMonitor" onclick="startRestaurantWebsiteMonitor()" style="margin:14px 0;padding:11px 16px;border:0;border-radius:10px;background:#2d6a56;color:#fff;font-weight:700;cursor:pointer">Jetzt Webseiten prüfen</button>
     <div id="websiteMonitorRunStatus" role="status" aria-live="polite" style="margin:0 0 8px;color:#63736a;font-size:13px"></div>
     <div id="websiteMonitorProgress" style="display:none;margin:0 0 14px;padding:12px;border:1px solid #dce7e0;border-radius:12px;background:#f7faf8">
@@ -7124,21 +7124,78 @@ async function reviewWebsiteChangeGroup(ids,status,password,button){
     await loadRestaurantWebsiteChanges(password).catch(()=>{});
   }
 }
+function websiteDecode(value){
+  return String(value??"")
+    .replace(/&(#x[0-9a-f]+|#\d+|amp|quot|apos|nbsp|commat|period|colon);/gi,(m,e)=>{
+      const k=e.toLowerCase();
+      const named={amp:"&",quot:'"',apos:"'",nbsp:" ",commat:"@",period:".",colon:":"};
+      if(Object.prototype.hasOwnProperty.call(named,k))return named[k];
+      const n=k.startsWith("#x")?parseInt(k.slice(2),16):parseInt(k.slice(1),10);
+      try{return Number.isInteger(n)?String.fromCodePoint(n):m}catch(_){return m}
+    })
+    .replace(/&#(?:x[0-9a-f]+|\d+);/gi,m=>m);
+}
+function websiteComparable(field,value){
+  const decoded=websiteDecode(value).replace(/[\u00a0\u202f]/g," ").replace(/\s+/g," ").trim();
+  if(!decoded)return "";
+  if(field==="telefon")return decoded.replace(/[^\d+]/g,"");
+  if(field==="email")return decoded.replace(/\s/g,"").toLowerCase();
+  if(field==="externe_links"||field==="dokumente"){
+    const urls=[...decoded.matchAll(/(?:https?:\/\/|mailto:|tel:)[^\s<>"']+/gi)].map(m=>{
+      let raw=m[0].replace(/[),.;]+$/,"");
+      if(/^mailto:/i.test(raw))return "mailto:"+raw.slice(7).split("?")[0].toLowerCase();
+      if(/^tel:/i.test(raw))return "tel:"+raw.slice(4).replace(/[^\d+]/g,"");
+      try{
+        const u=new URL(raw);u.hash="";
+        for(const k of [...u.searchParams.keys()])if(/^(utm_.+|fbclid|gclid|dclid|msclkid|mc_cid|mc_eid)$/i.test(k))u.searchParams.delete(k);
+        u.searchParams.sort();return u.href.replace(/\/$/,"");
+      }catch(_){return raw}
+    });
+    if(urls.length)return [...new Set(urls)].sort().join("|");
+  }
+  if(field==="website"){
+    try{const u=new URL(decoded);u.hash="";return u.href.replace(/\/$/,"").toLowerCase()}catch(_){}
+  }
+  return decoded.toLowerCase().replace(/[\u2010-\u2015\u2212]/g,"-").replace(/\s+/g," ");
+}
+function websiteReadableValue(field,value){
+  const decoded=websiteDecode(value).replace(/\s+/g," ").trim();
+  if(!decoded)return "Keine Angabe";
+  if(field==="externe_links"||field==="dokumente"){
+    const lines=decoded.split(/\r?\n/).filter(Boolean);
+    return lines.map(line=>{
+      const m=line.match(/^(.*?):\s*((?:https?:\/\/|mailto:|tel:).*)$/i);
+      if(!m)return line.length>180?line.slice(0,177)+"…":line;
+      const label=m[1].trim();
+      const raw=m[2].trim().replace(/[),.;]+$/,"");
+      if(/^mailto:/i.test(raw))return (label?label+": ":"")+"E-Mail-Adresse: "+raw.slice(7).split("?")[0];
+      if(/^tel:/i.test(raw))return (label?label+": ":"")+"Telefonnummer: "+raw.slice(4);
+      try{const u=new URL(raw);return (label?label+": ":"")+u.hostname+u.pathname.replace(/\/$/,"")}catch(_){return label||"Link geändert"}
+    }).join("\n");
+  }
+  return decoded.length>450?decoded.slice(0,447)+"…":decoded;
+}
 function renderWebsiteChanges(items,password){
   const list=document.getElementById("websiteChangesList");
   if(!list)return;
   list.replaceChildren();
-  if(!items.length){
+  const meaningful=(Array.isArray(items)?items:[]).filter(item=>
+    websiteComparable(item.field,item.oldValue)!==websiteComparable(item.field,item.newValue)
+  );
+  const count=document.createElement("div");
+  count.className="website-change-summary";
+  count.textContent=meaningful.length
+    ? meaningful.length+" echte Änderung"+(meaningful.length===1?"":"en")+" gefunden"
+    : "Keine neuen inhaltlichen Änderungen";
+  list.appendChild(count);
+  if(!meaningful.length){
     const empty=document.createElement("div");empty.className="website-changes-empty";
-    empty.textContent="Zurzeit liegen keine offenen Website-Änderungen vor.";
+    empty.textContent="Alles ruhig: Die offenen älteren Hinweise enthalten derzeit keine erkennbaren inhaltlichen Änderungen. Technische Unterschiede wie Schreibweise, HTML-Kodierung oder Tracking-Links werden ausgeblendet. Deine Restaurantdaten bleiben unverändert.";
     list.appendChild(empty);return;
   }
-  const normalize=value=>String(value??"").replace(/[\s\u00a0]+/g," ").trim().toLocaleLowerCase("de-DE");
   const groups=new Map();
-  for(const item of items){
-    // Eine Karte je Restaurant und Änderungsbereich: wechselnde HTML-Kodierung,
-    // Tracking-Parameter und leicht andere Seitenauszüge erzeugen keine Kartenflut.
-    const key=[item.restaurantName,item.field].map(normalize).join("\u241f");
+  for(const item of meaningful){
+    const key=[item.restaurantName,item.field].map(v=>String(v??"").trim().toLocaleLowerCase("de-DE")).join("\u241f");
     if(!groups.has(key))groups.set(key,[]);
     groups.get(key).push(item);
   }
@@ -7148,25 +7205,23 @@ function renderWebsiteChanges(items,password){
     const card=document.createElement("article");card.className="website-change-card";
     const title=document.createElement("h3");title.textContent=(item.restaurantName||"Restaurant")+" · "+websiteChangeFieldLabel(item.field);card.appendChild(title);
     const meta=document.createElement("div");meta.className="website-change-meta";
-    const dates=group.map(entry=>entry.detectedAt).filter(Boolean).map(value=>new Date(value)).filter(date=>!Number.isNaN(date.getTime())).sort((a,b)=>a-b);
-    meta.textContent=group.length>1
-      ? group.length+" offene Hinweise zu diesem Thema · zuletzt erkannt am "+(dates.length?dates[dates.length-1].toLocaleString("de-DE"):"Zeitpunkt unbekannt")
-      : "Erkannt am "+(dates.length?dates[0].toLocaleString("de-DE"):"Zeitpunkt unbekannt");
+    const dates=group.map(entry=>entry.detectedAt).filter(Boolean).map(v=>new Date(v)).filter(d=>!Number.isNaN(d.getTime())).sort((a,b)=>a-b);
+    meta.textContent=dates.length?"Erkannt am "+dates[dates.length-1].toLocaleString("de-DE"):"Änderung erkannt";
     card.appendChild(meta);
     const values=document.createElement("div");values.className="website-change-values";
-    for(const [label,value] of [["Bisher",item.oldValue],["Auf der Website gefunden",item.newValue]]){
+    for(const [label,value] of [["Bisher",item.oldValue],["Neu auf der Website",item.newValue]]){
       const cell=document.createElement("div");cell.className="website-change-value";
       const strong=document.createElement("strong");strong.textContent=label;cell.appendChild(strong);
-      const span=document.createElement("span");span.textContent=value||"Keine Angabe";cell.appendChild(span);values.appendChild(cell);
+      const span=document.createElement("span");span.textContent=websiteReadableValue(item.field,value);cell.appendChild(span);values.appendChild(cell);
     }
     card.appendChild(values);
     if(/^https?:\/\//i.test(item.sourceUrl||"")){
-      const source=document.createElement("a");source.className="website-change-source";source.href=item.sourceUrl;source.target="_blank";source.rel="noopener noreferrer";source.textContent="Offizielle Quelle öffnen";card.appendChild(source);
+      const source=document.createElement("a");source.className="website-change-source";source.href=item.sourceUrl;source.target="_blank";source.rel="noopener noreferrer";source.textContent="Offizielle Website ansehen";card.appendChild(source);
     }
     const actions=document.createElement("div");actions.className="website-change-actions";
-    const seen=document.createElement("button");seen.type="button";seen.textContent=group.length>1?"Alle "+group.length+" Hinweise gesehen":"Gesehen – ich kümmere mich";
+    const seen=document.createElement("button");seen.type="button";seen.textContent="Als geprüft markieren";
     seen.addEventListener("click",()=>reviewWebsiteChangeGroup(ids,"accepted",password,seen));
-    const ignore=document.createElement("button");ignore.type="button";ignore.className="secondary";ignore.textContent=group.length>1?"Alle "+group.length+" nicht relevant":"Nicht relevant";
+    const ignore=document.createElement("button");ignore.type="button";ignore.className="secondary";ignore.textContent="Nicht relevant";
     ignore.addEventListener("click",()=>reviewWebsiteChangeGroup(ids,"rejected",password,ignore));
     actions.append(seen,ignore);card.appendChild(actions);list.appendChild(card);
   }
@@ -7181,7 +7236,7 @@ function renderWebsiteMonitorErrors(errors,withoutWebsite){
   container.style.display="block";
   if(items.length){
     const heading=document.createElement("div");
-    heading.textContent=items.length+" Prüffehler – bitte ansehen";
+    heading.textContent=items.length+" Webseiten konnten nicht geprüft werden";
     heading.style.cssText="font-size:13px;font-weight:700;color:#8a4b20;margin-bottom:7px";
     container.appendChild(heading);
   }
@@ -7199,14 +7254,14 @@ function renderWebsiteMonitorErrors(errors,withoutWebsite){
         if(parsed.protocol==="http:"||parsed.protocol==="https:"){
           const link=document.createElement("a");
           link.href=parsed.href;link.target="_blank";link.rel="noopener noreferrer";
-          link.textContent=parsed.href;
+          link.textContent="Website öffnen";
           link.style.cssText="display:block;overflow-wrap:anywhere;color:#2d6a56;margin:2px 0";
           li.appendChild(link);
         }
       }catch(_){}
     }
     const message=document.createElement("div");
-    message.textContent=item&&item.error?String(item.error):"Keine genauere Fehlermeldung übermittelt.";
+    message.textContent="Diese Website konnte bei der letzten Prüfung nicht zuverlässig gelesen werden. Bitte später erneut versuchen.";
     message.style.cssText="overflow-wrap:anywhere;color:#63736a";
     li.appendChild(message);
     list.appendChild(li);
