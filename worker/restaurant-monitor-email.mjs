@@ -19,8 +19,9 @@ export async function sendRestaurantWebsiteDigest({
   fetchImpl = fetch,
   now = () => new Date().toISOString()
 }) {
-  if (!env?.BREVO_API_KEY || !env?.BREVO_FROM_EMAIL || !env?.MONITOR_NOTIFICATION_EMAIL) {
-    return { sent: false, reason: "E-Mail-Versand noch nicht eingerichtet." };
+  const notificationEmail = String(env?.MONITOR_NOTIFICATION_EMAIL || "msc4021@arcor.de").trim();
+  if (!env?.BREVO_API_KEY || !env?.BREVO_FROM_EMAIL || !notificationEmail) {
+    return { sent: false, reason: "Brevo-Versandzugang oder Absenderadresse fehlt." };
   }
   const result = await db(
     "SELECT p.id, r.name, p.field_name, p.old_value, p.new_value, p.source_url, p.detected_at FROM restaurant_change_proposals p LEFT JOIN restaurants r ON CAST(r.id AS TEXT)=p.restaurant_id WHERE p.status='pending' AND p.notified_at='' ORDER BY p.detected_at DESC, p.id DESC LIMIT 100",
@@ -73,7 +74,7 @@ export async function sendRestaurantWebsiteDigest({
     },
     body: JSON.stringify({
       sender: { email: env.BREVO_FROM_EMAIL, name: env.BREVO_FROM_NAME || "Restaurant-Webseitenprüfung" },
-      to: [{ email: env.MONITOR_NOTIFICATION_EMAIL }],
+      to: [{ email: notificationEmail }],
       subject: items.length + " neue Änderung(en) auf Restaurant-Webseiten",
       textContent: textBody,
       htmlContent: htmlBody
