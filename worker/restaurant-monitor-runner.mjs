@@ -223,7 +223,8 @@ export async function runRestaurantWebsiteMonitor({
       const externalLinks = extractRelevantExternalLinks(html, effectiveUrl);
       if (externalLinks.length) found.externe_links = externalLinks.join("\n");
       const hash = await fingerprintPage(html, found);
-      const oldResult = await db("SELECT content_hash, extracted_data_json, content_text FROM restaurant_site_snapshots WHERE restaurant_id = ? AND page_url = ?", [textArg(id), textArg(effectiveUrl)], true);
+      const snapshotUrl = pageUrl; // Keep the requested source URL stable for coverage, even when the server redirects.
+      const oldResult = await db("SELECT content_hash, extracted_data_json, content_text FROM restaurant_site_snapshots WHERE restaurant_id = ? AND page_url = ?", [textArg(id), textArg(snapshotUrl)], true);
       const oldRow = oldResult?.results?.[0]?.response?.result?.rows?.[0];
       const oldHash = oldRow ? String(cell(oldRow[0]) || "") : "";
       let oldData = {};
@@ -239,7 +240,7 @@ export async function runRestaurantWebsiteMonitor({
           report.proposals++;
         }
       }
-      await db("INSERT INTO restaurant_site_snapshots (restaurant_id, page_url, checked_at, content_hash, extracted_data_json, content_text) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(restaurant_id, page_url) DO UPDATE SET checked_at=excluded.checked_at, content_hash=excluded.content_hash, extracted_data_json=excluded.extracted_data_json, content_text=excluded.content_text", [textArg(id), textArg(effectiveUrl), textArg(stamp), textArg(hash), textArg(JSON.stringify(found)), textArg(pageText.slice(0, 50000))]);
+      await db("INSERT INTO restaurant_site_snapshots (restaurant_id, page_url, checked_at, content_hash, extracted_data_json, content_text) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(restaurant_id, page_url) DO UPDATE SET checked_at=excluded.checked_at, content_hash=excluded.content_hash, extracted_data_json=excluded.extracted_data_json, content_text=excluded.content_text", [textArg(id), textArg(snapshotUrl), textArg(stamp), textArg(hash), textArg(JSON.stringify(found)), textArg(pageText.slice(0, 50000))]);
       report.pages++;
     };
     // Homepage first to discover subpages. Fetch up to three subpages in parallel,
