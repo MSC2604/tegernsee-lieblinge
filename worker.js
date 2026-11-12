@@ -1420,27 +1420,34 @@ console.log("Tavily usage account:", {
           }
           const coverageResult = await turso(
             `SELECT r.id, r.name, r.website,
-              COUNT(CASE WHEN s.checked_at >= ? AND s.checked_at <= ? THEN s.page_url END)
+              (SELECT COUNT(*) FROM restaurant_site_snapshots s
+               WHERE CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT) AND s.page_url=r.website
+                 AND s.checked_at >= ? AND s.checked_at <= ?),
+              r.externer_eintrag,
+              (SELECT COUNT(*) FROM restaurant_site_snapshots s
+               WHERE CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT) AND s.page_url=r.externer_eintrag
+                 AND s.checked_at >= ? AND s.checked_at <= ?)
             FROM restaurants r
-            LEFT JOIN restaurant_site_snapshots s
-              ON CAST(s.restaurant_id AS TEXT) = CAST(r.id AS TEXT)
-            WHERE TRIM(COALESCE(r.website, '')) <> ''
-            GROUP BY r.id, r.name, r.website
-            ORDER BY r.name COLLATE NOCASE`,
-            [textArg(startedAt), textArg(finishedAt)], true
+            WHERE TRIM(COALESCE(r.website, '')) <> '' OR TRIM(COALESCE(r.externer_eintrag, '')) <> ''
+            ORDER BY r.name COLLATE NOCASE` ,
+            [textArg(startedAt), textArg(finishedAt), textArg(startedAt), textArg(finishedAt)], true
           );
           const rows = coverageResult?.results?.[0]?.response?.result?.rows || [];
-          const items = rows.map(row => ({
-            restaurantId: String(rowValue(row[0]) || ""),
-            name: String(rowValue(row[1]) || ""),
-            website: String(rowValue(row[2]) || ""),
-            snapshotPages: Number(rowValue(row[3]) || 0)
+          const officialItems = rows.filter(row => String(rowValue(row[2]) || "").trim()).map(row => ({
+            restaurantId:String(rowValue(row[0]) || ""), name:String(rowValue(row[1]) || ""),
+            website:String(rowValue(row[2]) || ""), snapshotPages:Number(rowValue(row[3]) || 0)
           }));
-          const missing = items.filter(item => item.snapshotPages === 0);
+          const externalItems = rows.filter(row => String(rowValue(row[4]) || "").trim()).map(row => ({
+            restaurantId:String(rowValue(row[0]) || ""), name:String(rowValue(row[1]) || ""),
+            website:String(rowValue(row[4]) || ""), snapshotPages:Number(rowValue(row[5]) || 0)
+          }));
+          const missing = officialItems.filter(item => item.snapshotPages === 0);
+          const externalMissing = externalItems.filter(item => item.snapshotPages === 0);
           return json({
-            success: true, ready: true, status: runStatus, startedAt, finishedAt,
-            total: items.length, covered: items.length - missing.length,
-            missing, items
+            success:true, ready:true, status:runStatus, startedAt, finishedAt,
+            total:officialItems.length, covered:officialItems.length-missing.length, missing, items:officialItems,
+            externalTotal:externalItems.length, externalCovered:externalItems.length-externalMissing.length,
+            externalMissing, externalItems
           });
         }
 
