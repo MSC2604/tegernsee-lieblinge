@@ -6647,6 +6647,7 @@ function toggleManualRestaurantReviewItem(index){
  catch(_){alert("Die Erledigt-Markierung konnte auf diesem Gerät nicht gespeichert werden. Bitte prüfe die Browser-Speichereinstellungen.");}
  showManualRestaurantReview();
 }
+let manualRestaurantReviewShowDone=false;
 function showManualRestaurantReview(){
  closeAppMenu();
  const overlay=document.getElementById("manualRestaurantReviewOverlay");
@@ -6656,9 +6657,26 @@ function showManualRestaurantReview(){
  list.replaceChildren();
  const done=getManualRestaurantReviewDone();
  const doneCount=MANUAL_RESTAURANT_REVIEW_ITEMS.filter((item,index)=>!!done[index]).length;
- summary.textContent=doneCount+" von "+MANUAL_RESTAURANT_REVIEW_ITEMS.length+" erledigt · "+(MANUAL_RESTAURANT_REVIEW_ITEMS.length-doneCount)+" offen · "+MANUAL_RESTAURANT_REVIEW_ITEMS.filter(item=>item.url).length+" mit Quelle";
+ const openCount=MANUAL_RESTAURANT_REVIEW_ITEMS.length-doneCount;
+ summary.textContent=doneCount+" von "+MANUAL_RESTAURANT_REVIEW_ITEMS.length+" erledigt · "+openCount+" offen · "+MANUAL_RESTAURANT_REVIEW_ITEMS.filter(item=>item.url).length+" mit Quelle";
+ const toggle=document.createElement("button");
+ toggle.type="button";
+ toggle.className="manual-review-action is-done";
+ toggle.style.margin="0 0 12px";
+ toggle.textContent=manualRestaurantReviewShowDone?"Erledigte ausblenden ("+doneCount+")":"Erledigte anzeigen ("+doneCount+")";
+ toggle.disabled=doneCount===0;
+ toggle.addEventListener("click",()=>{manualRestaurantReviewShowDone=!manualRestaurantReviewShowDone;showManualRestaurantReview();});
+ list.appendChild(toggle);
+ if(openCount===0&&!manualRestaurantReviewShowDone){
+  const note=document.createElement("p");
+  note.className="website-change-meta";
+  note.style.cssText="padding:12px;border:1px solid #dce7e1;border-radius:12px;background:#f5f8f5;color:#355447;line-height:1.5";
+  note.textContent="Alle Punkte sind als erledigt bestätigt. Du kannst sie bei Bedarf über „Erledigte anzeigen“ einblenden und dort mit „Wieder öffnen“ zurücksetzen.";
+  list.appendChild(note);
+ }
  MANUAL_RESTAURANT_REVIEW_ITEMS.forEach((item,index)=>{
   const isDone=!!done[index];
+  if(isDone&&!manualRestaurantReviewShowDone)return;
   const card=document.createElement("section");card.className="website-change-card"+(isDone?" manual-review-done":"");
   const heading=document.createElement("h3");heading.textContent=(index+1)+". "+item.name;card.appendChild(heading);
   const meta=document.createElement("div");meta.className="website-change-meta";meta.textContent="Betroffenes Feld: "+item.field;card.appendChild(meta);
