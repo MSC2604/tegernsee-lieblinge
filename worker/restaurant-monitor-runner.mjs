@@ -213,7 +213,10 @@ export async function runRestaurantWebsiteMonitor({
         }
       }
       const pageText = extractPageText(html);
-      if (!pageText) return;
+      if (!pageText) {
+        report.errors.push({ restaurantId:id, name:String(restaurant.name || ""), sourceType, url:effectiveUrl, error:"Die Seite lieferte keinen auswertbaren Text; es wurde kein Vergleichsstand gespeichert." });
+        return;
+      }
       const found = extractRestaurantData(html);
       const documents = extractOfficialDocumentLinks(html, effectiveUrl);
       if (documents.length) found.dokumente = documents.join("\n");
