@@ -7382,15 +7382,16 @@ function renderWebsiteMonitorErrors(errors,withoutWebsite){
         if(parsed.protocol==="http:"||parsed.protocol==="https:"){
           const link=document.createElement("a");
           link.href=parsed.href;link.target="_blank";link.rel="noopener noreferrer";
-          link.textContent="Website öffnen";
+          link.textContent=parsed.href;
           link.style.cssText="display:block;overflow-wrap:anywhere;color:#2d6a56;margin:2px 0";
           li.appendChild(link);
         }
       }catch(_){}
     }
     const message=document.createElement("div");
-    message.textContent="Diese Website konnte bei der letzten Prüfung nicht zuverlässig gelesen werden. Bitte später erneut versuchen.";
-    message.style.cssText="overflow-wrap:anywhere;color:#63736a";
+    const errorText=item&&item.error?String(item.error).trim():"";
+    message.textContent="Fehler: "+(errorText||"Die Website konnte bei der letzten Prüfung nicht zuverlässig gelesen werden. Bitte später erneut versuchen.");
+    message.style.cssText="overflow-wrap:anywhere;color:#63736a;white-space:pre-wrap";
     li.appendChild(message);
     list.appendChild(li);
   });
