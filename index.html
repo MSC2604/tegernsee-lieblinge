@@ -4639,11 +4639,17 @@ function openDetail(
     currentPlace.telefon ||
     "Noch ergänzen";
 
-  document.getElementById(
-    "demail"
-  ).textContent =
-    currentPlace.email ||
-    "Noch ergänzen";
+  const emailElement = document.getElementById("demail");
+  emailElement.replaceChildren();
+  if (currentPlace.email) {
+    const emailLink = document.createElement("a");
+    emailLink.href = "mailto:" + currentPlace.email.trim();
+    emailLink.textContent = currentPlace.email.trim();
+    emailLink.setAttribute("aria-label", "E-Mail an " + currentPlace.email.trim());
+    emailElement.appendChild(emailLink);
+  } else {
+    emailElement.textContent = "Noch ergänzen";
+  }
 
   
   const web =
