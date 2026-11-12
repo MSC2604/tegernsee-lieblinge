@@ -1783,21 +1783,33 @@ console.log("Tavily usage account:", {
           // Nach dem UPDATE den gespeicherten Wert direkt aus Turso zurücklesen.
           // So melden wir keinen Erfolg, wenn der externe Link nicht dauerhaft angekommen ist.
           const verification = await turso(
-            "SELECT externer_eintrag FROM restaurants WHERE id = ?",
+            "SELECT externer_eintrag, zahlungsarten FROM restaurants WHERE id = ?",
             [integerArg(body.id)],
             true
           );
           const verifiedRows = verification?.results?.[0]?.response?.result?.rows || [];
           const storedExternalEntry = String(rowValue(verifiedRows?.[0]?.[0]) || "").trim();
           const expectedExternalEntry = String(r.externer_eintrag || "").trim();
-          if (verifiedRows.length === 0 || storedExternalEntry !== expectedExternalEntry) {
+          let storedPaymentTypes = [];
+          try {
+            const parsed = JSON.parse(String(rowValue(verifiedRows?.[0]?.[1]) || "[]"));
+            if (Array.isArray(parsed)) storedPaymentTypes = parsed.filter(item => ["girocard", "debitkarte", "kreditkarte"].includes(item));
+          } catch {}
+          const expectedPaymentTypes = Array.isArray(r.zahlungsarten)
+            ? r.zahlungsarten.filter(item => ["girocard", "debitkarte", "kreditkarte"].includes(item))
+            : [];
+          const paymentTypesMatch = JSON.stringify([...storedPaymentTypes].sort()) === JSON.stringify([...expectedPaymentTypes].sort());
+          if (verifiedRows.length === 0 || storedExternalEntry !== expectedExternalEntry || !paymentTypesMatch) {
             return json({
-              error: "Der externe Eintrag konnte nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen.",
-              verified: false
+              error: !paymentTypesMatch
+                ? "Die Zahlungsarten konnten nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen."
+                : "Der externe Eintrag konnte nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen.",
+              verified: false,
+              paymentTypesVerified: paymentTypesMatch
             }, 500);
           }
 
-          return json({ success: true, action: "update", verified: true, result });
+          return json({ success: true, action: "update", verified: true, paymentTypesVerified: true, result });
         }
 
         if (body.action === "delete") {
