@@ -2359,6 +2359,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     <button class="app-menu-item" onclick="openRestaurantMap()"><span>🗺️</span><span>Übersichtskarte</span></button>
     <button class="app-menu-item" onclick="showIncompleteEntries()"><span>📋</span><span>Unvollständige Einträge <span id="incompleteMenuCount" style="font-size:12px;color:#805716;width:auto">…</span></span></button>
     <button class="app-menu-item" type="button" onclick="showRestaurantWebsiteChanges()"><span>🌐</span><span>Änderungen auf Restaurant-Webseiten</span></button>
+    <button class="app-menu-item" type="button" onclick="closeAppMenu();exportRestaurantAuditCsv()"><span>📄</span><span>Prüfliste aller Restaurants exportieren</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();focusSearch()"><span>🔎</span><span>Restaurants suchen</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();showFavorites()"><span>♥</span><span>Meine Favoriten</span></button>
     <button class="app-menu-item" type="button" onclick="shareRestaurantApp()"><span>↗️</span><span>App teilen</span></button>
@@ -6601,6 +6602,32 @@ function drawMapEntries(){
  const visible=mapEntries.filter(entry=>activeMapCategory==='Alle'||mapCategoryOf(entry.place)===activeMapCategory);
  document.getElementById('mapStatus').textContent=mapEntries.length+' von '+restaurants.length+' Standorten gefunden · '+visible.length+' auf der Karte angezeigt. Tippe auf einen Namen oder Punkt für Details und Navigation.';
 }
+function exportRestaurantAuditCsv(){
+ if(!Array.isArray(restaurants)||!restaurants.length){
+  alert('Bitte zuerst „Daten aktualisieren“ und warten, bis die Restaurantdaten geladen sind.');
+  return;
+ }
+ const fields=[
+  ['ID','id'],['Name','name'],['Kategorie','kategorie'],['Ort','ort'],['Adresse','adresse'],
+  ['Telefon','telefon'],['Website','website'],['Externer Eintrag','externer_eintrag'],
+  ['E-Mail','email'],['Öffnungszeiten','oeffnungszeiten'],['Ruhetag','ruhetag'],
+  ['Betriebsferien von','betriebsferien_start'],['Betriebsferien bis','betriebsferien_ende'],
+  ['Reservierung','reservierung'],['Hinweise','notizen']
+ ];
+ const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
+ const rows=[fields.map(([label])=>label)];
+ restaurants.forEach(restaurant=>rows.push(fields.map(([,key])=>restaurant[key]??'')));
+ const csv='\\uFEFF'+rows.map(row=>row.map(quote).join(';')).join('\\r\\n');
+ const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+ const url=URL.createObjectURL(blob);
+ const link=document.createElement('a');
+ link.href=url;
+ link.download='tegernsee-restaurant-pruefliste-'+new Date().toISOString().slice(0,10)+'.csv';
+ document.body.appendChild(link);link.click();link.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+ alert('Die Prüfliste mit '+restaurants.length+' Restaurants wurde erstellt. Die Datei enthält nur eine Kopie der aktuell geladenen Daten; in der App oder Datenbank wurde nichts geändert.');
+}
+
 function exportMapCoordinates(){
  if(!mapEntries.length){alert('Bitte zuerst die Karte vollständig laden.');return;}
  const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
