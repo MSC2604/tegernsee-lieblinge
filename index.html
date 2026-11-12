@@ -2449,7 +2449,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 </main>
 
 <main id="mapView">
-  <div class="map-head"><h2>🗺️ Tegernsee-Genusskarte</h2><button class="map-back" onclick="showHome()">‹ Zurück</button></div>
+  <div class="map-head"><h2>🗺️ Tegernsee-Genusskarte</h2><div class="map-head-actions"><button class="map-back" type="button" onclick="exportMapCoordinates()">Koordinatenliste</button><button class="map-back" onclick="showHome()">‹ Zurück</button></div></div>
   <div class="map-filterbar" id="mapFilterBar" aria-label="Kartenkategorien"></div>
   <div class="map-stage">
     <div id="restaurantMap" role="application" aria-label="Karte mit Restaurants am Tegernsee"></div>
@@ -6600,6 +6600,20 @@ function drawMapEntries(){
  updateMapLabels();
  const visible=mapEntries.filter(entry=>activeMapCategory==='Alle'||mapCategoryOf(entry.place)===activeMapCategory);
  document.getElementById('mapStatus').textContent=mapEntries.length+' von '+restaurants.length+' Standorten gefunden · '+visible.length+' auf der Karte angezeigt. Tippe auf einen Namen oder Punkt für Details und Navigation.';
+}
+function exportMapCoordinates(){
+ if(!mapEntries.length){alert('Bitte zuerst die Karte vollständig laden.');return;}
+ const quote=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
+ const rows=[['Name','Adresse','Ort','Breitengrad','Längengrad','OpenStreetMap-Link']];
+ mapEntries.forEach(({place,point})=>{
+  const lat=Number(point.lat),lon=Number(point.lon);
+  rows.push([place.name||'',place.adresse||'',place.ort||'',lat.toFixed(7),lon.toFixed(7),'https://www.openstreetmap.org/?mlat='+lat+'&mlon='+lon+'#map=17/'+lat+'/'+lon]);
+ });
+ const csv='\\uFEFF'+rows.map(row=>row.map(quote).join(';')).join('\\r\\n');
+ const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+ const url=URL.createObjectURL(blob);
+ const link=document.createElement('a');link.href=url;link.download='tegernsee-kartenkoordinaten.csv';
+ document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
 }
 function hasFixedMapCoordinates(place){const name=String(place.name||'').toLocaleLowerCase('de').replace(/ß/g,'ss').replace(/[^a-zäöü0-9]+/g,' ').trim();return name.includes('gasthof zum rosser')||name==='zum rosser'||name.includes('postillion')||name.includes('alpenwildpark')||name.includes('obere firstalm')||name.includes('naturkaeserei')||name.includes('naturkäserei')||name.includes('schwarzentenn');}
 async function geocodeRestaurant(place,cache){const name=String(place.name||'').toLocaleLowerCase('de').replace(/ß/g,'ss').replace(/[^a-zäöü0-9]+/g,' ').trim();if(name.includes('gasthof zum rosser')||name==='zum rosser')return {lat:47.6925,lon:11.7701};if(name.includes('postillion'))return {lat:47.6918015,lon:11.7704273};if(name.includes('alpenwildpark'))return {lat:47.675800,lon:11.778200};if(name.includes('obere firstalm'))return {lat:47.670130,lon:11.854070};if(name.includes('naturkaeserei')||name.includes('naturkäserei'))return {lat:47.675200,lon:11.760500};if(name.includes('schwarzentenn'))return {lat:47.646255,lon:11.684593};const query=[place.adresse||place.name,place.ort,'Bayern','Deutschland'].filter(Boolean).join(', ');const key=String(place.id||place.name)+'|'+query;if(Object.prototype.hasOwnProperty.call(cache,key))return cache[key];if(!query||!place.ort)return null;try{const params=new URLSearchParams({format:'jsonv2',limit:'1',q:query,viewbox:'11.45,47.90,12.15,47.45',bounded:'1'});const response=await fetch('https://nominatim.openstreetmap.org/search?'+params.toString(),{headers:{Accept:'application/json'}});if(!response.ok)return null;const data=await response.json();if(!data.length)return null;const point={lat:Number(data[0].lat),lon:Number(data[0].lon)};if(!Number.isFinite(point.lat)||!Number.isFinite(point.lon)||point.lat<47.45||point.lat>47.90||point.lon<11.45||point.lon>12.15)return null;cache[key]=point;writeMapCache(cache);return point;}catch(e){console.warn('Standort nicht gefunden:',place.name,e);return null;}}
