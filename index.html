@@ -2342,6 +2342,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 #cards .card .tile-payment-heading{color:#718075;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
 #cards .card .tile-payment-list{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
 #cards .card .tile-payment-chip{display:inline-flex;align-items:center;min-height:27px;padding:5px 9px;border:1px solid #dce5da;border-radius:999px;background:#f4f7f1;color:#456251;font-size:11px;font-weight:650;line-height:1.2;white-space:normal}
+#cards .card .tile-payment-none{background:#fff5e9;border-color:#ead6b8;color:#80552d;font-weight:750}
 @media(max-width:520px){#cards .card .tile-hours{padding:14px 15px 16px;gap:9px}#cards .card .tile-hours-row{font-size:13px;line-height:1.5}#cards .card .tile-payment{padding-top:11px}#cards .card .tile-payment-chip{font-size:11px;padding:5px 8px}}
 /* Premium-Feinschliff – klare Hierarchie, ruhige Flächen und gut lesbare Details */
 #cards .card{overflow:hidden;border:1px solid #e8e2d7;box-shadow:0 10px 30px rgba(34,57,45,.075)}
@@ -2864,7 +2865,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 
       <div class="card-edit-box">
         <strong>💳 Zahlungsarten</strong>
-        <small>Bargeld wird grundsätzlich auf jeder Restaurantkachel angezeigt. Wähle hier nur die zusätzlich akzeptierten Karten aus.</small>
+        <small>Bargeld wird grundsätzlich angezeigt. Wähle hier die zusätzlich akzeptierten Karten aus. Wenn keine Karte ausgewählt ist, erscheint auf der Kachel „Keine Kartenzahlung möglich“.</small>
         <label><input type="checkbox" id="f_payment_girocard"> Girocard (EC-Karte)</label>
         <label><input type="checkbox" id="f_payment_debitkarte"> Debitkarte (Visa Debit / Mastercard Debit)</label>
         <label><input type="checkbox" id="f_payment_kreditkarte"> Kreditkarte (z. B. Visa, Mastercard, American Express)</label>
@@ -4581,6 +4582,7 @@ function render(){
                 <div class="tile-payment-list" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;width:100%;min-width:0;">
                   <span class="tile-payment-chip" style="display:flex;align-items:center;justify-content:center;text-align:center;width:max-content;min-width:68px;justify-self:start;padding:6px 9px;white-space:nowrap;font-size:10px;letter-spacing:-.04em;">Bargeld</span>
                   ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).map(type => `<span class="tile-payment-chip" style="display:flex;align-items:center;justify-content:center;min-width:0;padding:6px 2px;white-space:nowrap;font-size:10px;letter-spacing:-.04em;">${({girocard:"Girocard",debitkarte:"Debitkarte",kreditkarte:"Kreditkarte"})[type]}</span>`).join("")}
+                  ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).length === 0 ? '<span class="tile-payment-chip tile-payment-none" style="grid-column:1/-1;justify-content:flex-start;">Keine Kartenzahlung möglich</span>' : ""}
                 </div>
               </div>
             </div>
