@@ -2499,10 +2499,10 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     <div
       class="action"
       id="websiteAction"
-      onclick="openWebsite(currentPlace.website)"
+      onclick="openWebsite(currentPlace.website || currentPlace.externer_eintrag)"
       style="display:none"
     >
-      🌐 Webseite
+      🌐 Website
     </div>
 
     <div
@@ -4686,7 +4686,7 @@ function openDetail(
   if(phoneAction) phoneAction.style.display = currentPlace.telefon ? "block" : "none";
 
   const websiteAction = document.getElementById("websiteAction");
-  if(websiteAction) websiteAction.style.display = currentPlace.website ? "block" : "none";
+  if(websiteAction) websiteAction.style.display = (currentPlace.website || currentPlace.externer_eintrag) ? "block" : "none";
 
   const reservationAction =
     document.getElementById(
