@@ -7423,12 +7423,16 @@ function renderWebsiteMonitorCoverage(data){
   heading.style.cssText="font-size:13px;font-weight:700;color:#294d3e;margin-bottom:6px";
   container.appendChild(heading);
   const note=document.createElement("div");
-  note.textContent=data.missing&&data.missing.length
-    ?"Für diese Websites wurde im letzten Prüflauf noch kein Snapshot gespeichert:"
-    :"Für jede hinterlegte Restaurant-Website wurde im letzten Prüflauf mindestens ein Snapshot gespeichert.";
+  const missingItems=Array.isArray(data.missing)?data.missing:[];
+  const total=Number(data.total)||0;
+  note.textContent=total===0
+    ?"Im Restaurantbestand ist keine Website-URL hinterlegt."
+    :missingItems.length
+      ?"Für diese Websites wurde im letzten Prüflauf noch kein Snapshot gespeichert:"
+      :"Für jede hinterlegte Restaurant-Website wurde im letzten Prüflauf mindestens ein Snapshot gespeichert.";
   note.style.cssText="font-size:12px;color:#63736a;margin-bottom:7px";
   container.appendChild(note);
-  if(Array.isArray(data.missing)&&data.missing.length){
+  if(missingItems.length){
     const list=document.createElement("ul");
     list.style.cssText="margin:0;padding-left:18px;display:grid;gap:7px;font-size:12px;color:#394b41";
     data.missing.forEach(item=>{
@@ -7543,11 +7547,11 @@ async function pollRestaurantWebsiteMonitor(password,runId){
       if(current)current.textContent="Alle Webseiten dieses Prüflaufs wurden bearbeitet.";
       if(stats)stats.textContent=(r.restaurants||0)+" Restaurants geprüft · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne hinterlegte Website · "+(Array.isArray(r.errors)?r.errors.length:0)+" nicht erreichbar";
       if(status)status.textContent="Fertig: "+(r.restaurants||0)+" Restaurants mit Website geprüft · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website.";
-      await loadRestaurantWebsiteChanges(password);
       await loadRestaurantWebsiteMonitorCoverage(password).catch(error=>{
         const container=document.getElementById("websiteMonitorCoverage");
         if(container){container.style.display="block";container.textContent=error.message||"Baseline-Abdeckung konnte nicht geladen werden.";}
       });
+      await loadRestaurantWebsiteChanges(password);
     }else{
       renderWebsiteChangesContext(null);
       if(status)status.textContent="Prüfung fehlgeschlagen: "+(r.error||"Unbekannter Fehler");
