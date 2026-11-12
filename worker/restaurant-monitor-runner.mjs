@@ -168,11 +168,11 @@ export async function runRestaurantWebsiteMonitor({
           homepage = await fetchOfficialHtml(secureRoot.href, secureRoot.origin, fetchImpl);
           root = secureRoot;
         } catch {
-          report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: root.href, error: String(error?.message || error).slice(0, 220) });
+          report.errors.push({ restaurantId:id, name:String(restaurant.name || ""), sourceType, url:root.href, error: String(error?.message || error).slice(0, 220) });
           return;
         }
       } else {
-        report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: root.href, error: String(error?.message || error).slice(0, 220) });
+        report.errors.push({ restaurantId:id, name:String(restaurant.name || ""), sourceType, url:root.href, error: String(error?.message || error).slice(0, 220) });
         return;
       }
     }
@@ -208,7 +208,7 @@ export async function runRestaurantWebsiteMonitor({
           const isMenuEndpoint = /(?:speisekarte|getränkekarte|getraenkekarte|menu|menue|karte)/i.test(new URL(pageUrl).pathname);
           const isNonHtml = /liefert kein HTML/i.test(String(error?.message || ""));
           if (isMenuEndpoint && isNonHtml) return;
-          report.errors.push({ restaurantId: id, name: String(restaurant.name || ""), url: pageUrl, error: String(error?.message || error).slice(0, 220) });
+          report.errors.push({ restaurantId:id, name:String(restaurant.name || ""), sourceType, url:pageUrl, error: String(error?.message || error).slice(0, 220) });
           return;
         }
       }
@@ -267,6 +267,7 @@ export async function runRestaurantWebsiteMonitor({
         report.errors.push({ restaurantId: String(restaurant?.id ?? ""), name, error: String(error?.message || error).slice(0, 220) });
       } finally {
         active.delete(name);
+        active.delete(name + " (externer Eintrag)");
         completed++;
         await publishProgress();
       }
