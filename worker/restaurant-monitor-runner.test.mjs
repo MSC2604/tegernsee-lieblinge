@@ -288,4 +288,17 @@ assert.equal(externalChanged.proposals, 0, "Externe Portaländerungen dürfen ke
 assert.equal(externalState.proposals.size, 0);
 assert.equal(externalChanged.pages, 1);
 
-console.log("Restaurant-Monitor-Lauf: Baseline, eigene Websites, externe Quellen ohne Datenvorschläge, Fehler und HTML-Grenzfälle erfolgreich.");
+
+const emptyPage = await runRestaurantWebsiteMonitor({
+  db: makeDb().db,
+  restaurants: [{ id:99, name:"Leere Website", website:"https://empty.example/" }],
+  fetchImpl: async () => new Response("<html><head><title></title></head><body>   </body></html>", {
+    status:200, headers:{"Content-Type":"text/html"}
+  })
+});
+assert.equal(emptyPage.pages, 0);
+assert.equal(emptyPage.baselines, 0);
+assert.equal(emptyPage.errors.length, 1);
+assert.match(emptyPage.errors[0].error, /keinen auswertbaren Text/);
+
+console.log("Restaurant-Monitor-Lauf: Baseline, leere Seiten als Fehler, externe Quellen ohne Datenvorschläge und HTML-Grenzfälle erfolgreich.");
