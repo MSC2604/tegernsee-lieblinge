@@ -7103,11 +7103,7 @@ function renderWebsiteChangesContext(report){
   const phase=String(report&&report.phase||"");
   if(phase!=="completed"){note.style.display="none";note.textContent="";return;}
   note.style.display="block";
-  if(proposals===0){
-    note.textContent="Im letzten Prüflauf wurden keine neuen Änderungshinweise erkannt. Die darunter angezeigten offenen Hinweise stammen aus früheren Prüfläufen und wurden diesmal nicht erneut gemeldet. Sie bleiben zur Prüfung erhalten.";
-  }else{
-    note.textContent="Der letzte Prüflauf meldete "+proposals+" mögliche Änderungshinweise. Die Liste darunter zeigt alle noch offenen Hinweise – auch aus früheren Prüfläufen.";
-  }
+  note.textContent="Die Webseitenprüfung ist abgeschlossen. Unten werden ausschließlich inhaltliche Änderungen angezeigt. Technische Unterschiede werden herausgefiltert; deine Restaurant-Einträge bleiben unverändert.";
 }
 async function reviewWebsiteChangeGroup(ids,status,password,button){
   if(button)button.disabled=true;
@@ -7182,13 +7178,8 @@ function renderWebsiteChanges(items,password){
   const meaningful=(Array.isArray(items)?items:[]).filter(item=>
     websiteComparable(item.field,item.oldValue)!==websiteComparable(item.field,item.newValue)
   );
-  const count=document.createElement("div");
-  count.className="website-change-summary";
-  count.textContent=meaningful.length
-    ? meaningful.length+" echte Änderung"+(meaningful.length===1?"":"en")+" gefunden"
-    : "Keine neuen inhaltlichen Änderungen";
-  list.appendChild(count);
   if(!meaningful.length){
+    const count=document.createElement("div");count.className="website-change-summary";count.textContent="Keine inhaltlichen Änderungen gefunden";list.appendChild(count);
     const empty=document.createElement("div");empty.className="website-changes-empty";
     empty.textContent="Alles ruhig: Die offenen älteren Hinweise enthalten derzeit keine erkennbaren inhaltlichen Änderungen. Technische Unterschiede wie Schreibweise, HTML-Kodierung oder Tracking-Links werden ausgeblendet. Deine Restaurantdaten bleiben unverändert.";
     list.appendChild(empty);return;
@@ -7199,6 +7190,9 @@ function renderWebsiteChanges(items,password){
     if(!groups.has(key))groups.set(key,[]);
     groups.get(key).push(item);
   }
+  const count=document.createElement("div");count.className="website-change-summary";
+  count.textContent=groups.size+" Restaurant"+(groups.size===1?"":"s")+" mit tatsächlichen Änderungen";
+  list.appendChild(count);
   for(const group of groups.values()){
     const item=group[group.length-1];
     const ids=group.map(entry=>entry.id).filter(id=>id!==undefined&&id!==null);
@@ -7209,10 +7203,12 @@ function renderWebsiteChanges(items,password){
     meta.textContent=dates.length?"Erkannt am "+dates[dates.length-1].toLocaleString("de-DE"):"Änderung erkannt";
     card.appendChild(meta);
     const values=document.createElement("div");values.className="website-change-values";
-    for(const [label,value] of [["Bisher",item.oldValue],["Neu auf der Website",item.newValue]]){
+    const oldValues=[...new Set(group.map(entry=>websiteReadableValue(item.field,entry.oldValue)))];
+    const newValues=[...new Set(group.map(entry=>websiteReadableValue(item.field,entry.newValue)))];
+    for(const [label,value] of [["Bisher",oldValues.join("\n")],["Neu auf der Website",newValues.join("\n")]]){
       const cell=document.createElement("div");cell.className="website-change-value";
       const strong=document.createElement("strong");strong.textContent=label;cell.appendChild(strong);
-      const span=document.createElement("span");span.textContent=websiteReadableValue(item.field,value);cell.appendChild(span);values.appendChild(cell);
+      const span=document.createElement("span");span.textContent=value;cell.appendChild(span);values.appendChild(cell);
     }
     card.appendChild(values);
     if(/^https?:\/\//i.test(item.sourceUrl||"")){
@@ -7363,7 +7359,7 @@ async function pollRestaurantWebsiteMonitor(password,runId){
       if(percent)percent.textContent="100 %";
       if(bar)bar.style.width="100%";
       if(current)current.textContent="Alle Webseiten dieses Prüflaufs wurden bearbeitet.";
-      if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" neue Vergleichsstände · "+(r.proposals||0)+" Änderungshinweise · "+(r.errors||[]).length+" Fehler · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website";
+      if(stats)stats.textContent=(r.restaurants||0)+" Restaurants geprüft · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne hinterlegte Website · "+(Array.isArray(r.errors)?r.errors.length:0)+" nicht erreichbar";
       if(status)status.textContent="Fertig: "+(r.restaurants||0)+" Restaurants mit Website geprüft · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne Website.";
       await loadRestaurantWebsiteChanges(password);
     }else{
@@ -7451,7 +7447,7 @@ async function refreshRestaurantWebsiteMonitorStatus(password){
     if(percent)percent.textContent="100 %";
     if(bar)bar.style.width="100%";
     if(current)current.textContent="Abgeschlossen am "+(run.finishedAt?new Date(run.finishedAt).toLocaleString("de-DE"):"ohne Zeitangabe")+".";
-    if(stats)stats.textContent=(r.pages||0)+" Seiten geprüft · "+(r.baselines||0)+" neue Vergleichsstände · "+(r.proposals||0)+" Änderungshinweise · "+(Array.isArray(r.errors)?r.errors.length:(r.errors||0))+" Fehler";
+    if(stats)stats.textContent=(r.restaurants||0)+" Restaurants geprüft · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne hinterlegte Website · "+(Array.isArray(r.errors)?r.errors.length:(r.errors||0))+" nicht erreichbar";
     if(status)status.textContent="Letzter Prüflauf erfolgreich abgeschlossen.";
   }else if(run.status==="failed"){
     if(label)label.textContent="Letzte Prüfung fehlgeschlagen";
