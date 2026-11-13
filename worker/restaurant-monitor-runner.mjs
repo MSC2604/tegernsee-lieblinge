@@ -87,7 +87,12 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
       } catch (error) {
         clearTimeout(activeTimer);
         lastError = error;
-        if (attempt === FETCH_ATTEMPTS) throw error;
+        if (attempt === FETCH_ATTEMPTS) {
+          if (error?.name === "AbortError" || /operation was aborted|timed? ?out|timeout/i.test(String(error?.message || error))) {
+            throw new Error("Der Abruf wurde nach zwei Versuchen abgebrochen (Zeitüberschreitung).");
+          }
+          throw error;
+        }
       }
     }
     if (!response) throw lastError || new Error("Website konnte nicht abgerufen werden.");
