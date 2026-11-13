@@ -1020,9 +1020,31 @@ console.log("Tavily usage account:", {
         }
       }
 
+      await turso(`CREATE TABLE IF NOT EXISTS restaurant_payment_research_status (
+        item_name TEXT PRIMARY KEY,
+        status TEXT NOT NULL CHECK (status IN ('open', 'done', 'deleted')),
+        updated_at TEXT NOT NULL DEFAULT ''
+      )`);
+
       if (request.method === "GET") {
         const url = new URL(request.url);
         const action = url.searchParams.get("action");
+
+        if (action === "paymentResearchStatus") {
+          const result = await turso(
+            "SELECT item_name, status, updated_at FROM restaurant_payment_research_status ORDER BY item_name",
+            [],
+            true
+          );
+          const rows = result?.results?.[0]?.response?.result?.rows || [];
+          return json({
+            items: rows.map(row => ({
+              name: String(rowValue(row[0]) || ""),
+              status: String(rowValue(row[1]) || ""),
+              updatedAt: String(rowValue(row[2]) || "")
+            }))
+          });
+        }
 
         if (action === "galleryCounts") {
           const result = await turso("SELECT restaurant_id, COUNT(*) FROM restaurant_gallery_images GROUP BY restaurant_id", [], true);
@@ -1226,6 +1248,40 @@ console.log("Tavily usage account:", {
           body = await request.json();
         } catch {
           return json({ error: "Ungültiger JSON-Inhalt" }, 400);
+        }
+
+        if (body.action === "savePaymentResearchStatus") {
+          const items = Array.isArray(body.items) ? body.items.slice(0, 100) : [];
+          if (!items.length) return json({ error: "Keine Prüflistenänderungen übergeben." }, 400);
+          const allowedStatuses = new Set(["open", "done", "deleted"]);
+          const cleanItems = [];
+          const seenNames = new Set();
+          for (const item of items) {
+            const name = String(item?.name || "").trim().slice(0, 160);
+            const status = String(item?.status || "");
+            if (!name || /[\u0000-\u001f]/.test(name) || !allowedStatuses.has(status)) {
+              return json({ error: "Ungültiger Prüflisteneintrag." }, 400);
+            }
+            if (seenNames.has(name)) continue;
+            seenNames.add(name);
+            cleanItems.push({ name, status });
+          }
+          const now = new Date().toISOString();
+          const placeholders = cleanItems.map(() => "(?, ?, ?)").join(", ");
+          const args = cleanItems.flatMap(item => [textArg(item.name), textArg(item.status), textArg(now)]);
+          await turso(
+            `INSERT INTO restaurant_payment_research_status (item_name, status, updated_at)
+             VALUES ${placeholders}
+             ON CONFLICT(item_name) DO UPDATE SET status = excluded.status, updated_at = excluded.updated_at`,
+            args
+          );
+          const verify = await turso("SELECT item_name, status FROM restaurant_payment_research_status", [], true);
+          const savedRows = verify?.results?.[0]?.response?.result?.rows || [];
+          const saved = new Map(savedRows.map(row => [String(rowValue(row[0]) || ""), String(rowValue(row[1]) || "")]));
+          if (!cleanItems.every(item => saved.get(item.name) === item.status)) {
+            return json({ error: "Die Prüflistenänderungen konnten nicht vollständig bestätigt werden." }, 500);
+          }
+          return json({ success: true, verified: true, saved: cleanItems.length });
         }
 
         if (body.action === "sendRestaurantWebsiteTestEmail") {
