@@ -8410,29 +8410,16 @@ function showWebsiteMonitorCopyableError(status,message){
   status.append(heading,field,copy);
 }
 async function runFullRestaurantMonitoringTest(authenticatedPassword){
+  // Der Gesamt-Test verwendet bewusst denselben schrittweisen Ablauf wie
+  // „Jetzt Webseiten prüfen“. So wird nicht mehr versucht, alle Websites
+  // innerhalb eines einzigen Cloudflare-Worker-Aufrufs abzurufen.
   const button=document.getElementById("runFullWebsiteMonitorTest");
-  const status=document.getElementById("websiteMonitorRunStatus");
   let password=authenticatedPassword;
   if(!password)password=await askAdminPassword("Bitte Admin-Passwort eingeben, um den vollständigen Restaurant-Prüflauf zu starten.");
   if(password===null||!password)return;
   if(button)button.disabled=true;
-  if(status)status.textContent="Der vollständige Prüflauf läuft. Bitte lass dieses Fenster geöffnet; die Abschlussmeldung erscheint nach beiden Prüfungen und dem E-Mail-Versand …";
   try{
-    const response=await fetch(API_URL,{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},
-      body:JSON.stringify({action:"runRestaurantMonitoringFullTest"})
-    });
-    let data={};try{data=await response.json();}catch(_){}
-    if(!response.ok||!data.completed)throw new Error(data.emailReason||data.message||data.error||"Der vollständige Prüflauf konnte nicht abgeschlossen werden.");
-    if(!data.emailSent)throw new Error("Die Prüfungen sind abgeschlossen, aber der E-Mail-Versand ist fehlgeschlagen: "+(data.emailReason||"Keine Bestätigung von Brevo."));
-    const s=data.summary||{};
-    const message="Prüflauf abgeschlossen. Geprüft: "+(s.restaurantsChecked||0)+" Restaurant-Websites, "+(s.externalEntriesChecked||0)+" externe Einträge, "+(s.pagesChecked||0)+" Seiten und "+(s.cardsChecked||0)+" Kartenlinks. Prüfprobleme: "+(s.errors||0)+". Brevo hat den Bericht an "+(data.recipient||"msc4021@arcor.de")+" zum Versand angenommen. Deine Restaurant-Einträge wurden nicht automatisch geändert.";
-    if(status)status.textContent=message;
-    alert(message);
-  }catch(error){
-    if(status)status.textContent=error.message||"Der vollständige Prüflauf konnte nicht abgeschlossen werden.";
-    alert(error.message||"Der vollständige Prüflauf konnte nicht abgeschlossen werden.");
+    await startRestaurantWebsiteMonitor(password);
   }finally{
     if(button)button.disabled=false;
   }
