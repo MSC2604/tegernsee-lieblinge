@@ -2350,16 +2350,17 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 #cards .card .tile-payment-heading{color:#718075;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
 #cards .card .tile-payment-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
 /* Dezente Mini-Ampel im klassischen rechteckigen Gehäuse (Variante 1) */
-#cards .card .payment-traffic{position:relative;display:inline-flex;flex-direction:row;align-items:center;justify-content:center;gap:2px;flex:0 0 auto;width:38px;height:15px;padding:2px 3px;border:1px solid #252a27;border-radius:4px;background:linear-gradient(180deg,#424744 0%,#171b19 52%,#303632 100%);box-shadow:inset 0 1px 2px rgba(255,255,255,.12),0 1px 2px rgba(0,0,0,.12)}
-#cards .card .payment-traffic-light{position:relative;display:block;width:7px;height:7px;flex:0 0 7px;border-radius:50%;opacity:.22;border:1px solid #090c0a;box-shadow:inset 0 1px 2px rgba(0,0,0,.65)}
+/* Dezente Statuspunkte ohne Gehäuse – passend zum ruhigen Kartenlayout */
+#cards .card .payment-traffic{position:relative;display:inline-flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;flex:0 0 auto;width:auto;height:auto;padding:2px 1px;border:0;border-radius:0;background:transparent;box-shadow:none}
+#cards .card .payment-traffic-light{position:relative;display:block;width:9px;height:9px;flex:0 0 9px;border-radius:50%;opacity:.2;border:1px solid rgba(55,70,60,.18);box-shadow:inset 0 1px 1px rgba(255,255,255,.55)}
 #cards .card .payment-traffic-light:before{content:none}
-#cards .card .payment-traffic-light.red{background:#d94a43}
-#cards .card .payment-traffic-light.yellow{background:#d5a832}
-#cards .card .payment-traffic-light.green{background:#319766}
-#cards .card .payment-traffic-light.active{opacity:1;box-shadow:0 0 3px currentColor,inset 0 1px 1px rgba(255,255,255,.35)}
-#cards .card .payment-traffic-light.red.active{color:#e35a52}
-#cards .card .payment-traffic-light.yellow.active{color:#d9ad3b}
-#cards .card .payment-traffic-light.green.active{color:#39a976}
+#cards .card .payment-traffic-light.red{background:#df655d}
+#cards .card .payment-traffic-light.yellow{background:#dfb64f}
+#cards .card .payment-traffic-light.green{background:#55a879}
+#cards .card .payment-traffic-light.active{opacity:1;box-shadow:0 0 0 2px rgba(65,90,72,.08),0 0 5px currentColor,inset 0 1px 1px rgba(255,255,255,.55)}
+#cards .card .payment-traffic-light.red.active{color:#df655d}
+#cards .card .payment-traffic-light.yellow.active{color:#dfb64f}
+#cards .card .payment-traffic-light.green.active{color:#55a879}
 #cards .card .tile-payment-list{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
 #cards .card .tile-payment-chip{display:inline-flex;align-items:center;min-height:27px;padding:5px 9px;border:1px solid #dce5da;border-radius:999px;background:#f4f7f1;color:#456251;font-size:11px;font-weight:650;line-height:1.2;white-space:normal}
 #cards .card .tile-payment-none{background:#fff5e9;border-color:#ead6b8;color:#80552d;font-weight:750}
