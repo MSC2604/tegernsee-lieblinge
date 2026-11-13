@@ -1,3 +1,4 @@
+import { areRestaurantValuesEquivalent } from "./restaurant-monitor.mjs";
 // Optionaler täglicher E-Mail-Sammelhinweis über Brevo.
 // Ohne Brevo-API-Schlüssel und verifizierte Absenderadresse wird nichts versendet.
 function arg(value) {
@@ -39,7 +40,13 @@ export async function sendRestaurantWebsiteDigest({
     kind:String(cell(row[2])||""), url:String(cell(row[3])||"")
   }));
   const errors = Array.isArray(summary.errors) ? summary.errors : [];
-  const totalChanges = proposals.length + cardChanges.length;
+  // Alte offene Vorschläge können aus früheren Läufen stammen, bevor die
+  // Normalisierung aktiv war. Technische Darstellungsunterschiede auch beim
+  // Versand ausblenden, ohne die gespeicherten Restaurantdaten anzufassen.
+  const meaningfulProposals = proposals.filter(item =>
+    !areRestaurantValuesEquivalent(item.field, item.oldValue, item.newValue)
+  );
+  const totalChanges = meaningfulProposals.length + cardChanges.length;
   const fieldNames = {
     telefon:"Telefonnummer", email:"E-Mail-Adresse", website:"Website", adresse:"Adresse",
     oeffnungszeiten:"Öffnungszeiten", ruhetag:"Ruhetag", betriebsferien:"Betriebsferien",
@@ -59,7 +66,7 @@ export async function sendRestaurantWebsiteDigest({
   ];
   const textBody = [
     ...summaryLines,
-    ...(proposals.length ? ["","ÄNDERUNGEN AN RESTAURANTDATEN",...proposals.map(item =>
+    ...(meaningfulProposals.length ? ["","ÄNDERUNGEN AN RESTAURANTDATEN",...meaningfulProposals.map(item =>
       item.name+" – "+(fieldNames[item.field]||item.field)+"\nBisher: "+(item.oldValue||"Keine Angabe")+
       "\nNeu: "+(item.newValue||"Keine Angabe")+"\nQuelle: "+item.sourceUrl)] : []),
     ...(cardChanges.length ? ["","ÄNDERUNGEN AN SPEISE- UND GETRÄNKEKARTEN",...cardChanges.map(item =>
@@ -78,7 +85,7 @@ export async function sendRestaurantWebsiteDigest({
     </ul>
     <p><strong>${totalChanges?"Änderungen erkannt – bitte in der App prüfen.":"Keine Änderungen festgestellt."}</strong></p>
     <p>Die Restaurant-Einträge in deiner App wurden <strong>nicht automatisch verändert</strong>.</p>
-    ${proposals.length?`<h3>Änderungen an Restaurantdaten</h3>${proposals.map(item=>`<section style="margin:16px 0;padding:12px;border:1px solid #dce6df;border-radius:8px">
+    ${meaningfulProposals.length?`<h3>Änderungen an Restaurantdaten</h3>${meaningfulProposals.map(item=>`<section style="margin:16px 0;padding:12px;border:1px solid #dce6df;border-radius:8px">
       <h4>${escapeHtml(item.name)} – ${escapeHtml(fieldNames[item.field]||item.field)}</h4>
       <p><strong>Bisher:</strong><br>${escapeHtml(item.oldValue||"Keine Angabe")}</p>
       <p><strong>Neu:</strong><br>${escapeHtml(item.newValue||"Keine Angabe")}</p>
@@ -101,9 +108,9 @@ export async function sendRestaurantWebsiteDigest({
   });
   if(!response.ok) throw new Error("Brevo hat den E-Mail-Versand abgelehnt (HTTP "+response.status+"): "+(await response.text()).slice(0,300));
   const stamp=now();
-  for(const item of proposals) await db("UPDATE restaurant_change_proposals SET notified_at=? WHERE id=? AND notified_at=''",[arg(stamp),arg(item.id)]);
+  for(const item of meaningfulProposals) await db("UPDATE restaurant_change_proposals SET notified_at=? WHERE id=? AND notified_at=''",[arg(stamp),arg(item.id)]);
   for(const item of cardChanges) await db("UPDATE restaurant_card_checks SET notified_at=? WHERE restaurant_id=? AND kind=? AND notified_at=''",[arg(stamp),arg(item.restaurantId),arg(item.kind)]);
-  return {sent:true,acceptedByProvider:true,recipient:notificationEmail,count:totalChanges,proposalCount:proposals.length,cardChangeCount:cardChanges.length,errorCount:errors.length};
+  return {sent:true,acceptedByProvider:true,recipient:notificationEmail,count:totalChanges,proposalCount:meaningfulProposals.length,cardChangeCount:cardChanges.length,ignoredTechnicalProposalCount:proposals.length-meaningfulProposals.length,errorCount:errors.length};
 }
 
 /**
