@@ -1038,9 +1038,87 @@ console.log("Tavily usage account:", {
         updated_at TEXT NOT NULL DEFAULT ''
       )`);
 
+      await turso(`CREATE TABLE IF NOT EXISTS restaurant_gmail_oauth_state (
+        state TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL
+      )`);
+      await turso(`CREATE TABLE IF NOT EXISTS restaurant_gmail_connection (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        email TEXT NOT NULL DEFAULT '',
+        refresh_token_encrypted TEXT NOT NULL,
+        connected_at TEXT NOT NULL
+      )`);
+
       if (request.method === "GET") {
         const url = new URL(request.url);
         const action = url.searchParams.get("action");
+
+        if (action === "gmailOAuthCallback") {
+          const htmlPage = (title, message) => new Response(
+            `<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><body style="font:16px/1.5 system-ui,sans-serif;background:#f5f3eb;color:#20382e;padding:32px;max-width:620px;margin:40px auto"><h2>${title}</h2><p>${message}</p><p><a href="https://msc2604.github.io/tegernsee-lieblinge/" style="color:#2d6a56;font-weight:700">Zur Restaurant-App</a></p></body></html>`,
+            { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } }
+          );
+          try {
+            if (!env.GMAIL_CLIENT_ID || !env.GMAIL_CLIENT_SECRET || !env.GMAIL_REDIRECT_URI || !env.GMAIL_TOKEN_ENCRYPTION_KEY) {
+              return htmlPage("Einrichtung noch nicht vollständig", "Die Gmail-Verbindung ist serverseitig noch nicht vollständig eingerichtet. Bitte kehre zur App zurück.");
+            }
+            const code = url.searchParams.get("code") || "";
+            const state = url.searchParams.get("state") || "";
+            const googleError = url.searchParams.get("error");
+            if (googleError) return htmlPage("Verbindung abgebrochen", "Google hat die Freigabe nicht abgeschlossen. Du kannst es in der App erneut versuchen.");
+            if (!code || !state) return htmlPage("Verbindung fehlgeschlagen", "Die Rückmeldung von Google war unvollständig.");
+            const stateResult = await turso("SELECT created_at FROM restaurant_gmail_oauth_state WHERE state = ?", [textArg(state)], true);
+            const stateRow = stateResult?.results?.[0]?.response?.result?.rows?.[0];
+            await turso("DELETE FROM restaurant_gmail_oauth_state WHERE state = ?", [textArg(state)]);
+            const createdAt = stateRow ? Date.parse(String(rowValue(stateRow[0]) || "")) : NaN;
+            if (!Number.isFinite(createdAt) || Date.now() - createdAt > 10 * 60 * 1000 || createdAt > Date.now() + 60 * 1000) {
+              return htmlPage("Sicherheitsprüfung fehlgeschlagen", "Die Freigabe ist abgelaufen oder ungültig. Bitte starte die Verbindung erneut in der App.");
+            }
+            const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: new URLSearchParams({
+                code,
+                client_id: env.GMAIL_CLIENT_ID,
+                client_secret: env.GMAIL_CLIENT_SECRET,
+                redirect_uri: env.GMAIL_REDIRECT_URI,
+                grant_type: "authorization_code"
+              })
+            });
+            const tokenData = await tokenResponse.json();
+            if (!tokenResponse.ok || !tokenData.refresh_token) {
+              console.log("Gmail OAuth token exchange failed:", tokenData.error || tokenResponse.status);
+              return htmlPage("Gmail konnte nicht verbunden werden", "Google hat kein dauerhaftes Verbindungstoken geliefert. Bitte prüfe die Google-OAuth-Einstellungen und versuche es erneut.");
+            }
+            const profileResponse = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+              headers: { Authorization: "Bearer " + tokenData.access_token }
+            });
+            const profile = await profileResponse.json();
+            if (!profileResponse.ok || !profile.emailAddress) {
+              return htmlPage("Gmail-Konto konnte nicht bestätigt werden", "Google hat die Verbindung hergestellt, aber die zugehörige E-Mail-Adresse konnte nicht gelesen werden.");
+            }
+            const keyMaterial = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(env.GMAIL_TOKEN_ENCRYPTION_KEY));
+            const cryptoKey = await crypto.subtle.importKey("raw", keyMaterial, { name: "AES-GCM" }, false, ["encrypt"]);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, cryptoKey, new TextEncoder().encode(tokenData.refresh_token));
+            const bytes = new Uint8Array(encrypted);
+            let binary = "";
+            for (const byte of bytes) binary += String.fromCharCode(byte);
+            const cipherText = btoa(binary);
+            const ivText = btoa(String.fromCharCode(...iv));
+            const connectedAt = new Date().toISOString();
+            await turso(
+              `INSERT INTO restaurant_gmail_connection (id, email, refresh_token_encrypted, connected_at)
+               VALUES (1, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET email = excluded.email, refresh_token_encrypted = excluded.refresh_token_encrypted, connected_at = excluded.connected_at`,
+              [textArg(profile.emailAddress), textArg(ivText + "." + cipherText), textArg(connectedAt)]
+            );
+            return htmlPage("Gmail erfolgreich verbunden", "Das Google-Konto " + String(profile.emailAddress).replace(/[&<>"]/g, "") + " wurde sicher mit der Restaurant-App verbunden. Die App kann E-Mails nur lesen; sie versendet, verändert oder löscht keine Nachrichten.");
+          } catch (error) {
+            console.log("Gmail OAuth callback error:", String(error?.message || error));
+            return htmlPage("Gmail-Verbindung fehlgeschlagen", "Beim Abschließen der Verbindung ist ein technischer Fehler aufgetreten. Bitte versuche es später erneut.");
+          }
+        }
 
         if (action === "paymentResearchStatus") {
           const result = await turso(
@@ -1322,6 +1400,41 @@ console.log("Tavily usage account:", {
             return json({ error: "Die Prüflistenänderungen konnten nicht vollständig bestätigt werden." }, 500);
           }
           return json({ success: true, verified: true, saved: cleanItems.length });
+        }
+
+        if (body.action === "gmailOAuthStart") {
+          if (!env.GMAIL_CLIENT_ID || !env.GMAIL_REDIRECT_URI) {
+            return json({ error: "Die Google-Client-ID und Weiterleitungsadresse müssen zuerst in Cloudflare eingerichtet werden." }, 503);
+          }
+          const stateBytes = crypto.getRandomValues(new Uint8Array(32));
+          let stateBinary = "";
+          for (const byte of stateBytes) stateBinary += String.fromCharCode(byte);
+          const state = btoa(stateBinary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+          await turso("DELETE FROM restaurant_gmail_oauth_state WHERE created_at < ?", [textArg(new Date(Date.now() - 60 * 60 * 1000).toISOString())]);
+          await turso("INSERT INTO restaurant_gmail_oauth_state (state, created_at) VALUES (?, ?)", [textArg(state), textArg(new Date().toISOString())]);
+          const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+          authUrl.search = new URLSearchParams({
+            client_id: env.GMAIL_CLIENT_ID,
+            redirect_uri: env.GMAIL_REDIRECT_URI,
+            response_type: "code",
+            scope: "https://www.googleapis.com/auth/gmail.readonly",
+            access_type: "offline",
+            prompt: "consent",
+            include_granted_scopes: "true",
+            state
+          }).toString();
+          return json({ success: true, authUrl: authUrl.toString() });
+        }
+
+        if (body.action === "gmailConnectionStatus") {
+          const result = await turso("SELECT email, connected_at FROM restaurant_gmail_connection WHERE id = 1", [], true);
+          const row = result?.results?.[0]?.response?.result?.rows?.[0];
+          return json({
+            success: true,
+            connected: !!row,
+            email: row ? String(rowValue(row[0]) || "") : "",
+            connectedAt: row ? String(rowValue(row[1]) || "") : ""
+          });
         }
 
         if (body.action === "savePaymentRequestTracker") {
