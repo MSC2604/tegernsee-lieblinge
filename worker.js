@@ -29,8 +29,19 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
       restaurant_id TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL,
       checked_at TEXT NOT NULL DEFAULT '', changed_at TEXT NOT NULL DEFAULT '',
       content_hash TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '',
-      detail TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, kind)
+      detail TEXT NOT NULL DEFAULT '', notified_at TEXT NOT NULL DEFAULT '',
+      PRIMARY KEY (restaurant_id, kind)
     )`);
+    // Bestehende Tabellen aus älteren Läufen nachziehen: Der Upsert unten
+    // verwendet notified_at auch dann, wenn die Tabelle bereits existiert.
+    const cardCheckColumns = await db("PRAGMA table_info(restaurant_card_checks)", [], true);
+    const cardCheckColumnNames = new Set(
+      (cardCheckColumns?.results?.[0]?.response?.result?.rows || [])
+        .map(row => String(cell(row[1]) || ""))
+    );
+    if (!cardCheckColumnNames.has("notified_at")) {
+      await db("ALTER TABLE restaurant_card_checks ADD COLUMN notified_at TEXT NOT NULL DEFAULT ''");
+    }
     const query = await db(
       "SELECT restaurant_id, kind, url FROM restaurant_cards WHERE url <> '' AND kind IN ('speisekarte','getraenkekarte')",
       [], true
