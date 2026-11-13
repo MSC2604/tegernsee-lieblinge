@@ -2,8 +2,10 @@ name = "tegernsee-restaurants-api"
 main = "worker.js"
 compatibility_date = "2026-10-16"
 
+[vars]
+BREVO_FROM_EMAIL = "msc4021@arcor.de"
+
 # Trigger fresh deployment
 
 [triggers]
 crons = ["0 5 * * *"]
-
