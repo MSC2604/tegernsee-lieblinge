@@ -6206,6 +6206,54 @@ async function syncRestaurantCards(restaurantId,password){
 -------------------------------------------------- */
 
 
+function showCopyableMessage(title,message){
+  const old=document.getElementById("copyableErrorOverlay");
+  if(old) old.remove();
+  const overlay=document.createElement("div");
+  overlay.id="copyableErrorOverlay";
+  overlay.style.cssText="position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.68);display:flex;align-items:center;justify-content:center;padding:18px;";
+  const panel=document.createElement("div");
+  panel.style.cssText="width:min(560px,100%);max-height:90vh;overflow:auto;background:#fffdf7;color:#20352d;border-radius:18px;padding:20px;box-shadow:0 16px 50px rgba(0,0,0,.35);font-family:inherit;";
+  const heading=document.createElement("h2");
+  heading.textContent=title;
+  heading.style.cssText="margin:0 0 12px;font-size:20px;color:#8b2e25;";
+  const hint=document.createElement("p");
+  hint.textContent="Du kannst die vollständige Meldung hier markieren oder direkt kopieren und anschließend in den Chat einfügen.";
+  hint.style.cssText="margin:0 0 12px;line-height:1.45;";
+  const area=document.createElement("textarea");
+  area.readOnly=true;
+  area.value=String(message||"Unbekannter Fehler");
+  area.setAttribute("aria-label","Fehlermeldung zum Kopieren");
+  area.style.cssText="box-sizing:border-box;width:100%;min-height:150px;padding:12px;border:1px solid #9aa99f;border-radius:10px;background:#fff;font:14px/1.45 monospace;color:#172820;resize:vertical;";
+  const actions=document.createElement("div");
+  actions.style.cssText="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;";
+  const copy=document.createElement("button");
+  copy.type="button";
+  copy.textContent="Meldung kopieren";
+  copy.style.cssText="border:0;border-radius:10px;padding:12px 16px;background:#2d6a56;color:white;font-weight:700;font-size:15px;";
+  copy.addEventListener("click",async()=>{
+    area.focus(); area.select(); area.setSelectionRange(0,area.value.length);
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(area.value);
+      else if(!document.execCommand("copy")) throw new Error("Kopieren nicht verfügbar");
+      copy.textContent="Kopiert ✓";
+    }catch(e){
+      try{ if(document.execCommand("copy")) copy.textContent="Kopiert ✓"; else copy.textContent="Bitte Text markieren und kopieren"; }
+      catch(_){ copy.textContent="Bitte Text markieren und kopieren"; }
+    }
+  });
+  const close=document.createElement("button");
+  close.type="button"; close.textContent="Schließen";
+  close.style.cssText="border:1px solid #9aa99f;border-radius:10px;padding:12px 16px;background:#fff;color:#20352d;font-weight:600;font-size:15px;";
+  close.addEventListener("click",()=>overlay.remove());
+  actions.append(copy,close);
+  panel.append(heading,hint,area,actions);
+  overlay.append(panel);
+  overlay.addEventListener("click",e=>{if(e.target===overlay) overlay.remove();});
+  document.body.append(overlay);
+  area.focus(); area.select();
+}
+
 async function savePlace(){
 
   // Dateiobjekte sichern, bevor das Formular geschlossen oder neu geladen wird.
@@ -6292,13 +6340,13 @@ async function savePlace(){
       : restaurants.find(r => String(r.name || "").trim().toLowerCase() === String(restaurant.name || "").trim().toLowerCase());
 
     if(!savedRestaurant){
-      alert("Die Restaurantdaten wurden vom Server angenommen, aber der Eintrag wurde nach dem Neuladen nicht gefunden. Bitte prüfe die Restaurantliste, bevor du erneut speicherst.");
+      showCopyableMessage("Restaurant nach dem Speichern nicht gefunden","Die Restaurantdaten wurden vom Server angenommen, aber der Eintrag wurde nach dem Neuladen nicht gefunden. Bitte prüfe die Restaurantliste, bevor du erneut speicherst.");
       return;
     }
     const expectedPaymentStatus = restaurant.zahlungsarten_status || "";
     const reloadedPaymentStatus = savedRestaurant.zahlungsarten_status || "";
     if(reloadedPaymentStatus !== expectedPaymentStatus){
-      alert("Achtung: Der Ampelstatus wurde nicht übernommen. Ausgewählt: " +
+      showCopyableMessage("Ampelstatus wurde nicht übernommen","Achtung: Der Ampelstatus wurde nicht übernommen. Ausgewählt: " +
         (expectedPaymentStatus || "Keine Ampel") + ". Nach dem Neuladen gespeichert: " +
         (reloadedPaymentStatus || "Keine Ampel") +
         ". Die übrigen Restaurantdaten wurden gespeichert. Bitte den Ampelstatus noch nicht als erledigt betrachten.");
