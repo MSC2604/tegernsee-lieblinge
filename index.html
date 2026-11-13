@@ -2940,10 +2940,10 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
           <strong>Prüfstatus</strong>
           <small>Optional: Eine Farbe auswählen. Ohne Auswahl wird auf der Restaurant-Kachel keine Ampel angezeigt.</small>
           <div class="payment-status-options">
-            <label><input type="radio" name="f_payment_status" value="red"> 🔴 Offen</label>
-            <label><input type="radio" name="f_payment_status" value="yellow"> 🟡 Teilweise / Rückfrage</label>
-            <label><input type="radio" name="f_payment_status" value="green"> 🟢 Geprüft</label>
-            <label><input type="radio" name="f_payment_status" value=""> Keine Ampel</label>
+            <label><input type="radio" name="f_payment_status" value="red" onchange="window.selectedPaymentStatus=this.value"> 🔴 Offen</label>
+            <label><input type="radio" name="f_payment_status" value="yellow" onchange="window.selectedPaymentStatus=this.value"> 🟡 Teilweise / Rückfrage</label>
+            <label><input type="radio" name="f_payment_status" value="green" onchange="window.selectedPaymentStatus=this.value"> 🟢 Geprüft</label>
+            <label><input type="radio" name="f_payment_status" value="" onchange="window.selectedPaymentStatus=''"> Keine Ampel</label>
           </div>
         </div>
       </div>
@@ -5861,6 +5861,7 @@ function editPlace(){
   document.getElementById("f_payment_kreditkarte").checked = savedPaymentTypes.includes("kreditkarte");
   document.querySelectorAll('input[name="f_payment_status"]').forEach(input => {
     input.checked = input.value === (["red","yellow","green"].includes(currentPlace.zahlungsarten_status) ? currentPlace.zahlungsarten_status : "");
+    window.selectedPaymentStatus = ["red","yellow","green"].includes(currentPlace.zahlungsarten_status) ? currentPlace.zahlungsarten_status : "";
   });
 
   document.getElementById(
@@ -5901,6 +5902,7 @@ function clearForm(){
 
   cardEditorState = {restaurantId:null,status:"idle"};
   document.querySelectorAll('input[name="f_payment_status"]').forEach(input => { input.checked = input.value === ""; });
+  window.selectedPaymentStatus = "";
   ["f_speisekarte_pdf","f_getraenkekarte_pdf","f_dessertkarte_pdf","f_brotzeitkarte_pdf","f_saisonkarte_pdf"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
   ["f_speisekarte_pdf_status","f_getraenkekarte_pdf_status","f_dessertkarte_pdf_status","f_brotzeitkarte_pdf_status","f_saisonkarte_pdf_status"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent="Keine neue PDF ausgewählt.";});
   ["f_speisekarte_url","f_getraenkekarte_url"].forEach(id => {
@@ -6073,7 +6075,7 @@ function getFormData(){
       ["f_payment_debitkarte","debitkarte"],
       ["f_payment_kreditkarte","kreditkarte"]
     ].filter(([id]) => document.getElementById(id).checked).map(([,value]) => value),
-    zahlungsarten_status: document.querySelector('input[name="f_payment_status"]:checked')?.value || "",
+    zahlungsarten_status: ["red","yellow","green"].includes(window.selectedPaymentStatus) ? window.selectedPaymentStatus : "",
 
     notizen:
       document.getElementById(
@@ -6253,8 +6255,8 @@ async function savePlace(){
     const isEditing = Boolean(editId);
     const savedEditId = editId;
     const body = isEditing
-      ? { action:"update", id:editId, restaurant }
-      : { action:"create", restaurant };
+      ? { action:"update", id:editId, restaurant, paymentStatus: restaurant.zahlungsarten_status }
+      : { action:"create", restaurant, paymentStatus: restaurant.zahlungsarten_status };
 
     const response = await fetch(API_URL, {
       method:"POST",
