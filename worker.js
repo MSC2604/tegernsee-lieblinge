@@ -2412,7 +2412,8 @@ console.log("Tavily usage account:", {
           url=excluded.url, checked_at=excluded.checked_at, changed_at=excluded.changed_at,
           content_hash=CASE WHEN excluded.content_hash <> '' THEN excluded.content_hash
             WHEN restaurant_card_checks.url = excluded.url THEN restaurant_card_checks.content_hash ELSE '' END,
-          status=excluded.status, detail=excluded.detail,
+          status=CASE WHEN restaurant_card_checks.status='changed' AND restaurant_card_checks.notified_at='' AND excluded.status='unchanged' THEN 'changed' ELSE excluded.status END,
+          detail=excluded.detail,
           notified_at=CASE WHEN excluded.status='changed' THEN '' ELSE restaurant_card_checks.notified_at END`,
         [arg(item.restaurantId), arg(item.kind), arg(item.url), arg(now), arg(changedAt), arg(hash), arg(status), arg(detail)]
       );
