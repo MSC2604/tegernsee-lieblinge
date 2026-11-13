@@ -12,6 +12,7 @@ let proposalRows = [
     { value: "Telefon&nbsp;: tel:+49-8022-123456\nTisch: https://example.de/book?step=date&amp;source=site" },
     { value: "Tisch reservieren: https://example.de/book?source=site&step=date\nTelefon: tel:+498022123456" },
     { value: "https://restaurant.example/" }, { value: "2026-11-11T05:01:00Z" }
+  ],
   [
     { value: "14" }, { value: "Bräustüberl Tegernsee" }, { value: "website_text" },
     { value: "Shopify inventory_management qty 92 diff_day_create 23.13" },
