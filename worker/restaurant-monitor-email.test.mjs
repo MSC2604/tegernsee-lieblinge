@@ -9,8 +9,8 @@ let proposalRows = [
   ],
   [
     { value: "13" }, { value: "Schwarzentenn-Alm" }, { value: "externe_links" },
-    { value: "Telefon: tel:08022&nbsp;123456\\nTisch: https://example.de/book?step=date&amp;source=site" },
-    { value: "Tisch reservieren: https://example.de/book?source=site&step=date\\nTelefon: tel:08022 123456" },
+    { value: "Telefon: tel:08022&nbsp;123456\nTisch: https://example.de/book?step=date&amp;source=site" },
+    { value: "Tisch reservieren: https://example.de/book?source=site&step=date\nTelefon: tel:08022 123456" },
     { value: "https://restaurant.example/" }, { value: "2026-11-11T05:01:00Z" }
   ]
 ];
