@@ -1613,7 +1613,7 @@ console.log("Tavily usage account:", {
             const methods = Array.isArray(item?.methods) ? [...new Set(item.methods.filter(value => allowedMethods.has(value)))] : [];
             const note = String(item?.note || "").trim().slice(0, 2000);
             if (!id || !name || !email || !sentAt || !["pending", "received"].includes(status) ||
-                /[\u0000-\u001f]/.test(id + name + email + sentAt + note)) {
+                /[\u0000-\u001f]/.test(id + name + email + sentAt) || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(note)) {
               return json({ error: "Ungültiger Anfragen-Eintrag." }, 400);
             }
             if (seen.has(id)) continue;
