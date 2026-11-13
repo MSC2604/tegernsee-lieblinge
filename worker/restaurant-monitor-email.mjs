@@ -22,7 +22,7 @@ export async function sendRestaurantWebsiteDigest({
     return { sent:false, reason:"Brevo-Versandzugang oder Absenderadresse fehlt." };
   }
   const proposalResult = await db(
-    "SELECT p.id, r.name, p.field_name, p.old_value, p.new_value, p.source_url, p.detected_at FROM restaurant_change_proposals p LEFT JOIN restaurants r ON CAST(r.id AS TEXT)=p.restaurant_id WHERE p.status='pending' AND p.notified_at='' ORDER BY p.detected_at DESC, p.id DESC LIMIT 100",
+    "SELECT p.id, r.name, p.field_name, p.old_value, p.new_value, p.source_url, p.detected_at FROM restaurant_change_proposals p LEFT JOIN restaurants r ON CAST(r.id AS TEXT)=p.restaurant_id WHERE p.status='pending' AND p.notified_at='' AND p.field_name IN ('telefon','email','website','adresse','oeffnungszeiten','ruhetag','betriebsferien','dokumente','externe_links') ORDER BY p.detected_at DESC, p.id DESC LIMIT 100",
     [], true
   );
   const proposals = (proposalResult?.results?.[0]?.response?.result?.rows || []).map(row => ({
@@ -59,7 +59,7 @@ export async function sendRestaurantWebsiteDigest({
     "Offizielle Restaurant-Webseiten geprüft: " + (Number(summary.restaurantsChecked)||0),
     "Externe Eintragsseiten geprüft: " + (Number(summary.externalEntriesChecked)||0),
     "Webseiten und Unterseiten geprüft: " + (Number(summary.pagesChecked)||0),
-    "Speise- und Getränkekarten-Links geprüft: " + (Number(summary.cardsChecked)||0),
+    "Speise- und Getränkekarten-Links geprüft: " + (summary.cardsChecked == null ? "separate Kartenprüfung" : (Number(summary.cardsChecked)||0)),
     "Erkannte Änderungen: " + totalChanges, "Prüfprobleme: " + errors.length, "",
     totalChanges ? "Es wurden Änderungen erkannt. Bitte prüfe die Vorschläge in der App." : "Keine Änderungen festgestellt.",
     "Die Restaurant-Einträge in deiner App wurden NICHT automatisch verändert."
@@ -69,7 +69,7 @@ export async function sendRestaurantWebsiteDigest({
     ...(meaningfulProposals.length ? ["","ÄNDERUNGEN AN RESTAURANTDATEN",...meaningfulProposals.map(item =>
       item.name+" – "+(fieldNames[item.field]||item.field)+"\nBisher: "+(item.oldValue||"Keine Angabe")+
       "\nNeu: "+(item.newValue||"Keine Angabe")+"\nQuelle: "+item.sourceUrl)] : []),
-    ...(cardChanges.length ? ["","ÄNDERUNGEN AN SPEISE- UND GETRÄNKEKARTEN",...cardChanges.map(item =>
+    ...(cardChanges.length ? ["",summary.cardsChecked == null ? "ÄNDERUNGEN AN SPEISE- UND GETRÄNKEKARTEN (SEPARATE KARTENPRÜFUNG)" : "ÄNDERUNGEN AN SPEISE- UND GETRÄNKEKARTEN",...cardChanges.map(item =>
       item.name+" – "+cardName(item.kind)+"\nQuelle: "+item.url)] : []),
     ...(errors.length ? ["","NICHT ERREICHBARE SEITEN / PRÜFPROBLEME",...errors.map(item =>
       (item.name||"Restaurant")+"\n"+(item.detail||"Prüfung nicht möglich.")+(item.url?"\nQuelle: "+item.url:""))] : []),
@@ -80,7 +80,7 @@ export async function sendRestaurantWebsiteDigest({
       <li>Offizielle Restaurant-Webseiten geprüft: ${Number(summary.restaurantsChecked)||0}</li>
       <li>Externe Eintragsseiten geprüft: ${Number(summary.externalEntriesChecked)||0}</li>
       <li>Webseiten und Unterseiten geprüft: ${Number(summary.pagesChecked)||0}</li>
-      <li>Speise- und Getränkekarten-Links geprüft: ${Number(summary.cardsChecked)||0}</li>
+      <li>Speise- und Getränkekarten-Links geprüft: ${summary.cardsChecked == null ? "separate Kartenprüfung" : (Number(summary.cardsChecked)||0)}</li>
       <li>Erkannte Änderungen: ${totalChanges}</li><li>Prüfprobleme: ${errors.length}</li>
     </ul>
     <p><strong>${totalChanges?"Änderungen erkannt – bitte in der App prüfen.":"Keine Änderungen festgestellt."}</strong></p>
@@ -90,7 +90,7 @@ export async function sendRestaurantWebsiteDigest({
       <p><strong>Bisher:</strong><br>${escapeHtml(item.oldValue||"Keine Angabe")}</p>
       <p><strong>Neu:</strong><br>${escapeHtml(item.newValue||"Keine Angabe")}</p>
       <p><a href="${escapeHtml(item.sourceUrl)}">Offizielle Quelle öffnen</a></p></section>`).join("")}`:""}
-    ${cardChanges.length?`<h3>Änderungen an Speise- und Getränkekarten</h3><ul>${cardChanges.map(item=>`<li><strong>${escapeHtml(item.name)}</strong> – ${escapeHtml(cardName(item.kind))}: <a href="${escapeHtml(item.url)}">Quelle öffnen</a></li>`).join("")}</ul>`:""}
+    ${cardChanges.length?`<h3>Änderungen an Speise- und Getränkekarten${summary.cardsChecked == null ? " (separate Kartenprüfung)" : ""}</h3><ul>${cardChanges.map(item=>`<li><strong>${escapeHtml(item.name)}</strong> – ${escapeHtml(cardName(item.kind))}: <a href="${escapeHtml(item.url)}">Quelle öffnen</a></li>`).join("")}</ul>`:""}
     ${errors.length?`<h3>Prüfprobleme</h3><ul>${errors.map(item=>`<li><strong>${escapeHtml(item.name||"Restaurant")}</strong>: ${escapeHtml(item.detail||"Prüfung nicht möglich.")} ${item.url?`<a href="${escapeHtml(item.url)}">Quelle</a>`:""}</li>`).join("")}</ul>`:""}
     <p>Öffne die App und gehe im Menü zu „Änderungen auf Restaurant-Webseiten“.</p>`;
   const response = await fetchImpl("https://api.brevo.com/v3/smtp/email", {
