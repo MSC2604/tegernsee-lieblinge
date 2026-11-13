@@ -1426,6 +1426,167 @@ console.log("Tavily usage account:", {
           return json({ success: true, authUrl: authUrl.toString() });
         }
 
+        if (body.action === "gmailScanPaymentReplies") {
+          if (!env.GMAIL_TOKEN_ENCRYPTION_KEY || !env.GMAIL_CLIENT_ID || !env.GMAIL_CLIENT_SECRET) {
+            return json({ error: "Die Gmail-Verbindung ist serverseitig nicht vollständig eingerichtet." }, 503);
+          }
+          const connectionResult = await turso(
+            "SELECT email, refresh_token_encrypted FROM restaurant_gmail_connection WHERE id = 1",
+            [],
+            true
+          );
+          const connectionRow = connectionResult?.results?.[0]?.response?.result?.rows?.[0];
+          if (!connectionRow) return json({ error: "Es ist noch kein Gmail-Konto verbunden." }, 409);
+
+          const email = String(rowValue(connectionRow[0]) || "");
+          const encryptedToken = String(rowValue(connectionRow[1]) || "");
+          const tokenParts = encryptedToken.split(".");
+          if (tokenParts.length !== 2) return json({ error: "Das gespeicherte Gmail-Token ist ungültig. Bitte verbinde Gmail erneut." }, 500);
+
+          let refreshToken;
+          try {
+            const keyMaterial = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(env.GMAIL_TOKEN_ENCRYPTION_KEY));
+            const cryptoKey = await crypto.subtle.importKey("raw", keyMaterial, { name: "AES-GCM" }, false, ["decrypt"]);
+            const ivBinary = atob(tokenParts[0]);
+            const cipherBinary = atob(tokenParts[1]);
+            const iv = Uint8Array.from(ivBinary, char => char.charCodeAt(0));
+            const cipher = Uint8Array.from(cipherBinary, char => char.charCodeAt(0));
+            const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, cryptoKey, cipher);
+            refreshToken = new TextDecoder().decode(plain);
+          } catch {
+            return json({ error: "Das Gmail-Token konnte nicht entschlüsselt werden. Bitte prüfe den Verschlüsselungsschlüssel und verbinde Gmail gegebenenfalls erneut." }, 500);
+          }
+
+          const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              client_id: env.GMAIL_CLIENT_ID,
+              client_secret: env.GMAIL_CLIENT_SECRET,
+              refresh_token: refreshToken,
+              grant_type: "refresh_token"
+            })
+          });
+          const tokenData = await tokenResponse.json();
+          if (!tokenResponse.ok || !tokenData.access_token) {
+            console.log("Gmail refresh failed:", tokenData.error || tokenResponse.status);
+            return json({ error: "Google konnte den Gmail-Zugriff nicht erneuern. Bitte verbinde Gmail erneut." }, 502);
+          }
+
+          const requestsResult = await turso(
+            "SELECT id, name, email, sent_at FROM restaurant_payment_requests WHERE deleted = 0 AND response_status = 'pending' ORDER BY sent_at DESC",
+            [],
+            true
+          );
+          const requestRows = requestsResult?.results?.[0]?.response?.result?.rows || [];
+          const pending = requestRows.map(row => ({
+            id: String(rowValue(row[0]) || ""),
+            name: String(rowValue(row[1]) || ""),
+            email: String(rowValue(row[2]) || "").trim().toLowerCase(),
+            sentAt: String(rowValue(row[3]) || "")
+          })).filter(item => item.id && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email) && /^\d{4}-\d{2}-\d{2}/.test(item.sentAt));
+
+          if (!pending.length) {
+            return json({ success: true, account: email, scanned: 0, candidates: [], ambiguous: 0, message: "Es gibt keine offenen Anfragen mit gültiger E-Mail-Adresse." });
+          }
+
+          const earliest = Math.min(...pending.map(item => Date.parse(item.sentAt.slice(0, 10) + "T00:00:00Z")));
+          const afterDate = new Date(earliest - 24 * 60 * 60 * 1000).toISOString().slice(0, 10).replace(/-/g, "/");
+          const uniqueEmails = [...new Set(pending.map(item => item.email))].slice(0, 100);
+          const gmailQuery = "after:" + afterDate + " {" + uniqueEmails.map(address => "from:" + address).join(" ") + "}";
+          const listUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
+          listUrl.searchParams.set("q", gmailQuery);
+          listUrl.searchParams.set("maxResults", "100");
+          const listResponse = await fetch(listUrl.toString(), { headers: { Authorization: "Bearer " + tokenData.access_token } });
+          const listData = await listResponse.json();
+          if (!listResponse.ok) {
+            console.log("Gmail message list failed:", listData.error?.message || listResponse.status);
+            return json({ error: "Gmail-Nachrichten konnten nicht durchsucht werden." }, 502);
+          }
+
+          const byEmail = new Map();
+          for (const item of pending) {
+            if (!byEmail.has(item.email)) byEmail.set(item.email, []);
+            byEmail.get(item.email).push(item);
+          }
+          const messageRefs = Array.isArray(listData.messages) ? listData.messages.slice(0, 100) : [];
+          const candidates = [];
+          let ambiguous = 0;
+          const decodeBody = (encoded) => {
+            if (!encoded) return "";
+            try {
+              const normalized = String(encoded).replace(/-/g, "+").replace(/_/g, "/");
+              const binary = atob(normalized + "=".repeat((4 - normalized.length % 4) % 4));
+              return new TextDecoder().decode(Uint8Array.from(binary, char => char.charCodeAt(0)));
+            } catch { return ""; }
+          };
+          const collectParts = (part, output) => {
+            if (!part) return;
+            if (part.mimeType === "text/plain" && part.body?.data) output.push(decodeBody(part.body.data));
+            if (Array.isArray(part.parts)) part.parts.forEach(child => collectParts(child, output));
+            if (!part.parts?.length && part.mimeType === "text/html" && part.body?.data) {
+              output.push(decodeBody(part.body.data).replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"').replace(/&#39;/gi, "'"));
+            }
+          };
+          for (let offset = 0; offset < messageRefs.length; offset += 5) {
+            const batch = messageRefs.slice(offset, offset + 5);
+            const details = await Promise.all(batch.map(async ref => {
+              const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/" + encodeURIComponent(ref.id) + "?format=full", {
+                headers: { Authorization: "Bearer " + tokenData.access_token }
+              });
+              if (!response.ok) return null;
+              return await response.json();
+            }));
+            for (const message of details.filter(Boolean)) {
+              const headers = message.payload?.headers || [];
+              const header = name => String(headers.find(item => String(item.name).toLowerCase() === name.toLowerCase())?.value || "");
+              const fromHeader = header("From");
+              const senderMatch = fromHeader.match(/<([^>]+)>/) || fromHeader.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+              const sender = String(senderMatch?.[1] || senderMatch?.[0] || "").trim().toLowerCase();
+              const matches = byEmail.get(sender) || [];
+              if (!matches.length) continue;
+              const timestamp = Number(message.internalDate || 0);
+              const eligible = matches.filter(item => timestamp >= Date.parse(item.sentAt.slice(0, 10) + "T00:00:00Z") - 12 * 60 * 60 * 1000);
+              if (!eligible.length) continue;
+              const parts = [];
+              collectParts(message.payload, parts);
+              const bodyText = (parts.join("\n") || String(message.snippet || "")).replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
+              const subject = header("Subject");
+              if (!/(zahlungsart|zahlung|kreditkarte|girocard|ec[- ]?karte|bargeld|visa|mastercard|barzahlung|karten)/i.test(subject + " " + bodyText)) continue;
+              if (eligible.length !== 1) { ambiguous++; continue; }
+              const requestItem = eligible[0];
+              const methods = [];
+              if (/(\bbargeld\b|\bbarzahlung\b|\bbar bezahlen\b|\bcash\b)/i.test(bodyText)) methods.push("cash");
+              if (/(girocard|ec[- ]?karte|electronic cash|debitkarte)/i.test(bodyText)) methods.push("girocard");
+              if (/\bvisa\b/i.test(bodyText)) methods.push("visa");
+              if (/\bmastercard\b|\bmaster card\b/i.test(bodyText)) methods.push("mastercard");
+              const receivedAt = timestamp ? new Date(timestamp).toISOString() : "";
+              const note = ("E-Mail-Antwort vom " + (receivedAt ? new Date(receivedAt).toLocaleString("de-DE", { timeZone: "Europe/Berlin" }) : "unbekannt") +
+                (subject ? " · Betreff: " + subject : "") + "\n" + bodyText).slice(0, 2000);
+              candidates.push({
+                id: requestItem.id,
+                name: requestItem.name,
+                sender,
+                subject: subject.slice(0, 240),
+                receivedAt,
+                methods,
+                note
+              });
+            }
+          }
+          const uniqueCandidates = [...new Map(candidates.map(item => [item.id + "|" + item.receivedAt, item])).values()];
+          return json({
+            success: true,
+            account: email,
+            scanned: messageRefs.length,
+            candidates: uniqueCandidates.slice(0, 50),
+            ambiguous,
+            message: uniqueCandidates.length
+              ? uniqueCandidates.length + " mögliche Antwort(en) gefunden. Bitte vor dem Speichern prüfen."
+              : "Keine eindeutig zuordenbaren Antworten zu den offenen Zahlungsarten-Anfragen gefunden."
+          });
+        }
+
         if (body.action === "gmailConnectionStatus") {
           const result = await turso("SELECT email, connected_at FROM restaurant_gmail_connection WHERE id = 1", [], true);
           const row = result?.results?.[0]?.response?.result?.rows?.[0];
