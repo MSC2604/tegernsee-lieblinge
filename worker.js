@@ -1910,6 +1910,7 @@ console.log("Tavily usage account:", {
             success: emailSent,
             completed: true,
             emailSent,
+            recipient: result.email?.recipient || "msc4021@arcor.de",
             emailReason: emailSent ? "" : (result.email?.reason || "Der E-Mail-Versand wurde nicht bestätigt."),
             summary: result.summary
           }, emailSent ? 200 : 502);
