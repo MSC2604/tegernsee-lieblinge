@@ -3,8 +3,7 @@ import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.
 
 async function runScheduledRestaurantMonitoring(env, ctx) {
     if (!env.TURSO_DATABASE_URL || !env.TURSO_AUTH_TOKEN) {
-      console.error("Kartenprüfung: Turso-Konfiguration fehlt.");
-      return;
+      throw new Error("Turso-Konfiguration fehlt; der Restaurant-Prüflauf konnte nicht ausgeführt werden.");
     }
     const dbUrl = env.TURSO_DATABASE_URL.replace(/^libsql:\/\//, "https://") + "/v3/pipeline";
     async function db(sql, args = [], wantRows = false) {
@@ -189,8 +188,9 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
         detail: (issue.kind === "speisekarte" ? "Speisekarte" : "Getränkekarte") + ": " + issue.detail
       }))
     ];
+    let emailReport;
     try {
-      const emailReport = await sendRestaurantWebsiteDigest({
+      emailReport = await sendRestaurantWebsiteDigest({
         db, env,
         summary: {
           restaurantsChecked: monitorReport.restaurants,
@@ -200,10 +200,23 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
           errors: dailyErrors
         }
       });
-      console.log("Täglicher Restaurant-Prüfbericht:", JSON.stringify(emailReport));
+      console.log("Restaurant-Prüfbericht:", JSON.stringify(emailReport));
     } catch (error) {
-      console.error("Täglicher Restaurant-Prüfbericht fehlgeschlagen:", String(error?.message || error).slice(0, 300));
+      emailReport = { sent: false, reason: String(error?.message || error).slice(0, 500) };
+      console.error("Restaurant-Prüfbericht fehlgeschlagen:", emailReport.reason);
     }
+    return {
+      completed: true,
+      summary: {
+        restaurantsChecked: monitorReport.restaurants,
+        externalEntriesChecked: monitorReport.externalEntries,
+        pagesChecked: monitorReport.pages,
+        cardsChecked: entries.length,
+        changes: monitorReport.proposals,
+        errors: dailyErrors.length
+      },
+      email: emailReport
+    };
   }
 
 export default {
@@ -1886,19 +1899,20 @@ console.log("Tavily usage account:", {
         }
 
         if (body.action === "runRestaurantMonitoringFullTest") {
-          if (!ctx || typeof ctx.waitUntil !== "function") {
-            return json({ success: false, error: "Hintergrundausführung ist in dieser Umgebung nicht verfügbar." }, 503);
+          // Keep the HTTP request open until the complete run and email attempt finish.
+          // A detached waitUntil task would be cancelled after 30 seconds for HTTP requests.
+          const result = await runScheduledRestaurantMonitoring(env, ctx);
+          if (!result?.completed) {
+            return json({ success: false, completed: false, error: "Der Prüflauf wurde nicht vollständig ausgeführt." }, 500);
           }
-          ctx.waitUntil(
-            runScheduledRestaurantMonitoring(env, ctx).catch(error => {
-              console.error("Manueller Gesamttest fehlgeschlagen:", String(error?.message || error).slice(0, 500));
-            })
-          );
+          const emailSent = result.email?.sent === true;
           return json({
-            success: true,
-            started: true,
-            message: "Der vollständige Prüflauf wurde gestartet. Beide Prüfungen und der gemeinsame E-Mail-Bericht laufen im Hintergrund."
-          }, 202);
+            success: emailSent,
+            completed: true,
+            emailSent,
+            emailReason: emailSent ? "" : (result.email?.reason || "Der E-Mail-Versand wurde nicht bestätigt."),
+            summary: result.summary
+          }, emailSent ? 200 : 502);
         }
 
         if (body.action === "sendRestaurantWebsiteTestEmail") {
