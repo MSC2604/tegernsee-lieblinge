@@ -2161,7 +2161,7 @@ console.log("Tavily usage account:", {
                     restaurantsChecked: cumulative.restaurants,
                     externalEntriesChecked: cumulative.externalEntries,
                     pagesChecked: cumulative.pages,
-                    cardsChecked: 0,
+                    cardsChecked: null,
                     errors: (Array.isArray(cumulative.errors) ? cumulative.errors : []).map(issue => ({
                       name: issue.name || "Restaurant",
                       url: issue.url || "",
