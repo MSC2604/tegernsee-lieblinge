@@ -7026,7 +7026,8 @@ function renderPaymentRequestTracker(){
       '<div style="margin-top:11px;font-size:11px;font-weight:800;color:#78847b">AUSDRÜCKLICH BESTÄTIGTE ZAHLUNGSARTEN</div><div>'+checked+'</div>'+
       '<label style="display:block;margin-top:9px;font-size:11px;font-weight:800;color:#78847b">NOTIZ / WORTLAUT DER ANTWORT</label>'+
       '<textarea data-request-note rows="3" style="width:100%;box-sizing:border-box;margin-top:5px;padding:9px;border:1px solid #dce4dc;border-radius:10px;background:#fff;color:#20382e;font:12px/1.45 inherit;resize:vertical">'+escapeHtml(item.note||"")+'</textarea>'+
-      '<button type="button" onclick="savePaymentRequestItem(\''+escapeHtml(item.id)+'\')" style="width:100%;margin-top:10px;padding:11px;border:0;border-radius:10px;background:#315f4d;color:#fff;font-weight:800">Änderungen speichern</button>'+
+      '<button type="button" data-request-save-button onclick="savePaymentRequestItem(\''+escapeHtml(item.id)+'\')" style="width:100%;margin-top:10px;padding:11px;border:0;border-radius:10px;background:#315f4d;color:#fff;font-weight:800">Änderungen speichern</button>'+
+      '<div data-request-save-feedback role="status" aria-live="polite" style="display:none;margin-top:9px;padding:10px;border-radius:9px;font-size:12px;font-weight:700"></div>'+
       '</section>';
   }).join("");
 }
@@ -7035,13 +7036,32 @@ async function savePaymentRequestItem(id){
   if(!card) return;
   const original=paymentRequestItems.find(item=>item.id===id);
   if(!original) return;
+  const button=card.querySelector("[data-request-save-button]");
+  const showFeedback=(message,success)=>{
+    const target=document.querySelector('[data-request-card="'+CSS.escape(id)+'"] [data-request-save-feedback]');
+    if(target){
+      target.textContent=message;
+      target.style.display="block";
+      target.style.background=success?"#eaf3ed":"#faeeeb";
+      target.style.color=success?"#315f4d":"#9a4438";
+    }
+  };
   const next={...original,name:card.querySelector("[data-request-name]").value.trim(),status:card.querySelector("[data-request-status]").value,note:card.querySelector("[data-request-note]").value.trim(),methods:Array.from(card.querySelectorAll("[data-request-method]:checked")).map(input=>input.getAttribute("data-request-method"))};
-  if(!next.name){alert("Bitte einen Namen für den Betrieb eintragen.");return;}
+  if(!next.name){showFeedback("Bitte einen Namen für den Betrieb eintragen.",false);return;}
+  if(button){button.disabled=true;button.textContent="Speichere …";button.style.opacity=".7";}
+  showFeedback("Änderungen werden zentral gespeichert …",true);
   try{
     await savePaymentRequestItems([next]);
     paymentRequestItems=paymentRequestItems.map(item=>item.id===id?next:item);
     renderPaymentRequestTracker();
-  }catch(error){alert(error.message || "Änderung konnte nicht gespeichert werden.");}
+    showFeedback("✓ Änderungen wurden erfolgreich zentral gespeichert.",true);
+  }catch(error){
+    showFeedback("Speichern fehlgeschlagen: "+(error.message || "Änderung konnte nicht gespeichert werden."),false);
+  }finally{
+    const currentCard=document.querySelector('[data-request-card="'+CSS.escape(id)+'"]');
+    const currentButton=currentCard?.querySelector("[data-request-save-button]");
+    if(currentButton){currentButton.disabled=false;currentButton.textContent="Änderungen speichern";currentButton.style.opacity="1";}
+  }
 }
 async function deletePaymentRequestItem(id){
   const item=paymentRequestItems.find(entry=>entry.id===id);
