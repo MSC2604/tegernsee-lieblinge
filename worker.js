@@ -1245,8 +1245,14 @@ console.log("Tavily usage account:", {
             content_hash TEXT NOT NULL DEFAULT '',
             status TEXT NOT NULL DEFAULT '',
             detail TEXT NOT NULL DEFAULT '',
+            notified_at TEXT NOT NULL DEFAULT '',
             PRIMARY KEY (restaurant_id, kind)
           )`);
+          try {
+            await turso("ALTER TABLE restaurant_card_checks ADD COLUMN notified_at TEXT NOT NULL DEFAULT ''");
+          } catch (error) {
+            if (!/duplicate column/i.test(String(error?.message || error))) throw error;
+          }
           const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
           if (!restaurantId) return json({ error: "Restaurant-ID fehlt." }, 400);
           const result = await turso(
@@ -2396,6 +2402,7 @@ console.log("Tavily usage account:", {
       const oldChanged = old ? String(cell(old[2]) || "") : "";
       const changedAt = hash && oldUrl === item.url && oldHash && oldHash !== hash ? now :
         (oldUrl === item.url ? oldChanged : (hash ? now : ""));
+      if (hash && oldUrl === item.url && oldHash && oldHash !== hash) status = "changed";
       if (hash && oldUrl === item.url && oldHash === hash) status = "unchanged";
       if (hash && (!oldHash || oldUrl !== item.url)) status = "baseline";
       await db(`INSERT INTO restaurant_card_checks
@@ -2405,14 +2412,25 @@ console.log("Tavily usage account:", {
           url=excluded.url, checked_at=excluded.checked_at, changed_at=excluded.changed_at,
           content_hash=CASE WHEN excluded.content_hash <> '' THEN excluded.content_hash
             WHEN restaurant_card_checks.url = excluded.url THEN restaurant_card_checks.content_hash ELSE '' END,
-          status=excluded.status, detail=excluded.detail`,
+          status=excluded.status, detail=excluded.detail,
+          notified_at=CASE WHEN excluded.status='changed' THEN '' ELSE restaurant_card_checks.notified_at END`,
         [arg(item.restaurantId), arg(item.kind), arg(item.url), arg(now), arg(changedAt), arg(hash), arg(status), arg(detail)]
       );
     }
+    const cardRunStartedAt = new Date().toISOString();
     for (let i = 0; i < entries.length; i += 5) {
       await Promise.all(entries.slice(i, i + 5).map(check));
     }
     console.log(`Kartenprüfung abgeschlossen: ${entries.length} offizielle Kartenlinks geprüft.`);
+    const cardIssueResult = await db(
+      "SELECT r.name, c.kind, c.url, c.status, c.detail FROM restaurant_card_checks c LEFT JOIN restaurants r ON CAST(r.id AS TEXT)=c.restaurant_id WHERE c.checked_at >= ? AND c.status IN ('unreachable','error','too_large') ORDER BY r.name, c.kind",
+      [arg(cardRunStartedAt)], true
+    );
+    const cardIssues = (cardIssueResult?.results?.[0]?.response?.result?.rows || []).map(row => ({
+      name: String(cell(row[0]) || "Restaurant"), kind: String(cell(row[1]) || ""),
+      url: String(cell(row[2]) || ""), status: String(cell(row[3]) || ""),
+      detail: String(cell(row[4]) || "")
+    }));
 
     await db(`CREATE TABLE IF NOT EXISTS restaurant_site_snapshots (
       restaurant_id TEXT NOT NULL, page_url TEXT NOT NULL, checked_at TEXT NOT NULL DEFAULT '',
@@ -2450,11 +2468,27 @@ console.log("Tavily usage account:", {
     for (const issue of monitorReport.errors.slice(0, 30)) {
       console.warn("Website-Prüfung nicht möglich:", JSON.stringify(issue));
     }
+    const dailyErrors = [
+      ...monitorReport.errors.map(issue => ({ name: issue.name || "Restaurant", url: issue.url || "", detail: issue.error || "Website-Prüfung fehlgeschlagen." })),
+      ...cardIssues.map(issue => ({
+        name: issue.name, url: issue.url,
+        detail: (issue.kind === "speisekarte" ? "Speisekarte" : "Getränkekarte") + ": " + issue.detail
+      }))
+    ];
     try {
-      const emailReport = await sendRestaurantWebsiteDigest({ db, env });
-      console.log("Website-Änderungs-E-Mail:", JSON.stringify(emailReport));
+      const emailReport = await sendRestaurantWebsiteDigest({
+        db, env,
+        summary: {
+          restaurantsChecked: monitorReport.restaurants,
+          externalEntriesChecked: monitorReport.externalEntries,
+          pagesChecked: monitorReport.pages,
+          cardsChecked: entries.length,
+          errors: dailyErrors
+        }
+      });
+      console.log("Täglicher Restaurant-Prüfbericht:", JSON.stringify(emailReport));
     } catch (error) {
-      console.error("Website-Änderungs-E-Mail fehlgeschlagen:", String(error?.message || error).slice(0, 300));
+      console.error("Täglicher Restaurant-Prüfbericht fehlgeschlagen:", String(error?.message || error).slice(0, 300));
     }
   }
 };
