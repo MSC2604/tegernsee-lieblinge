@@ -1,42 +1,55 @@
 import assert from "node:assert/strict";
 import { sendRestaurantWebsiteDigest } from "./restaurant-monitor-email.mjs";
 
-const rows = [[
+let proposalRows = [[
   { value: "12" }, { value: "Gasthof <See>" }, { value: "telefon" },
   { value: "08022 111111" }, { value: "08022 222222" },
   { value: "https://restaurant.example/kontakt" }, { value: "2026-11-11T05:00:00Z" }
 ]];
-let updated = 0;
-let sentPayload = null;
+let cardRows = [[
+  { value: "26" }, { value: "Obere Firstalm" }, { value: "speisekarte" },
+  { value: "https://restaurant.example/karte.pdf" }, { value: "2026-11-11T05:00:00Z" }
+]];
+let proposalUpdated = 0, cardUpdated = 0, sentPayloads = [];
 const db = async (sql, args = [], wantRows = false) => {
-  if (sql.startsWith("SELECT p.id")) return { results: [{ response: { result: { rows } } }] };
-  if (sql.startsWith("UPDATE restaurant_change_proposals")) { updated++; return { results: [] }; }
+  if (sql.startsWith("SELECT p.id")) return { results: [{ response: { result: { rows: proposalRows } } }] };
+  if (sql.startsWith("SELECT c.restaurant_id")) return { results: [{ response: { result: { rows: cardRows } } }] };
+  if (sql.startsWith("UPDATE restaurant_change_proposals")) { proposalUpdated++; return { results: [] }; }
+  if (sql.startsWith("UPDATE restaurant_card_checks")) { cardUpdated++; return { results: [] }; }
   throw new Error("Unerwartete SQL-Abfrage: " + sql);
 };
 const missing = await sendRestaurantWebsiteDigest({ db, env: {} });
 assert.equal(missing.sent, false);
-assert.equal(updated, 0);
-
-const result = await sendRestaurantWebsiteDigest({
+assert.equal(proposalUpdated, 0);
+assert.equal(cardUpdated, 0);
+const send = async () => sendRestaurantWebsiteDigest({
   db,
-  env: {
-    BREVO_API_KEY: "test-key",
-    BREVO_FROM_EMAIL: "verified@example.org",
-    MONITOR_NOTIFICATION_EMAIL: "recipient@example.org"
-  },
+  env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  summary: { restaurantsChecked:41, pagesChecked:90, cardsChecked:18, errors:[] },
   fetchImpl: async (url, options) => {
     assert.equal(url, "https://api.brevo.com/v3/smtp/email");
-    sentPayload = JSON.parse(options.body);
-    return new Response(JSON.stringify({ messageId: "test-message" }), {
-      status: 201, headers: { "Content-Type": "application/json" }
-    });
+    sentPayloads.push(JSON.parse(options.body));
+    return new Response(JSON.stringify({messageId:"test-message"}), {status:201,headers:{"Content-Type":"application/json"}});
   },
   now: () => "2026-11-11T06:00:00.000Z"
 });
-assert.equal(result.sent, true);
-assert.equal(result.count, 1);
-assert.equal(updated, 1);
-assert.equal(sentPayload.to[0].email, "recipient@example.org");
-assert.match(sentPayload.htmlContent, /Gasthof &lt;See&gt;/);
-assert.match(sentPayload.textContent, /08022 222222/);
-console.log("Restaurant-Monitor-E-Mail: Konfiguration, Digest und Markierung getestet.");
+const changed = await send();
+assert.equal(changed.sent,true);
+assert.equal(changed.count,2);
+assert.equal(changed.proposalCount,1);
+assert.equal(changed.cardChangeCount,1);
+assert.equal(proposalUpdated,1);
+assert.equal(cardUpdated,1);
+assert.equal(sentPayloads[0].to[0].email,"recipient@example.org");
+assert.match(sentPayloads[0].htmlContent,/Gasthof &lt;See&gt;/);
+assert.match(sentPayloads[0].textContent,/08022 222222/);
+assert.match(sentPayloads[0].textContent,/Obere Firstalm/);
+proposalRows=[]; cardRows=[];
+const unchanged=await send();
+assert.equal(unchanged.sent,true);
+assert.equal(unchanged.count,0);
+assert.match(sentPayloads[1].subject,/keine Änderungen/);
+assert.match(sentPayloads[1].textContent,/Keine Änderungen festgestellt/);
+assert.equal(proposalUpdated,1);
+assert.equal(cardUpdated,1);
+console.log("Täglicher Restaurant-Prüfbericht: Änderungen, Kartenänderungen und Nulländerungsbericht getestet.");
