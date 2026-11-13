@@ -2453,7 +2453,17 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 <div class="website-changes-overlay" id="paymentRequestTrackerOverlay" onclick="if(event.target===this)closePaymentRequestTracker()">
   <section class="website-changes-panel" role="dialog" aria-modal="true" aria-labelledby="paymentRequestTrackerTitle">
     <div class="website-changes-head"><h2 id="paymentRequestTrackerTitle">✉️ Zahlungsarten-Anfragen</h2><button class="website-changes-close" type="button" aria-label="Schließen" onclick="closePaymentRequestTracker()">×</button></div>
-    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Hier verfolgst du die 36 versendeten Anfragen. Antworten und ausdrücklich bestätigte Zahlungsarten kannst du eintragen und später ändern. Diese Liste verändert keine Restaurantdaten und löscht keine E-Mails. Eine automatische Gmail-Erkennung ist noch nicht verbunden.</p>
+    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Hier verfolgst du die versendeten Anfragen. Neue Antworten aus deinem verbundenen Gmail-Postfach kann ChatGPT auswerten und als geprüften Import vorbereiten. Die Übernahme aktualisiert ausschließlich diese Anfragenliste – niemals die öffentlichen Restaurantdaten. E-Mails werden weder verändert noch gelöscht.</p>
+    <div style="margin:12px 0;padding:13px;border:1px solid #dce7df;border-radius:14px;background:#f5f8f5">
+      <button type="button" onclick="togglePaymentReplyImport()" style="width:100%;padding:11px;border:0;border-radius:10px;background:#315f4d;color:#fff;font-weight:800">📥 E-Mail-Antworten übernehmen</button>
+      <div id="paymentReplyImportPanel" hidden style="margin-top:12px">
+        <p style="margin:0 0 8px;color:#53675b;font-size:12px;line-height:1.5">Füge hier den Importtext ein, den ChatGPT nach Prüfung deiner Gmail-Antworten erstellt. Es werden nur bereits vorhandene Anfrage-IDs angenommen. Vor dem Speichern siehst du eine Vorschau.</p>
+        <textarea id="paymentReplyImportInput" rows="6" placeholder='[{"id":"payment-003","methods":["cash","girocard","visa","mastercard"],"note":"Antwort vom ..."}]' style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #d5e0d7;border-radius:10px;font:12px/1.45 monospace;background:#fff;color:#20382e"></textarea>
+        <button type="button" onclick="previewPaymentReplyImport()" style="width:100%;margin-top:8px;padding:10px;border:1px solid #315f4d;border-radius:10px;background:#fff;color:#315f4d;font-weight:800">Import prüfen</button>
+        <div id="paymentReplyImportPreview" style="margin-top:10px"></div>
+        <button type="button" id="paymentReplyImportSave" onclick="applyPaymentReplyImport()" disabled style="width:100%;margin-top:8px;padding:11px;border:0;border-radius:10px;background:#315f4d;color:#fff;font-weight:800;opacity:.5">Geprüfte Antworten speichern</button>
+      </div>
+    </div>
     <div class="website-change-summary" id="paymentRequestTrackerSummary">Lade Anfragen …</div>
     <div style="display:flex;flex-wrap:wrap;gap:7px;margin:12px 0">
       <button type="button" class="secondary-action" data-request-filter="all" onclick="setPaymentRequestFilter('all')" style="min-height:36px;padding:8px 12px">Alle</button>
@@ -6871,6 +6881,66 @@ let paymentRequestFilter = "all";
 let paymentRequestAdminPassword = null;
 let paymentRequestBusy = false;
 
+let paymentReplyImportPreviewItems = [];
+function togglePaymentReplyImport(){
+  const panel=document.getElementById("paymentReplyImportPanel");
+  if(panel) panel.hidden=!panel.hidden;
+}
+function previewPaymentReplyImport(){
+  const input=document.getElementById("paymentReplyImportInput");
+  const preview=document.getElementById("paymentReplyImportPreview");
+  const saveButton=document.getElementById("paymentReplyImportSave");
+  paymentReplyImportPreviewItems=[];
+  if(saveButton){saveButton.disabled=true;saveButton.style.opacity=".5";}
+  if(!input || !preview) return;
+  try{
+    const parsed=JSON.parse(input.value);
+    if(!Array.isArray(parsed) || !parsed.length) throw new Error("Bitte eine JSON-Liste mit mindestens einer Antwort einfügen.");
+    const seen=new Set();
+    const allowed=new Set(["cash","girocard","visa","mastercard"]);
+    const updates=[];
+    for(const entry of parsed){
+      const id=String(entry?.id||"").trim();
+      if(!id || seen.has(id)) throw new Error("Eine ID fehlt oder kommt mehrfach vor: "+id);
+      seen.add(id);
+      const original=paymentRequestItems.find(item=>item.id===id);
+      if(!original) throw new Error("Die Anfrage-ID "+id+" existiert nicht in deiner Liste. Es wurde nichts gespeichert.");
+      const methods=Array.isArray(entry.methods)?[...new Set(entry.methods)]:[];
+      if(methods.some(method=>!allowed.has(method))) throw new Error("Unbekannte Zahlungsart bei "+original.name+".");
+      const note=String(entry.note||"").trim();
+      if(!note) throw new Error("Bitte den Wortlaut bzw. eine aussagekräftige Notiz für "+original.name+" mitliefern.");
+      updates.push({...original,status:"received",methods,note});
+    }
+    paymentReplyImportPreviewItems=updates;
+    preview.innerHTML='<div style="padding:10px;border-radius:10px;background:#eaf3ed;color:#315f4d;font-size:12px;font-weight:700">'+
+      updates.length+' Antwort(en) erkannt. Es werden nur die folgenden Anfrage-Einträge aktualisiert:</div>'+
+      updates.map(item=>'<div style="padding:9px 2px;border-bottom:1px solid #e5ebe6;font-size:12px"><strong>'+escapeHtml(item.name)+'</strong><br>'+escapeHtml(item.methods.map(method=>({cash:"Bargeld",girocard:"Girocard / EC",visa:"Visa",mastercard:"Mastercard"}[method])).join(", ")||"Keine einzelne Kartenart sicher bestätigt")+'<br><span style="color:#64746a">'+escapeHtml(item.note)+'</span></div>').join("");
+    if(saveButton){saveButton.disabled=false;saveButton.style.opacity="1";}
+  }catch(error){
+    preview.innerHTML='<div style="padding:10px;border-radius:10px;background:#faeeeb;color:#9a4438;font-size:12px;font-weight:700">'+escapeHtml(error.message||"Import konnte nicht geprüft werden.")+'</div>';
+  }
+}
+async function applyPaymentReplyImport(){
+  if(!paymentReplyImportPreviewItems.length) return;
+  const updates=paymentReplyImportPreviewItems.map(item=>({...item,methods:[...item.methods]}));
+  const button=document.getElementById("paymentReplyImportSave");
+  if(button){button.disabled=true;button.textContent="Speichere …";}
+  try{
+    await savePaymentRequestItems(updates);
+    const byId=new Map(updates.map(item=>[item.id,item]));
+    paymentRequestItems=paymentRequestItems.map(item=>byId.has(item.id)?byId.get(item.id):item);
+    paymentReplyImportPreviewItems=[];
+    const input=document.getElementById("paymentReplyImportInput");
+    const preview=document.getElementById("paymentReplyImportPreview");
+    if(input) input.value="";
+    if(preview) preview.innerHTML='<div style="padding:10px;border-radius:10px;background:#eaf3ed;color:#315f4d;font-size:12px;font-weight:800">Die geprüften Antworten wurden zentral gespeichert.</div>';
+    renderPaymentRequestTracker();
+  }catch(error){
+    alert(error.message||"Die Antworten konnten nicht gespeichert werden.");
+  }finally{
+    if(button){button.disabled=true;button.textContent="Geprüfte Antworten speichern";button.style.opacity=".5";}
+  }
+}
 function showPaymentRequestTracker(){
   closeAppMenu();
   const overlay = document.getElementById("paymentRequestTrackerOverlay");
