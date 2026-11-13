@@ -12,6 +12,11 @@ let proposalRows = [
     { value: "Telefon&nbsp;: tel:+49-8022-123456\nTisch: https://example.de/book?step=date&amp;source=site" },
     { value: "Tisch reservieren: https://example.de/book?source=site&step=date\nTelefon: tel:+498022123456" },
     { value: "https://restaurant.example/" }, { value: "2026-11-11T05:01:00Z" }
+  [
+    { value: "14" }, { value: "Bräustüberl Tegernsee" }, { value: "website_text" },
+    { value: "Shopify inventory_management qty 92 diff_day_create 23.13" },
+    { value: "Shopify inventory_management qty 92 diff_day_create 23.19" },
+    { value: "https://braustuberl.example/" }, { value: "2026-11-11T05:02:00Z" }
   ]
 ];
 let cardRows = [[
@@ -20,7 +25,7 @@ let cardRows = [[
 ]];
 let proposalUpdated = 0, cardUpdated = 0, sentPayloads = [];
 const db = async (sql, args = [], wantRows = false) => {
-  if (sql.startsWith("SELECT p.id")) return { results: [{ response: { result: { rows: proposalRows } } }] };
+  if (sql.startsWith("SELECT p.id")) {\n    assert.match(sql, /p\\.field_name IN/);\n    const allowed = new Set(["telefon","email","website","adresse","oeffnungszeiten","ruhetag","betriebsferien","dokumente","externe_links"]);\n    return { results: [{ response: { result: { rows: proposalRows.filter(row => allowed.has(row[2]?.value)) } } }] };\n  }
   if (sql.startsWith("SELECT c.restaurant_id")) return { results: [{ response: { result: { rows: cardRows } } }] };
   if (sql.startsWith("UPDATE restaurant_change_proposals")) { proposalUpdated++; return { results: [] }; }
   if (sql.startsWith("UPDATE restaurant_card_checks")) { cardUpdated++; return { results: [] }; }
@@ -33,7 +38,7 @@ assert.equal(cardUpdated, 0);
 const send = async () => sendRestaurantWebsiteDigest({
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
-  summary: { restaurantsChecked:41, pagesChecked:90, cardsChecked:18, errors:[] },
+  summary: { restaurantsChecked:41, pagesChecked:90, cardsChecked:null, errors:[] },
   fetchImpl: async (url, options) => {
     assert.equal(url, "https://api.brevo.com/v3/smtp/email");
     sentPayloads.push(JSON.parse(options.body));
@@ -54,7 +59,7 @@ assert.match(sentPayloads[0].htmlContent,/Gasthof &lt;See&gt;/);
 assert.match(sentPayloads[0].textContent,/08022 222222/);
 assert.doesNotMatch(sentPayloads[0].textContent,/Schwarzentenn-Alm/);
 assert.doesNotMatch(sentPayloads[0].htmlContent,/&amp;source=site/);
-assert.match(sentPayloads[0].textContent,/Obere Firstalm/);
+assert.match(sentPayloads[0].textContent,/Obere Firstalm/);\nassert.match(sentPayloads[0].textContent,/separate Kartenprüfung/);\nassert.doesNotMatch(sentPayloads[0].textContent,/Bräustüberl Tegernsee/);
 proposalRows=[]; cardRows=[];
 const unchanged=await send();
 assert.equal(unchanged.sent,true);
