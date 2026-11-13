@@ -828,6 +828,14 @@ a{
 .app-menu-close{border:0;background:#edf3ef;color:var(--accent);border-radius:50%;width:40px;height:40px;font-size:24px}
 .app-menu-item{width:100%;display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:14px;padding:14px;margin:8px 0;font-weight:750}
 .app-menu-item span:first-child{font-size:22px;width:28px;text-align:center}
+.menu-admin-group{margin:8px 0 0}
+.menu-admin-toggle{background:#f1f6f2;border-color:#cbdcd1;color:#244f40;margin-bottom:8px}
+.menu-admin-toggle span:nth-child(2){flex:1}
+.menu-admin-chevron{font-size:20px!important;width:auto!important;transition:transform .18s ease}
+.menu-admin-toggle[aria-expanded="true"] .menu-admin-chevron{transform:rotate(180deg)}
+.menu-admin-items{padding:2px 0 4px 12px;margin-left:8px;border-left:2px solid #dce9e0}
+.menu-admin-items[hidden]{display:none}
+.menu-admin-items .app-menu-item{padding:12px;margin:6px 0;font-size:14px;border-radius:12px}
 #mapView{display:none;max-width:1100px}
 .lookup-review{grid-column:1/-1;border:1px solid #b7d8cc;background:#f3faf6;color:#244d3c;border-radius:12px;padding:12px;margin:4px 0 10px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 .lookup-review strong{display:block;margin:0 0 6px}
@@ -2412,30 +2420,37 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     <div class="app-menu-head"><span>Menü</span><button class="app-menu-close" type="button" aria-label="Menü schließen" onclick="closeAppMenu()">×</button></div>
     <button class="app-menu-item" onclick="closeAppMenu();showHome()"><span>⌂</span><span>Startseite</span></button>
     <button class="app-menu-item" onclick="openRestaurantMap()"><span>🗺️</span><span>Übersichtskarte</span></button>
-    <button class="app-menu-item" onclick="showIncompleteEntries()"><span>📋</span><span>Unvollständige Einträge <span id="incompleteMenuCount" style="font-size:12px;color:#805716;width:auto">…</span></span></button>
-    <button class="app-menu-item" type="button" onclick="showRestaurantWebsiteChanges()"><span>🌐</span><span>Änderungen auf Restaurant-Webseiten</span></button>
-    <button class="app-menu-item" type="button" onclick="showPaymentResearch()"><span>💳</span><span>Zahlungsarten – Prüfliste</span></button>
-    <button class="app-menu-item" type="button" onclick="showPaymentRequestTracker()"><span>✉️</span><span>Zahlungsarten-Anfragen</span></button>
-    <button class="app-menu-item" type="button" onclick="closeAppMenu();exportRestaurantAuditCsv()"><span>📄</span><span>Prüfliste aller Restaurants exportieren</span></button>
-    <button class="app-menu-item" type="button" onclick="showManualRestaurantReview()"><span>🔎</span><span>Erkannte Datenabweichungen prüfen</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();focusSearch()"><span>🔎</span><span>Restaurants suchen</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();showFavorites()"><span>♥</span><span>Meine Favoriten</span></button>
     <button class="app-menu-item" type="button" onclick="shareRestaurantApp()"><span>↗️</span><span>App teilen</span></button>
-    <button class="app-menu-item" type="button" id="changeHeroImage"><span>🖼️</span><span id="changeHeroImageLabel">Titelbild ändern</span></button>
-    <button class="app-menu-item" type="button" id="changeHeroText" onclick="editWelcomeHeroText()"><span>✏️</span><span>Titelbild-Text ändern</span></button>
-    <button type="button" id="toggleTavilyUsage" aria-expanded="false" aria-controls="tavilyUsageCard" class="app-menu-item"><span>📊</span><span id="toggleTavilyUsageLabel">Suchkontingent anzeigen</span></button>
-    <section class="tavily-usage" id="tavilyUsageCard" aria-live="polite" hidden>
-      <div class="tavily-usage-head">
-        <span>🔎 Kontingent der automatischen Suche</span>
-        <span id="tavilyUsagePercent">Lade …</span>
+    <section class="menu-admin-group" aria-label="Verwaltung">
+      <button class="app-menu-item menu-admin-toggle" type="button" id="toggleAdminMenu" aria-expanded="false" aria-controls="adminMenuItems" onclick="toggleAdminMenu()">
+        <span>⚙️</span><span>Verwaltung</span><span class="menu-admin-chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div id="adminMenuItems" class="menu-admin-items" hidden>
+        <button class="app-menu-item" onclick="showIncompleteEntries()"><span>📋</span><span>Unvollständige Einträge <span id="incompleteMenuCount" style="font-size:12px;color:#805716;width:auto">…</span></span></button>
+        <button class="app-menu-item" type="button" onclick="showRestaurantWebsiteChanges()"><span>🌐</span><span>Änderungen auf Restaurant-Webseiten</span></button>
+        <button class="app-menu-item" type="button" onclick="showPaymentResearch()"><span>💳</span><span>Zahlungsarten – Prüfliste</span></button>
+        <button class="app-menu-item" type="button" onclick="showPaymentRequestTracker()"><span>✉️</span><span>Zahlungsarten-Anfragen</span></button>
+        <button class="app-menu-item" type="button" onclick="closeAppMenu();exportRestaurantAuditCsv()"><span>📄</span><span>Prüfliste aller Restaurants exportieren</span></button>
+        <button class="app-menu-item" type="button" onclick="showManualRestaurantReview()"><span>🔎</span><span>Erkannte Datenabweichungen prüfen</span></button>
+        <button class="app-menu-item" type="button" id="changeHeroImage"><span>🖼️</span><span id="changeHeroImageLabel">Titelbild ändern</span></button>
+        <button class="app-menu-item" type="button" id="changeHeroText" onclick="editWelcomeHeroText()"><span>✏️</span><span>Titelbild-Text ändern</span></button>
+        <button type="button" id="toggleTavilyUsage" aria-expanded="false" aria-controls="tavilyUsageCard" class="app-menu-item"><span>📊</span><span id="toggleTavilyUsageLabel">Suchkontingent anzeigen</span></button>
+        <section class="tavily-usage" id="tavilyUsageCard" aria-live="polite" hidden>
+          <div class="tavily-usage-head">
+            <span>🔎 Kontingent der automatischen Suche</span>
+            <span id="tavilyUsagePercent">Lade …</span>
+          </div>
+          <div class="tavily-usage-values">
+            <span>Verbraucht: <strong id="tavilyUsageUsed">–</strong></span>
+            <span>Verbleibend: <strong id="tavilyUsageRemaining">–</strong></span>
+            <span>Gesamtlimit: <strong id="tavilyUsageLimit">–</strong></span>
+          </div>
+          <progress id="tavilyUsageProgress" max="100" value="0" aria-label="Verbrauchte Tavily-Credits"></progress>
+          <div class="tavily-usage-note" id="tavilyUsageNote">Kontingent wird abgerufen …</div>
+        </section>
       </div>
-      <div class="tavily-usage-values">
-        <span>Verbraucht: <strong id="tavilyUsageUsed">–</strong></span>
-        <span>Verbleibend: <strong id="tavilyUsageRemaining">–</strong></span>
-        <span>Gesamtlimit: <strong id="tavilyUsageLimit">–</strong></span>
-      </div>
-      <progress id="tavilyUsageProgress" max="100" value="0" aria-label="Verbrauchte Tavily-Credits"></progress>
-      <div class="tavily-usage-note" id="tavilyUsageNote">Kontingent wird abgerufen …</div>
     </section>
   </nav>
 </div>
@@ -7167,6 +7182,14 @@ async function deletePaymentRequestItem(id){
 }
 
 function openAppMenu(){document.getElementById('appMenuOverlay').style.display='block';}
+function toggleAdminMenu(){
+  const button=document.getElementById('toggleAdminMenu');
+  const items=document.getElementById('adminMenuItems');
+  if(!button||!items)return;
+  const expanded=button.getAttribute('aria-expanded')==='true';
+  button.setAttribute('aria-expanded',String(!expanded));
+  items.hidden=expanded;
+}
 function closeAppMenu(){document.getElementById('appMenuOverlay').style.display='none';}
 window.shareRestaurantApp = function(){
   const shareUrl = new URL("./", window.location.href).href;
