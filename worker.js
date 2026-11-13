@@ -1979,6 +1979,16 @@ console.log("Tavily usage account:", {
         }
 
         if (body.action === "startRestaurantWebsiteMonitor") {
+          const missingBrevoSettings = [];
+          if (!String(env.BREVO_API_KEY || "").trim()) missingBrevoSettings.push("BREVO_API_KEY");
+          if (!String(env.BREVO_FROM_EMAIL || "").trim()) missingBrevoSettings.push("BREVO_FROM_EMAIL");
+          if (missingBrevoSettings.length) {
+            return json({
+              success: false,
+              configurationMissing: true,
+              error: "E-Mail-Versand nicht bereit: In der Cloudflare-Worker-Umgebung fehlen " + missingBrevoSettings.join(", ") + ". Der Webseiten-Prüflauf wurde nicht gestartet. Bitte die Produktionseinstellungen prüfen."
+            }, 412);
+          }
           const runId = crypto.randomUUID();
           const startedAt = new Date().toISOString();
           const staleBefore = new Date(Date.now() - 30 * 60 * 1000).toISOString();
