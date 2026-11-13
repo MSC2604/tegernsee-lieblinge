@@ -14,86 +14,97 @@ function escapeHtml(value) {
 }
 
 export async function sendRestaurantWebsiteDigest({
-  db,
-  env,
-  fetchImpl = fetch,
-  now = () => new Date().toISOString()
+  db, env, fetchImpl = fetch, now = () => new Date().toISOString(), summary = {}
 }) {
   const notificationEmail = String(env?.MONITOR_NOTIFICATION_EMAIL || "msc4021@arcor.de").trim();
   if (!env?.BREVO_API_KEY || !env?.BREVO_FROM_EMAIL || !notificationEmail) {
-    return { sent: false, reason: "Brevo-Versandzugang oder Absenderadresse fehlt." };
+    return { sent:false, reason:"Brevo-Versandzugang oder Absenderadresse fehlt." };
   }
-  const result = await db(
+  const proposalResult = await db(
     "SELECT p.id, r.name, p.field_name, p.old_value, p.new_value, p.source_url, p.detected_at FROM restaurant_change_proposals p LEFT JOIN restaurants r ON CAST(r.id AS TEXT)=p.restaurant_id WHERE p.status='pending' AND p.notified_at='' ORDER BY p.detected_at DESC, p.id DESC LIMIT 100",
     [], true
   );
-  const rows = result?.results?.[0]?.response?.result?.rows || [];
-  if (!rows.length) return { sent: false, reason: "Keine neuen Hinweise." };
-  const items = rows.map(row => ({
-    id: String(cell(row[0]) || ""),
-    name: String(cell(row[1]) || "Restaurant"),
-    field: String(cell(row[2]) || ""),
-    oldValue: String(cell(row[3]) || ""),
-    newValue: String(cell(row[4]) || ""),
-    sourceUrl: String(cell(row[5]) || ""),
-    detectedAt: String(cell(row[6]) || "")
+  const proposals = (proposalResult?.results?.[0]?.response?.result?.rows || []).map(row => ({
+    id:String(cell(row[0])||""), name:String(cell(row[1])||"Restaurant"),
+    field:String(cell(row[2])||""), oldValue:String(cell(row[3])||""),
+    newValue:String(cell(row[4])||""), sourceUrl:String(cell(row[5])||""),
+    detectedAt:String(cell(row[6])||"")
   }));
+  const cardResult = await db(
+    "SELECT c.restaurant_id, r.name, c.kind, c.url, c.checked_at FROM restaurant_card_checks c LEFT JOIN restaurants r ON CAST(r.id AS TEXT)=c.restaurant_id WHERE c.status='changed' AND c.notified_at='' ORDER BY c.checked_at DESC LIMIT 100",
+    [], true
+  );
+  const cardChanges = (cardResult?.results?.[0]?.response?.result?.rows || []).map(row => ({
+    restaurantId:String(cell(row[0])||""), name:String(cell(row[1])||"Restaurant"),
+    kind:String(cell(row[2])||""), url:String(cell(row[3])||"")
+  }));
+  const errors = Array.isArray(summary.errors) ? summary.errors : [];
+  const totalChanges = proposals.length + cardChanges.length;
   const fieldNames = {
-    telefon: "Telefonnummer", email: "E-Mail-Adresse", website: "Website",
-    adresse: "Adresse", oeffnungszeiten: "Öffnungszeiten", ruhetag: "Ruhetag",
-    betriebsferien: "Betriebsferien", website_text: "Website-Inhalt", dokumente: "Speisekarten- und PDF-Links", unterseiten: "Unterseiten-Links", externe_links: "Reservierungs- und Kontaktlinks"
+    telefon:"Telefonnummer", email:"E-Mail-Adresse", website:"Website", adresse:"Adresse",
+    oeffnungszeiten:"Öffnungszeiten", ruhetag:"Ruhetag", betriebsferien:"Betriebsferien",
+    website_text:"Website-Inhalt", dokumente:"Speisekarten- und PDF-Links",
+    unterseiten:"Unterseiten-Links", externe_links:"Reservierungs- und Kontaktlinks"
   };
+  const cardName = kind => kind === "speisekarte" ? "Speisekarte" : "Getränkekarte";
+  const summaryLines = [
+    "Täglicher Restaurant-Prüfbericht","",
+    "Offizielle Restaurant-Webseiten geprüft: " + (Number(summary.restaurantsChecked)||0),
+    "Externe Eintragsseiten geprüft: " + (Number(summary.externalEntriesChecked)||0),
+    "Webseiten und Unterseiten geprüft: " + (Number(summary.pagesChecked)||0),
+    "Speise- und Getränkekarten-Links geprüft: " + (Number(summary.cardsChecked)||0),
+    "Erkannte Änderungen: " + totalChanges, "Prüfprobleme: " + errors.length, "",
+    totalChanges ? "Es wurden Änderungen erkannt. Bitte prüfe die Vorschläge in der App." : "Keine Änderungen festgestellt.",
+    "Die Restaurant-Einträge in deiner App wurden NICHT automatisch verändert."
+  ];
   const textBody = [
-    "Auf offiziellen Restaurant-Webseiten wurden neue Änderungen erkannt.",
-    "Die Einträge in deiner App wurden NICHT automatisch verändert.",
-    "",
-    ...items.map(item =>
-      item.name + " – " + (fieldNames[item.field] || item.field) +
-      "\nBisher: " + (item.oldValue || "Keine Angabe") +
-      "\nNeu: " + (item.newValue || "Keine Angabe") +
-      "\nQuelle: " + item.sourceUrl
-    ),
-    "",
-    "Öffne die App und gehe im Menü zu „Änderungen auf Restaurant-Webseiten“."
+    ...summaryLines,
+    ...(proposals.length ? ["","ÄNDERUNGEN AN RESTAURANTDATEN",...proposals.map(item =>
+      item.name+" – "+(fieldNames[item.field]||item.field)+"\nBisher: "+(item.oldValue||"Keine Angabe")+
+      "\nNeu: "+(item.newValue||"Keine Angabe")+"\nQuelle: "+item.sourceUrl)] : []),
+    ...(cardChanges.length ? ["","ÄNDERUNGEN AN SPEISE- UND GETRÄNKEKARTEN",...cardChanges.map(item =>
+      item.name+" – "+cardName(item.kind)+"\nQuelle: "+item.url)] : []),
+    ...(errors.length ? ["","NICHT ERREICHBARE SEITEN / PRÜFPROBLEME",...errors.map(item =>
+      (item.name||"Restaurant")+"\n"+(item.detail||"Prüfung nicht möglich.")+(item.url?"\nQuelle: "+item.url:""))] : []),
+    "","Öffne die App und gehe im Menü zu „Änderungen auf Restaurant-Webseiten“."
   ].join("\n");
-  const htmlBody = `<h2>Neue Änderungen auf Restaurant-Webseiten</h2>
-    <p>Die Einträge in deiner App wurden <strong>nicht automatisch verändert</strong>.</p>
-    ${items.map(item => `<section style="margin:16px 0;padding:12px;border:1px solid #dce6df;border-radius:8px">
-      <h3>${escapeHtml(item.name)} – ${escapeHtml(fieldNames[item.field] || item.field)}</h3>
-      <p><strong>Bisher:</strong><br>${escapeHtml(item.oldValue || "Keine Angabe")}</p>
-      <p><strong>Neu:</strong><br>${escapeHtml(item.newValue || "Keine Angabe")}</p>
-      <p><a href="${escapeHtml(item.sourceUrl)}">Offizielle Quelle öffnen</a></p>
-    </section>`).join("")}
+  const htmlBody = `<h2>Täglicher Restaurant-Prüfbericht</h2>
+    <ul>
+      <li>Offizielle Restaurant-Webseiten geprüft: ${Number(summary.restaurantsChecked)||0}</li>
+      <li>Externe Eintragsseiten geprüft: ${Number(summary.externalEntriesChecked)||0}</li>
+      <li>Webseiten und Unterseiten geprüft: ${Number(summary.pagesChecked)||0}</li>
+      <li>Speise- und Getränkekarten-Links geprüft: ${Number(summary.cardsChecked)||0}</li>
+      <li>Erkannte Änderungen: ${totalChanges}</li><li>Prüfprobleme: ${errors.length}</li>
+    </ul>
+    <p><strong>${totalChanges?"Änderungen erkannt – bitte in der App prüfen.":"Keine Änderungen festgestellt."}</strong></p>
+    <p>Die Restaurant-Einträge in deiner App wurden <strong>nicht automatisch verändert</strong>.</p>
+    ${proposals.length?`<h3>Änderungen an Restaurantdaten</h3>${proposals.map(item=>`<section style="margin:16px 0;padding:12px;border:1px solid #dce6df;border-radius:8px">
+      <h4>${escapeHtml(item.name)} – ${escapeHtml(fieldNames[item.field]||item.field)}</h4>
+      <p><strong>Bisher:</strong><br>${escapeHtml(item.oldValue||"Keine Angabe")}</p>
+      <p><strong>Neu:</strong><br>${escapeHtml(item.newValue||"Keine Angabe")}</p>
+      <p><a href="${escapeHtml(item.sourceUrl)}">Offizielle Quelle öffnen</a></p></section>`).join("")}`:""}
+    ${cardChanges.length?`<h3>Änderungen an Speise- und Getränkekarten</h3><ul>${cardChanges.map(item=>`<li><strong>${escapeHtml(item.name)}</strong> – ${escapeHtml(cardName(item.kind))}: <a href="${escapeHtml(item.url)}">Quelle öffnen</a></li>`).join("")}</ul>`:""}
+    ${errors.length?`<h3>Prüfprobleme</h3><ul>${errors.map(item=>`<li><strong>${escapeHtml(item.name||"Restaurant")}</strong>: ${escapeHtml(item.detail||"Prüfung nicht möglich.")} ${item.url?`<a href="${escapeHtml(item.url)}">Quelle</a>`:""}</li>`).join("")}</ul>`:""}
     <p>Öffne die App und gehe im Menü zu „Änderungen auf Restaurant-Webseiten“.</p>`;
   const response = await fetchImpl("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      "api-key": env.BREVO_API_KEY,
-      "Content-Type": "application/json",
-      "Accept": "application/json"
-    },
-    body: JSON.stringify({
-      sender: { email: env.BREVO_FROM_EMAIL, name: env.BREVO_FROM_NAME || "Restaurant-Webseitenprüfung" },
-      to: [{ email: notificationEmail }],
-      subject: items.length + " neue Änderung(en) auf Restaurant-Webseiten",
-      textContent: textBody,
-      htmlContent: htmlBody
+    method:"POST",
+    headers:{"api-key":env.BREVO_API_KEY,"Content-Type":"application/json","Accept":"application/json"},
+    body:JSON.stringify({
+      sender:{email:env.BREVO_FROM_EMAIL,name:env.BREVO_FROM_NAME||"Meine Lieblings-Restaurants am Tegernsee"},
+      to:[{email:notificationEmail}],
+      subject:totalChanges
+        ? "Täglicher Restaurant-Prüfbericht – "+totalChanges+" Änderung(en)"
+        : errors.length ? "Täglicher Restaurant-Prüfbericht – keine Änderungen, Prüfprobleme"
+        : "Täglicher Restaurant-Prüfbericht – keine Änderungen",
+      textContent:textBody,htmlContent:htmlBody
     })
   });
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 300);
-    throw new Error("Brevo hat den E-Mail-Versand abgelehnt (HTTP " + response.status + "): " + detail);
-  }
-  const stamp = now();
-  for (const item of items) {
-    await db(
-      "UPDATE restaurant_change_proposals SET notified_at=? WHERE id=? AND notified_at=''",
-      [arg(stamp), arg(item.id)]
-    );
-  }
-  return { sent: true, acceptedByProvider: true, count: items.length };
+  if(!response.ok) throw new Error("Brevo hat den E-Mail-Versand abgelehnt (HTTP "+response.status+"): "+(await response.text()).slice(0,300));
+  const stamp=now();
+  for(const item of proposals) await db("UPDATE restaurant_change_proposals SET notified_at=? WHERE id=? AND notified_at=''",[arg(stamp),arg(item.id)]);
+  for(const item of cardChanges) await db("UPDATE restaurant_card_checks SET notified_at=? WHERE restaurant_id=? AND kind=? AND notified_at=''",[arg(stamp),arg(item.restaurantId),arg(item.kind)]);
+  return {sent:true,acceptedByProvider:true,count:totalChanges,proposalCount:proposals.length,cardChangeCount:cardChanges.length,errorCount:errors.length};
 }
-
 
 /**
  * Sendet eine feste Testnachricht an die konfigurierte Benachrichtigungsadresse.
