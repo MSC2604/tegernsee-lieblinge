@@ -3494,6 +3494,12 @@ function normalizeRestaurant(r){
         ? r.zahlungsarten.filter(type => ["girocard", "debitkarte", "kreditkarte"].includes(type))
         : [],
 
+    // Ampelstatus aus der zentralen API übernehmen und beim Bearbeiten erhalten.
+    zahlungsarten_status:
+      ["red", "yellow", "green"].includes(String(r.zahlungsarten_status || ""))
+        ? String(r.zahlungsarten_status)
+        : "",
+
     notizen:
       cleanValue(
         r.notizen
