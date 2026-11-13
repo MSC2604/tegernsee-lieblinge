@@ -26,7 +26,11 @@ let cardRows = [[
 ]];
 let proposalUpdated = 0, cardUpdated = 0, sentPayloads = [];
 const db = async (sql, args = [], wantRows = false) => {
-  if (sql.startsWith("SELECT p.id")) {\n    assert.match(sql, /p\\.field_name IN/);\n    const allowed = new Set(["telefon","email","website","adresse","oeffnungszeiten","ruhetag","betriebsferien","dokumente","externe_links"]);\n    return { results: [{ response: { result: { rows: proposalRows.filter(row => allowed.has(row[2]?.value)) } } }] };\n  }
+  if (sql.startsWith("SELECT p.id")) {
+    assert.match(sql, /p\.field_name IN/);
+    const allowed = new Set(["telefon","email","website","adresse","oeffnungszeiten","ruhetag","betriebsferien","dokumente","externe_links"]);
+    return { results: [{ response: { result: { rows: proposalRows.filter(row => allowed.has(row[2]?.value)) } } }] };
+  }
   if (sql.startsWith("SELECT c.restaurant_id")) return { results: [{ response: { result: { rows: cardRows } } }] };
   if (sql.startsWith("UPDATE restaurant_change_proposals")) { proposalUpdated++; return { results: [] }; }
   if (sql.startsWith("UPDATE restaurant_card_checks")) { cardUpdated++; return { results: [] }; }
