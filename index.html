@@ -2348,6 +2348,13 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 #cards .card .tile-hours-holiday .tile-hours-text{color:#9a5d4d;font-weight:650}
 #cards .card .tile-payment{display:grid;gap:8px;min-width:0;margin-top:3px;padding-top:12px;border-top:1px solid #eee9df}
 #cards .card .tile-payment-heading{color:#718075;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+#cards .card .tile-payment-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+#cards .card .payment-traffic{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;padding:4px 6px;border:1px solid #e7e5df;border-radius:999px;background:#f7f7f4}
+#cards .card .payment-traffic-light{width:9px;height:9px;border-radius:50%;opacity:.22;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+#cards .card .payment-traffic-light.red{background:#d94b43}
+#cards .card .payment-traffic-light.yellow{background:#e7b83e}
+#cards .card .payment-traffic-light.green{background:#31966a}
+#cards .card .payment-traffic-light.active{opacity:1;box-shadow:0 0 0 2px rgba(255,255,255,.95),0 0 0 3px currentColor}
 #cards .card .tile-payment-list{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
 #cards .card .tile-payment-chip{display:inline-flex;align-items:center;min-height:27px;padding:5px 9px;border:1px solid #dce5da;border-radius:999px;background:#f4f7f1;color:#456251;font-size:11px;font-weight:650;line-height:1.2;white-space:normal}
 #cards .card .tile-payment-none{background:#fff5e9;border-color:#ead6b8;color:#80552d;font-weight:750}
@@ -2929,6 +2936,16 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
         <label><input type="checkbox" id="f_payment_girocard"> Girocard (EC-Karte)</label>
         <label><input type="checkbox" id="f_payment_debitkarte"> Debitkarte (Visa Debit / Mastercard Debit)</label>
         <label><input type="checkbox" id="f_payment_kreditkarte"> Kreditkarte (z. B. Visa, Mastercard, American Express)</label>
+        <div class="payment-status-editor">
+          <strong>Prüfstatus</strong>
+          <small>Optional: Eine Farbe auswählen. Ohne Auswahl wird auf der Restaurant-Kachel keine Ampel angezeigt.</small>
+          <div class="payment-status-options">
+            <label><input type="radio" name="f_payment_status" value="red"> 🔴 Offen</label>
+            <label><input type="radio" name="f_payment_status" value="yellow"> 🟡 Teilweise / Rückfrage</label>
+            <label><input type="radio" name="f_payment_status" value="green"> 🟢 Geprüft</label>
+            <label><input type="radio" name="f_payment_status" value=""> Keine Ampel</label>
+          </div>
+        </div>
       </div>
 
       <div class="card-edit-box">
@@ -4639,7 +4656,10 @@ function render(){
                 </div>
               ` : ""}
               <div class="tile-payment" aria-label="Zahlungsmöglichkeiten">
-                <div class="tile-payment-heading">Zahlungsmöglichkeiten</div>
+                <div class="tile-payment-top">
+                  <div class="tile-payment-heading">Zahlungsmöglichkeiten</div>
+                  ${["red","yellow","green"].includes(place.zahlungsarten_status) ? `<div class="payment-traffic" role="img" aria-label="Zahlungsarten-Prüfstatus: ${{red:"offen",yellow:"teilweise geprüft oder Rückfrage",green:"geprüft"}[place.zahlungsarten_status]}"><span class="payment-traffic-light red ${place.zahlungsarten_status==="red"?"active":""}"></span><span class="payment-traffic-light yellow ${place.zahlungsarten_status==="yellow"?"active":""}"></span><span class="payment-traffic-light green ${place.zahlungsarten_status==="green"?"active":""}"></span></div>` : ""}
+                </div>
                 <div class="tile-payment-list" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;min-width:0;">
                   ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).length === 0
                     ? '<span class="tile-payment-chip tile-payment-none" style="grid-column:1/-1;justify-self:start;display:flex;align-items:center;justify-content:center;min-width:0;width:max-content;max-width:100%;min-height:30px;padding:6px 10px;white-space:nowrap;text-align:center;font-size:10px;letter-spacing:-.04em;">Nur Barzahlung möglich</span>'
@@ -5839,6 +5859,9 @@ function editPlace(){
   document.getElementById("f_payment_girocard").checked = savedPaymentTypes.includes("girocard");
   document.getElementById("f_payment_debitkarte").checked = savedPaymentTypes.includes("debitkarte");
   document.getElementById("f_payment_kreditkarte").checked = savedPaymentTypes.includes("kreditkarte");
+  document.querySelectorAll('input[name="f_payment_status"]').forEach(input => {
+    input.checked = input.value === (["red","yellow","green"].includes(currentPlace.zahlungsarten_status) ? currentPlace.zahlungsarten_status : "");
+  });
 
   document.getElementById(
     "f_notizen"
@@ -5877,6 +5900,7 @@ function editPlace(){
 function clearForm(){
 
   cardEditorState = {restaurantId:null,status:"idle"};
+  document.querySelectorAll('input[name="f_payment_status"]').forEach(input => { input.checked = input.value === ""; });
   ["f_speisekarte_pdf","f_getraenkekarte_pdf","f_dessertkarte_pdf","f_brotzeitkarte_pdf","f_saisonkarte_pdf"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
   ["f_speisekarte_pdf_status","f_getraenkekarte_pdf_status","f_dessertkarte_pdf_status","f_brotzeitkarte_pdf_status","f_saisonkarte_pdf_status"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent="Keine neue PDF ausgewählt.";});
   ["f_speisekarte_url","f_getraenkekarte_url"].forEach(id => {
@@ -6049,6 +6073,7 @@ function getFormData(){
       ["f_payment_debitkarte","debitkarte"],
       ["f_payment_kreditkarte","kreditkarte"]
     ].filter(([id]) => document.getElementById(id).checked).map(([,value]) => value),
+    zahlungsarten_status: document.querySelector('input[name="f_payment_status"]:checked')?.value || "",
 
     notizen:
       document.getElementById(
