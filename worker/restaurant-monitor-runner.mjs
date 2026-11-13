@@ -11,7 +11,7 @@ import {
 } from "./restaurant-monitor.mjs";
 
 const MAX_BYTES = 3 * 1024 * 1024;
-const MAX_PAGES = 6;
+const MAX_PAGES = 3; // Homepage plus höchstens zwei relevante Unterseiten pro Restaurant.
 const TIMEOUT_MS = 15000;
 const FETCH_ATTEMPTS = 2;
 
@@ -184,6 +184,8 @@ export async function runRestaurantWebsiteMonitor({
     const pages = sourceType === "external" ? [root.href] : [root.href, ...discoveredPages.filter(pageUrl =>
       !(hasMenuPdf && /(?:speisekarte|getränkekarte|getraenkekarte|menu|menue|karte)/i.test(new URL(pageUrl).pathname))
     )];
+    // Alle Vorschläge und der Snapshot einer Seite werden gemeinsam gespeichert.
+    let pendingWrites = [];
     const processPage = async (pageUrl, knownHtml, fetchError = null) => {
       let html = knownHtml;
       let effectiveUrl = pageUrl;
@@ -241,11 +243,22 @@ export async function runRestaurantWebsiteMonitor({
       } else if (sourceType === "official" && oldHash && oldHash !== hash) {
         const changes = findRestaurantChanges(oldData, found);
         for (const change of changes) {
-          await db("INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')", [textArg(id), textArg(change.field), textArg(change.oldValue), textArg(change.newValue), textArg(effectiveUrl), textArg(stamp)]);
+          pendingWrites.push({
+            sql: "INSERT OR IGNORE INTO restaurant_change_proposals (restaurant_id, field_name, old_value, new_value, source_url, detected_at, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')",
+            args: [textArg(id), textArg(change.field), textArg(change.oldValue), textArg(change.newValue), textArg(effectiveUrl), textArg(stamp)]
+          });
           report.proposals++;
         }
       }
-      await db("INSERT INTO restaurant_site_snapshots (restaurant_id, page_url, checked_at, content_hash, extracted_data_json, content_text) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(restaurant_id, page_url) DO UPDATE SET checked_at=excluded.checked_at, content_hash=excluded.content_hash, extracted_data_json=excluded.extracted_data_json, content_text=excluded.content_text", [textArg(id), textArg(snapshotUrl), textArg(stamp), textArg(hash), textArg(JSON.stringify(found)), textArg(pageText.slice(0, 50000))]);
+      pendingWrites.push({
+        sql: "INSERT INTO restaurant_site_snapshots (restaurant_id, page_url, checked_at, content_hash, extracted_data_json, content_text) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(restaurant_id, page_url) DO UPDATE SET checked_at=excluded.checked_at, content_hash=excluded.content_hash, extracted_data_json=excluded.extracted_data_json, content_text=excluded.content_text",
+        args: [textArg(id), textArg(snapshotUrl), textArg(stamp), textArg(hash), textArg(JSON.stringify(found)), textArg(pageText.slice(0, 50000))]
+      });
+      if (typeof db.batch === "function") {
+        await db.batch(pendingWrites.splice(0));
+      } else {
+        for (const write of pendingWrites.splice(0)) await db(write.sql, write.args);
+      }
       report.pages++;
     };
     // Homepage first to discover subpages. Fetch up to three subpages in parallel,
