@@ -1512,6 +1512,7 @@ console.log("Tavily usage account:", {
           const messageRefs = Array.isArray(listData.messages) ? listData.messages.slice(0, 100) : [];
           const candidates = [];
           let ambiguous = 0;
+          let ignoredAutomatic = 0;
           const decodeBody = (encoded) => {
             if (!encoded) return "";
             try {
@@ -1552,6 +1553,19 @@ console.log("Tavily usage account:", {
               collectParts(message.payload, parts);
               const bodyText = (parts.join("\n") || String(message.snippet || "")).replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
               const subject = header("Subject");
+              // Automatische Antworten (insbesondere Abwesenheitsnotizen) sind keine
+              // inhaltlichen Antworten auf die Zahlungsarten-Anfrage und bleiben offen.
+              const autoSubmitted = header("Auto-Submitted");
+              const autoReplyHeader = header("X-Autoreply") || header("X-Autorespond") || header("X-Auto-Response-Suppress");
+              const automaticSubject = /automatische\s+antwort|abwesenheitsnotiz|out\s+of\s+office|automatic\s+reply|auto(?:matic)?\s+response/i.test(subject);
+              const automaticHeader = (autoSubmitted && !/^no$/i.test(autoSubmitted.trim())) ||
+                (!!autoReplyHeader && !/^(no|false|0)$/i.test(autoReplyHeader.trim()));
+              const awayBody = /(betriebsurlaub|ortsabwesenheit|abwesend|nicht im büro|out of office|currently away|currently out of office|on vacation|on holiday)/i.test(bodyText) &&
+                /(ab dem|bis einschließlich|wieder für sie da|wieder erreichbar|e-mails?.*(gelesen|bearbeitet)|antwortung.*mehr zeit|beantwortung.*mehr zeit|return on|back on|will respond)/i.test(bodyText);
+              if (automaticHeader || automaticSubject || awayBody) {
+                ignoredAutomatic++;
+                continue;
+              }
               if (!/(zahlungsart|zahlung|kreditkarte|girocard|ec[- ]?karte|bargeld|visa|mastercard|barzahlung|karten)/i.test(subject + " " + bodyText)) continue;
               if (eligible.length !== 1) { ambiguous++; continue; }
               const requestItem = eligible[0];
@@ -1581,9 +1595,10 @@ console.log("Tavily usage account:", {
             scanned: messageRefs.length,
             candidates: uniqueCandidates.slice(0, 50),
             ambiguous,
+            ignoredAutomatic,
             message: uniqueCandidates.length
-              ? uniqueCandidates.length + " mögliche Antwort(en) gefunden. Bitte vor dem Speichern prüfen."
-              : "Keine eindeutig zuordenbaren Antworten zu den offenen Zahlungsarten-Anfragen gefunden."
+              ? uniqueCandidates.length + " mögliche Antwort(en) gefunden. Bitte vor dem Speichern prüfen." + (ignoredAutomatic ? " " + ignoredAutomatic + " automatische Abwesenheits-/Systemnachricht(en) wurden ignoriert." : "")
+              : "Keine eindeutig zuordenbaren Antworten zu den offenen Zahlungsarten-Anfragen gefunden." + (ignoredAutomatic ? " " + ignoredAutomatic + " automatische Abwesenheits-/Systemnachricht(en) wurden ignoriert." : "")
           });
         }
 
