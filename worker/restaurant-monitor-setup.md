@@ -1,39 +1,40 @@
-# Restaurant-Webseitenprüfung – Einrichtung
+# Tägliche Restaurant-Prüfung
 
-Dieser Stand gehört zum isolierten Entwicklungszweig. Er ist nicht veröffentlicht und verändert keine Live-Daten.
+Die tägliche Prüfung läuft im produktiven Cloudflare Worker über den Cron-Auslöser `0 5 * * *` (UTC; in Deutschland üblicherweise 06:00 Uhr im Winter und 07:00 Uhr im Sommer).
 
-## Tägliche Prüfung
+## Zusammengefasste Prüfung
 
-Der Worker verwendet den bereits vorhandenen Cron-Auslöser `0 5 * * *` (UTC). Die erste erfolgreiche Prüfung speichert nur den Ausgangsstand. Erst spätere Abweichungen erzeugen Hinweise.
+Ein täglicher Lauf verbindet zwei Prüfbereiche:
 
-## E-Mail-Hinweise (optional)
+- **Speise- und Getränkekarten:** Die in der App hinterlegten Karten-Links werden auf Erreichbarkeit und Inhaltsänderungen geprüft.
+- **Restaurant-Webseiten:** Die offiziellen Webseiten und ausgewählte offizielle Unterseiten werden auf erkennbare Änderungen bei Telefonnummer, E-Mail-Adresse, Website, Adresse, Öffnungszeiten, Ruhetag, Betriebsferien, Dokumenten- und relevanten Kontakt-/Reservierungslinks geprüft.
 
-Der E-Mail-Versand ist vorbereitet, aber absichtlich deaktiviert, solange die Zugangsdaten fehlen. Es werden keine Zugangsdaten im Git-Repository gespeichert.
+Die E-Mail enthält täglich einen Bericht – auch dann, wenn keine Änderungen erkannt wurden. Sie nennt außerdem die Zahl der geprüften Restaurants, Seiten und Karten-Links sowie nicht erreichbare Seiten und Prüfprobleme. Erkannte Kartenänderungen und Restaurantdatenänderungen werden gemeinsam gemeldet.
 
-In den Cloudflare-Worker-Einstellungen unter **Settings → Variables and Secrets** müssen bei gewünschtem E-Mail-Versand gesetzt werden:
+## E-Mail-Versand
 
-- `BREVO_API_KEY` – als Secret
-- `BREVO_FROM_EMAIL` – verifizierte Absenderadresse
+Der tägliche Bericht wird über Brevo versendet. In den Cloudflare-Worker-Einstellungen unter **Settings → Variables and Secrets** werden benötigt:
+
+- `BREVO_API_KEY` – Secret mit aktivierter Transaktions-E-Mail-Funktion
+- `BREVO_FROM_EMAIL` – bei Brevo verifizierte Absenderadresse
+- `MONITOR_NOTIFICATION_EMAIL` – Empfängeradresse; wenn nicht gesetzt, wird `msc4021@arcor.de` verwendet
 - `BREVO_FROM_NAME` – optionaler Absendername
-- `MONITOR_NOTIFICATION_EMAIL` – gewünschte Empfängeradresse
 
-Dazu wird ein Brevo-Konto benötigt. Dort muss die Absenderadresse angelegt und per Bestätigungscode verifiziert werden. Bei neuen Konten kann Brevo zusätzlich die Transaktionsplattform freischalten müssen. Eine kostenlose Maildomain lässt sich nicht per DKIM authentifizieren; Brevo kann in diesem Fall die Absenderadresse ersetzen. Die Zustellbarkeit ist deshalb ohne eigene authentifizierte Domain nicht garantiert. Es ist kein Domainkauf in diesem Code vorausgesetzt.
+Der Versand funktioniert erst, wenn Brevo den API-Schlüssel und die Absenderadresse akzeptiert. Ein erfolgreicher Worker-Deploy allein bestätigt noch keine tatsächliche E-Mail-Zustellung.
 
-Wenn die drei Pflichtvariablen fehlen, bleibt die E-Mail-Funktion still deaktiviert. Die Hinweise werden weiterhin in der App gesammelt. Nach erfolgreichem Versand markiert der Worker die betreffenden Hinweise als benachrichtigt.
+## Verhalten in der App und Datensicherheit
 
-## Verhalten in der App
-
-- Die Übersicht ist über das App-Menü erreichbar und verlangt das Admin-Passwort.
-- Jede Meldung zeigt Restaurant, Feld, bisherigen und gefundenen Wert sowie die offizielle Quellseite.
-- „Gesehen – ich kümmere mich“ und „Nicht relevant“ ändern nur den Prüfstatus.
+- Erkannte Änderungen werden als Vorschläge in der App gesammelt.
 - Restaurantdaten werden niemals automatisch überschrieben.
-- Nicht erreichbare Seiten werden als Prüfproblem im Worker-Laufbericht protokolliert und nicht als Datenänderung ausgegeben.
+- Die E-Mail informiert täglich über Änderungen oder ausdrücklich darüber, dass keine Änderungen festgestellt wurden.
+- Nicht erreichbare Seiten werden als Prüfprobleme gemeldet und nicht als Datenänderung ausgegeben.
+- Änderungen werden nach erfolgreicher Annahme durch Brevo als benachrichtigt markiert; fehlgeschlagene E-Mail-Versuche lassen offene Hinweise bestehen.
 
-## Sicherheitsgrenzen
+## Grenzen der Prüfung
 
 - Es werden nur HTTP(S)-Seiten der gespeicherten offiziellen Website aufgerufen; lokale und reservierte IP-Adressen werden blockiert.
 - Weiterleitungen auf andere Domains werden blockiert.
-- Pro Seite gelten 8 Sekunden Zeitlimit und 1 MB Größenlimit.
-- Die Prüfung crawlt die Startseite und höchstens fünf priorisierte Unterseiten je Restaurant. Pro Seite werden höchstens 50.000 Zeichen sichtbarer Text ausgewertet.
+- Pro Seite gelten Zeit- und Größenlimits.
+- Die Prüfung crawlt die Startseite und höchstens fünf priorisierte Unterseiten je Restaurant.
 - Reine Design-, CSS-, Bild- oder Layoutänderungen sowie nicht verlinkte Unterseiten werden nicht zuverlässig erkannt.
-- PDF-Links auf der offiziellen Domain sowie wichtige externe Reservierungs- und Kontaktlinks werden erkannt; externe Seiten werden nicht aufgerufen und PDF-Dateien selbst nicht erneut heruntergeladen. Die bestehende Karten-PDF-Prüfung bleibt separat.
+- PDF-Links auf der offiziellen Domain sowie wichtige externe Reservierungs- und Kontaktlinks werden erkannt; externe Seiten und PDF-Dateien selbst werden nicht erneut heruntergeladen.
