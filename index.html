@@ -2415,6 +2415,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     <button class="app-menu-item" onclick="showIncompleteEntries()"><span>📋</span><span>Unvollständige Einträge <span id="incompleteMenuCount" style="font-size:12px;color:#805716;width:auto">…</span></span></button>
     <button class="app-menu-item" type="button" onclick="showRestaurantWebsiteChanges()"><span>🌐</span><span>Änderungen auf Restaurant-Webseiten</span></button>
     <button class="app-menu-item" type="button" onclick="showPaymentResearch()"><span>💳</span><span>Zahlungsarten – Prüfliste</span></button>
+    <button class="app-menu-item" type="button" onclick="showPaymentRequestTracker()"><span>✉️</span><span>Zahlungsarten-Anfragen</span></button>
     <button class="app-menu-item" type="button" onclick="closeAppMenu();exportRestaurantAuditCsv()"><span>📄</span><span>Prüfliste aller Restaurants exportieren</span></button>
     <button class="app-menu-item" type="button" onclick="showManualRestaurantReview()"><span>🔎</span><span>Erkannte Datenabweichungen prüfen</span></button>
     <button class="app-menu-item" onclick="closeAppMenu();focusSearch()"><span>🔎</span><span>Restaurants suchen</span></button>
@@ -2446,6 +2447,20 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Rechercheübersicht für deine 41 bestehenden Einträge. Es zählen nur eindeutige Angaben auf offiziellen Betreiber-Webseiten oder offiziellen Unterlagen. Drittanbieter-Verzeichnisse gelten nicht als Bestätigung. Unklare Fälle bleiben ausdrücklich offen. Die Angaben sind nur eine Entscheidungshilfe und ändern keine Restaurantdaten. Setze einen Haken, sobald du die Zahlungsarten selbst in „Bearbeiten“ eingetragen hast. Markierungen und erledigte Einträge werden zentral gespeichert und automatisch zwischen Handy und Tablet abgeglichen. Beim ersten Speichern in einer App-Sitzung kann das Admin-Passwort abgefragt werden.</p>
     <div class="website-change-summary" id="paymentResearchSummary">41 Restaurants · 0 erledigt</div>
     <div id="paymentResearchList"></div>
+  </section>
+</div>
+
+<div class="website-changes-overlay" id="paymentRequestTrackerOverlay" onclick="if(event.target===this)closePaymentRequestTracker()">
+  <section class="website-changes-panel" role="dialog" aria-modal="true" aria-labelledby="paymentRequestTrackerTitle">
+    <div class="website-changes-head"><h2 id="paymentRequestTrackerTitle">✉️ Zahlungsarten-Anfragen</h2><button class="website-changes-close" type="button" aria-label="Schließen" onclick="closePaymentRequestTracker()">×</button></div>
+    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Hier verfolgst du die 36 versendeten Anfragen. Antworten und ausdrücklich bestätigte Zahlungsarten kannst du eintragen und später ändern. Diese Liste verändert keine Restaurantdaten und löscht keine E-Mails. Eine automatische Gmail-Erkennung ist noch nicht verbunden.</p>
+    <div class="website-change-summary" id="paymentRequestTrackerSummary">Lade Anfragen …</div>
+    <div style="display:flex;flex-wrap:wrap;gap:7px;margin:12px 0">
+      <button type="button" class="secondary-action" data-request-filter="all" onclick="setPaymentRequestFilter('all')" style="min-height:36px;padding:8px 12px">Alle</button>
+      <button type="button" class="secondary-action" data-request-filter="received" onclick="setPaymentRequestFilter('received')" style="min-height:36px;padding:8px 12px">Antwort eingegangen</button>
+      <button type="button" class="secondary-action" data-request-filter="pending" onclick="setPaymentRequestFilter('pending')" style="min-height:36px;padding:8px 12px">Antwort ausstehend</button>
+    </div>
+    <div id="paymentRequestTrackerList"></div>
   </section>
 </div>
 
@@ -6807,6 +6822,177 @@ function closePaymentResearch(){
     clearInterval(paymentResearchSyncTimer);
     paymentResearchSyncTimer = null;
   }
+}
+
+
+/* --------------------------------------------------
+   ZAHLUNGSARTEN-ANFRAGEN – zentrale Antwortübersicht
+-------------------------------------------------- */
+const PAYMENT_REQUEST_SEED = [
+  {id:"payment-001",name:"Haus Göttfried",email:"info@hausgoettfried.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-002",name:"Strandbad Seeglas",email:"strandbad.seeglas@gmx.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-003",name:"Ratskeller Schliersee",email:"office@ratskeller-schliersee.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-004",name:"Postillion Tegernsee",email:"info@postillion-tegernsee.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-005",name:"Wallberg Restaurant",email:"info@wallberg-restaurant.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-006",name:"Metzgerei Trettenhann",email:"kontakt@metzgereitrettenhann.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-007",name:"Mesner Gütl",email:"info@mesnergutl.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-008",name:"Hofhaus am See",email:"hofhaus@online.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-009",name:"Schlosswirtschaft Tegernsee",email:"reservierung@schlosswirtschaft-tegernsee.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-010",name:"Alpenwildpark",email:"alpenwildpark@t-online.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-011",name:"Biergarten Gut Kaltenbrunn",email:"restaurant@kaefer-gut-kaltenbrunn.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-012",name:"Kontakt – Slavomir Gana",email:"slavomirgana@gmail.com",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-013",name:"Königslinde am Tegernsee",email:"koenigslinde@t-online.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-014",name:"Berggasthof Lukas-Alm",email:"servus@lukas-alm.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-015",name:"Aueralm",email:"mail@aueralm.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-016",name:"Naturkäserei TegernseerLand",email:"info@naturkaeserei.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-017",name:"Wirtshaus Aibl Alm",email:"info@aibl.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-018",name:"Tegernseer Gastro – Anfrage 1",email:"info@tegernseer-gastro.de",sentAt:"2026-11-13",status:"pending",methods:[],note:"Gleiche Kontaktadresse wurde für zwei Anfragen verwendet."},
+  {id:"payment-019",name:"Café Tremmel",email:"cafe-tremmel@t-online.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-020",name:"Herzogliche Fischzucht Wildbad Kreuth",email:"info@fischerei-kreuth.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-021",name:"Gasthof zum Hagn",email:"gasthof-hagn@t-online.de",sentAt:"2026-11-13",status:"received",methods:["cash","girocard","visa","mastercard"],note:"Antwort vom 13.11.2026: „Wir akzeptieren alle Zahlungsmöglichkeiten – nur keine American Express Karte.“ Damit sind Bargeld, Girocard, Visa und Mastercard bestätigt."},
+  {id:"payment-022",name:"Gasthof Glashütte",email:"info@gasthof-glashuette-kreuth.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-023",name:"Tegernseer Gastro – Anfrage 2",email:"info@tegernseer-gastro.de",sentAt:"2026-11-13",status:"pending",methods:[],note:"Gleiche Kontaktadresse wurde für zwei Anfragen verwendet."},
+  {id:"payment-024",name:"Almhof Enterrottach",email:"almhof.enterrottach@yahoo.com",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-025",name:"Kontakt – Sini Saj",email:"sinisaj@hotmail.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-026",name:"Berggasthof Obere Firstalm",email:"info@firstalm.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-027",name:"Berggasthof Neureuth",email:"info@neureuth.com",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-028",name:"Berggasthof Moni-Alm",email:"info@moni-alm.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-029",name:"Berggasthaus Riederstein am Galaun",email:"mail@berggasthaus-riederstein-am-galaun.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-030",name:"Riedler Alm",email:"info@riedler-alm.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-031",name:"Gasthof Herzog Maximilian",email:"post@gasthof-maximilian.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-032",name:"Gasthof Batznhäusl",email:"kontakt@gasthof-batznhaeusl-kreuth.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-033",name:"Auszeit am Grün",email:"office@auszeitamgruen.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-034",name:"Fischerei Tegernsee",email:"mail@fischerei-tegernsee.com",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-035",name:"Café Restaurant Angermaier",email:"info@cafe-angermaier.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""},
+  {id:"payment-036",name:"Bräustüberl Tegernsee",email:"info@braustuberl.de",sentAt:"2026-11-13",status:"pending",methods:[],note:""}
+];
+let paymentRequestItems = [];
+let paymentRequestFilter = "all";
+let paymentRequestAdminPassword = null;
+let paymentRequestBusy = false;
+
+function showPaymentRequestTracker(){
+  closeAppMenu();
+  const overlay = document.getElementById("paymentRequestTrackerOverlay");
+  if(overlay) overlay.style.display = "flex";
+  loadPaymentRequestTracker().catch(error => alert(error.message || "Die Anfragenliste konnte nicht geladen werden."));
+}
+function closePaymentRequestTracker(){
+  const overlay = document.getElementById("paymentRequestTrackerOverlay");
+  if(overlay) overlay.style.display = "none";
+}
+function setPaymentRequestFilter(filter){
+  paymentRequestFilter = ["all","received","pending"].includes(filter) ? filter : "all";
+  renderPaymentRequestTracker();
+}
+async function savePaymentRequestItems(items){
+  for(let attempt=0;attempt<2;attempt++){
+    if(!paymentRequestAdminPassword){
+      const entered = await askAdminPassword("Bitte Admin-Passwort eingeben, um die Zahlungsarten-Anfragen zentral zu speichern.");
+      if(entered === null || !entered) throw new Error("Speichern abgebrochen. Es wurde nichts geändert.");
+      paymentRequestAdminPassword = entered;
+    }
+    const response = await fetch(API_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+paymentRequestAdminPassword},
+      body:JSON.stringify({action:"savePaymentRequestTracker",items})
+    });
+    let data={};try{data=await response.json();}catch(e){}
+    if(response.status===401){paymentRequestAdminPassword=null;continue;}
+    if(!response.ok || data.success!==true || data.verified!==true) throw new Error(data.error || "Die Anfragenliste konnte nicht gespeichert werden.");
+    return data;
+  }
+  throw new Error("Das Admin-Passwort wurde nicht akzeptiert.");
+}
+async function loadPaymentRequestTracker(){
+  if(paymentRequestBusy) return;
+  paymentRequestBusy=true;
+  const summary=document.getElementById("paymentRequestTrackerSummary");
+  if(summary) summary.textContent="Lade gemeinsame Anfragenliste …";
+  try{
+    const response=await fetch(API_URL+"?action=paymentRequestTracker&_="+Date.now(),{cache:"no-store",headers:{"Accept":"application/json"}});
+    const data=await response.json();
+    if(!response.ok || !Array.isArray(data.items)) throw new Error(data.error || "Die gemeinsame Anfragenliste ist nicht erreichbar.");
+    if(!data.items.length){
+      await savePaymentRequestItems(PAYMENT_REQUEST_SEED);
+      paymentRequestItems=PAYMENT_REQUEST_SEED.map(item=>({...item,methods:[...item.methods]}));
+    }else{
+      paymentRequestItems=data.items.map(item=>({...item,methods:Array.isArray(item.methods)?item.methods:[]}));
+    }
+    renderPaymentRequestTracker();
+  }finally{
+    paymentRequestBusy=false;
+  }
+}
+function renderPaymentRequestTracker(){
+  const list=document.getElementById("paymentRequestTrackerList");
+  const summary=document.getElementById("paymentRequestTrackerSummary");
+  if(!list || !summary) return;
+  const active=paymentRequestItems;
+  const received=active.filter(item=>item.status==="received").length;
+  const pending=active.length-received;
+  summary.innerHTML="<strong>"+active.length+" Anfragen versendet</strong> · "+received+" Antworten eingegangen · "+pending+" ausstehend · "+(paymentRequestBusy?"Synchronisiere …":"Zentral gespeichert");
+  document.querySelectorAll("[data-request-filter]").forEach(button=>{
+    const activeFilter=button.getAttribute("data-request-filter")===paymentRequestFilter;
+    button.style.background=activeFilter?"#315f4d":"transparent";
+    button.style.color=activeFilter?"#fff":"#315f4d";
+  });
+  const visible=active.filter(item=>paymentRequestFilter==="all" || item.status===paymentRequestFilter);
+  if(!visible.length){
+    list.innerHTML='<p style="padding:15px;border-radius:12px;background:#edf4ef;color:#315f4d;font-weight:700">In diesem Bereich gibt es derzeit keine Einträge.</p>';
+    return;
+  }
+  const methodOptions=[["cash","Bargeld"],["girocard","Girocard / EC"],["visa","Visa"],["mastercard","Mastercard"]];
+  list.innerHTML=visible.map(item=>{
+    const checked=methodOptions.map(([key,label])=>'<label style="display:inline-flex;align-items:center;gap:5px;margin:5px 12px 3px 0;font-size:12px;color:#344d40"><input type="checkbox" data-request-method="'+key+'" '+(item.methods.includes(key)?"checked":"")+' style="width:17px;height:17px"> '+label+'</label>').join("");
+    return '<section class="website-change-card" data-request-card="'+escapeHtml(item.id)+'" style="margin-top:10px;padding:13px;border-radius:14px">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px"><div style="min-width:0;flex:1">'+
+      '<input data-request-name value="'+escapeHtml(item.name)+'" aria-label="Name des Betriebs" style="width:100%;box-sizing:border-box;border:0;border-bottom:1px solid #e1e6df;background:transparent;color:#20382e;font-size:16px;font-weight:800;padding:4px 0">'+
+      '<div style="margin-top:5px;font-size:11px;color:#718077;overflow-wrap:anywhere">'+escapeHtml(item.email)+'</div>'+
+      '<div style="margin-top:4px;font-size:11px;color:#718077">Versendet am '+escapeHtml(item.sentAt)+'</div></div>'+
+      '<button type="button" title="Eintrag löschen" aria-label="Eintrag löschen" onclick="deletePaymentRequestItem(\''+escapeHtml(item.id)+'\')" style="border:0;background:#f7ece9;color:#9a4438;border-radius:10px;width:37px;height:37px;font-size:19px;flex:0 0 37px">🗑</button></div>'+
+      '<label style="display:block;margin-top:12px;font-size:11px;font-weight:800;color:#78847b">ANTWORTSTATUS</label>'+
+      '<select data-request-status style="width:100%;margin-top:5px;padding:10px;border:1px solid #dce4dc;border-radius:10px;background:#fff;color:#20382e;font-size:13px"><option value="pending" '+(item.status==="pending"?"selected":"")+'>Antwort ausstehend</option><option value="received" '+(item.status==="received"?"selected":"")+'>Antwort eingegangen</option></select>'+
+      '<div style="margin-top:11px;font-size:11px;font-weight:800;color:#78847b">AUSDRÜCKLICH BESTÄTIGTE ZAHLUNGSARTEN</div><div>'+checked+'</div>'+
+      '<label style="display:block;margin-top:9px;font-size:11px;font-weight:800;color:#78847b">NOTIZ / WORTLAUT DER ANTWORT</label>'+
+      '<textarea data-request-note rows="3" style="width:100%;box-sizing:border-box;margin-top:5px;padding:9px;border:1px solid #dce4dc;border-radius:10px;background:#fff;color:#20382e;font:12px/1.45 inherit;resize:vertical">'+escapeHtml(item.note||"")+'</textarea>'+
+      '<button type="button" onclick="savePaymentRequestItem(\''+escapeHtml(item.id)+'\')" style="width:100%;margin-top:10px;padding:11px;border:0;border-radius:10px;background:#315f4d;color:#fff;font-weight:800">Änderungen speichern</button>'+
+      '</section>';
+  }).join("");
+}
+async function savePaymentRequestItem(id){
+  const card=document.querySelector('[data-request-card="'+CSS.escape(id)+'"]');
+  if(!card) return;
+  const original=paymentRequestItems.find(item=>item.id===id);
+  if(!original) return;
+  const next={...original,name:card.querySelector("[data-request-name]").value.trim(),status:card.querySelector("[data-request-status]").value,note:card.querySelector("[data-request-note]").value.trim(),methods:Array.from(card.querySelectorAll("[data-request-method]:checked")).map(input=>input.getAttribute("data-request-method"))};
+  if(!next.name){alert("Bitte einen Namen für den Betrieb eintragen.");return;}
+  try{
+    await savePaymentRequestItems([next]);
+    paymentRequestItems=paymentRequestItems.map(item=>item.id===id?next:item);
+    renderPaymentRequestTracker();
+  }catch(error){alert(error.message || "Änderung konnte nicht gespeichert werden.");}
+}
+async function deletePaymentRequestItem(id){
+  const item=paymentRequestItems.find(entry=>entry.id===id);
+  if(!item || !confirm("„"+item.name+"“ aus der Zahlungsarten-Anfragenliste löschen? Der Restaurant-Eintrag und die E-Mail in Gmail bleiben vollständig erhalten.")) return;
+  for(let attempt=0;attempt<2;attempt++){
+    if(!paymentRequestAdminPassword){
+      const entered=await askAdminPassword("Bitte Admin-Passwort eingeben, um diesen Eintrag zentral zu löschen.");
+      if(entered===null || !entered) return;
+      paymentRequestAdminPassword=entered;
+    }
+    try{
+      const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+paymentRequestAdminPassword},body:JSON.stringify({action:"deletePaymentRequestTrackerItem",id})});
+      let data={};try{data=await response.json();}catch(e){}
+      if(response.status===401){paymentRequestAdminPassword=null;continue;}
+      if(!response.ok || data.success!==true || data.verified!==true) throw new Error(data.error || "Eintrag konnte nicht gelöscht werden.");
+      paymentRequestItems=paymentRequestItems.filter(entry=>entry.id!==id);
+      renderPaymentRequestTracker();
+      return;
+    }catch(error){alert(error.message || "Eintrag konnte nicht gelöscht werden.");return;}
+  }
+  alert("Das Admin-Passwort wurde nicht akzeptiert.");
 }
 
 function openAppMenu(){document.getElementById('appMenuOverlay').style.display='block';}
