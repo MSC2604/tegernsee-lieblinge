@@ -103,7 +103,7 @@ export async function sendRestaurantWebsiteDigest({
   const stamp=now();
   for(const item of proposals) await db("UPDATE restaurant_change_proposals SET notified_at=? WHERE id=? AND notified_at=''",[arg(stamp),arg(item.id)]);
   for(const item of cardChanges) await db("UPDATE restaurant_card_checks SET notified_at=? WHERE restaurant_id=? AND kind=? AND notified_at=''",[arg(stamp),arg(item.restaurantId),arg(item.kind)]);
-  return {sent:true,acceptedByProvider:true,count:totalChanges,proposalCount:proposals.length,cardChangeCount:cardChanges.length,errorCount:errors.length};
+  return {sent:true,acceptedByProvider:true,recipient:notificationEmail,count:totalChanges,proposalCount:proposals.length,cardChangeCount:cardChanges.length,errorCount:errors.length};
 }
 
 /**
