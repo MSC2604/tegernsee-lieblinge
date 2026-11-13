@@ -1,11 +1,19 @@
 import assert from "node:assert/strict";
 import { sendRestaurantWebsiteDigest } from "./restaurant-monitor-email.mjs";
 
-let proposalRows = [[
-  { value: "12" }, { value: "Gasthof <See>" }, { value: "telefon" },
-  { value: "08022 111111" }, { value: "08022 222222" },
-  { value: "https://restaurant.example/kontakt" }, { value: "2026-11-11T05:00:00Z" }
-]];
+let proposalRows = [
+  [
+    { value: "12" }, { value: "Gasthof <See>" }, { value: "telefon" },
+    { value: "08022 111111" }, { value: "08022 222222" },
+    { value: "https://restaurant.example/kontakt" }, { value: "2026-11-11T05:00:00Z" }
+  ],
+  [
+    { value: "13" }, { value: "Schwarzentenn-Alm" }, { value: "externe_links" },
+    { value: "Telefon: tel:08022&nbsp;123456\\nTisch: https://example.de/book?step=date&amp;source=site" },
+    { value: "Tisch reservieren: https://example.de/book?source=site&step=date\\nTelefon: tel:08022 123456" },
+    { value: "https://restaurant.example/" }, { value: "2026-11-11T05:01:00Z" }
+  ]
+];
 let cardRows = [[
   { value: "26" }, { value: "Obere Firstalm" }, { value: "speisekarte" },
   { value: "https://restaurant.example/karte.pdf" }, { value: "2026-11-11T05:00:00Z" }
@@ -35,14 +43,17 @@ const send = async () => sendRestaurantWebsiteDigest({
 });
 const changed = await send();
 assert.equal(changed.sent,true);
-assert.equal(changed.count,2);
+assert.equal(changed.count,2, "Technical-only legacy proposals must not be counted in the email");
 assert.equal(changed.proposalCount,1);
+assert.equal(changed.ignoredTechnicalProposalCount,1);
 assert.equal(changed.cardChangeCount,1);
-assert.equal(proposalUpdated,1);
+assert.equal(proposalUpdated,1, "Only the meaningful proposal is marked as notified");
 assert.equal(cardUpdated,1);
 assert.equal(sentPayloads[0].to[0].email,"recipient@example.org");
 assert.match(sentPayloads[0].htmlContent,/Gasthof &lt;See&gt;/);
 assert.match(sentPayloads[0].textContent,/08022 222222/);
+assert.doesNotMatch(sentPayloads[0].textContent,/Schwarzentenn-Alm/);
+assert.doesNotMatch(sentPayloads[0].htmlContent,/&amp;source=site/);
 assert.match(sentPayloads[0].textContent,/Obere Firstalm/);
 proposalRows=[]; cardRows=[];
 const unchanged=await send();
