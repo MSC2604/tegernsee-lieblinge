@@ -2876,7 +2876,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 
       <div class="card-edit-box">
         <strong>💳 Zahlungsarten</strong>
-        <small>Bargeld wird grundsätzlich angezeigt. Wähle hier die zusätzlich akzeptierten Karten aus. Wenn keine Karte ausgewählt ist, erscheint auf der Kachel „Keine Kartenzahlung möglich“.</small>
+        <small>Bargeld wird grundsätzlich angezeigt. Wähle hier die zusätzlich akzeptierten Karten aus. Ohne Kartenauswahl erscheint auf der Kachel „Nur Barzahlung möglich“.</small>
         <label><input type="checkbox" id="f_payment_girocard"> Girocard (EC-Karte)</label>
         <label><input type="checkbox" id="f_payment_debitkarte"> Debitkarte (Visa Debit / Mastercard Debit)</label>
         <label><input type="checkbox" id="f_payment_kreditkarte"> Kreditkarte (z. B. Visa, Mastercard, American Express)</label>
@@ -4591,9 +4591,9 @@ function render(){
               <div class="tile-payment" aria-label="Zahlungsmöglichkeiten">
                 <div class="tile-payment-heading">Zahlungsmöglichkeiten</div>
                 <div class="tile-payment-list" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;min-width:0;">
-                  <span class="tile-payment-chip" style="display:flex;align-items:center;justify-content:center;min-width:0;width:100%;min-height:30px;padding:6px 3px;white-space:nowrap;text-align:center;font-size:10px;letter-spacing:-.04em;">Bargeld</span>
-                  ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).map(type => `<span class="tile-payment-chip" style="display:flex;align-items:center;justify-content:center;min-width:0;width:100%;min-height:30px;padding:6px 3px;white-space:nowrap;text-align:center;font-size:10px;letter-spacing:-.04em;">${({girocard:"Girocard",debitkarte:"Debitkarte",kreditkarte:"Kreditkarte"})[type]}</span>`).join("")}
-                  ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).length === 0 ? '<span class="tile-payment-chip tile-payment-none" style="grid-column:span 3;display:flex;align-items:center;justify-content:center;min-width:0;width:100%;min-height:30px;padding:6px 3px;white-space:nowrap;text-align:center;font-size:10px;letter-spacing:-.04em;">Keine Kartenzahlung möglich</span>' : ""}
+                  ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).length === 0
+                    ? '<span class="tile-payment-chip tile-payment-none" style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;min-width:0;width:100%;min-height:30px;padding:6px 3px;white-space:nowrap;text-align:center;font-size:10px;letter-spacing:-.04em;">Nur Barzahlung möglich</span>'
+                    : '<span class="tile-payment-chip" style="display:flex;align-items:center;justify-content:center;min-width:0;width:100%;min-height:30px;padding:6px 3px;white-space:nowrap;text-align:center;font-size:10px;letter-spacing:-.04em;">Bargeld</span>' + (Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).map(type => `<span class="tile-payment-chip" style="display:flex;align-items:center;justify-content:center;min-width:0;width:100%;min-height:30px;padding:6px 3px;white-space:nowrap;text-align:center;font-size:10px;letter-spacing:-.04em;">${({girocard:"Girocard",debitkarte:"Debitkarte",kreditkarte:"Kreditkarte"})[type]}</span>`).join("")}
                 </div>
               </div>
             </div>
