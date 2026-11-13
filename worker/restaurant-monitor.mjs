@@ -146,6 +146,10 @@ function normalize(field, value) {
     .replace(/[\s]+/g, ' ')
     .trim();
 }
+export function areRestaurantValuesEquivalent(field, oldValue, newValue) {
+  return normalize(field, oldValue) === normalize(field, newValue);
+}
+
 export function findRestaurantChanges(current, found) {
   const changes = [];
   // Only compare explicitly relevant restaurant facts and links.
