@@ -1409,7 +1409,7 @@ console.log("Tavily usage account:", {
           const stateBytes = crypto.getRandomValues(new Uint8Array(32));
           let stateBinary = "";
           for (const byte of stateBytes) stateBinary += String.fromCharCode(byte);
-          const state = btoa(stateBinary).replace(/\\+/g, "-").replace(/\\//g, "_").replace(/=+$/g, "");
+          const state = btoa(stateBinary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
           await turso("DELETE FROM restaurant_gmail_oauth_state WHERE created_at < ?", [textArg(new Date(Date.now() - 60 * 60 * 1000).toISOString())]);
           await turso("INSERT INTO restaurant_gmail_oauth_state (state, created_at) VALUES (?, ?)", [textArg(state), textArg(new Date().toISOString())]);
           const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
