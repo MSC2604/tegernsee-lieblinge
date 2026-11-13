@@ -2453,9 +2453,14 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 <div class="website-changes-overlay" id="paymentRequestTrackerOverlay" onclick="if(event.target===this)closePaymentRequestTracker()">
   <section class="website-changes-panel" role="dialog" aria-modal="true" aria-labelledby="paymentRequestTrackerTitle">
     <div class="website-changes-head"><h2 id="paymentRequestTrackerTitle">✉️ Zahlungsarten-Anfragen</h2><button class="website-changes-close" type="button" aria-label="Schließen" onclick="closePaymentRequestTracker()">×</button></div>
-    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Hier verfolgst du die versendeten Anfragen. Neue Antworten aus deinem verbundenen Gmail-Postfach kann ChatGPT auswerten und als geprüften Import vorbereiten. Die Übernahme aktualisiert ausschließlich diese Anfragenliste – niemals die öffentlichen Restaurantdaten. E-Mails werden weder verändert noch gelöscht.</p>
+    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Hier verfolgst du die versendeten Anfragen. Verbinde zuerst dein Google-Konto. Die App erhält ausschließlich Leserechte für Gmail. Erkannte Antworten werden zunächst zur Prüfung vorbereitet; öffentliche Restaurantdaten werden niemals automatisch geändert. E-Mails werden weder versendet noch verändert oder gelöscht.</p>
     <div style="margin:12px 0;padding:13px;border:1px solid #dce7df;border-radius:14px;background:#f5f8f5">
-      <button type="button" onclick="togglePaymentReplyImport()" style="width:100%;padding:11px;border:0;border-radius:10px;background:#315f4d;color:#fff;font-weight:800">📥 E-Mail-Antworten übernehmen</button>
+      <div id="gmailConnectionStatus" style="font-size:12px;line-height:1.5;color:#53675b;margin-bottom:9px">Gmail-Verbindung wird noch nicht geprüft.</div>
+      <button type="button" onclick="startRestaurantGmailConnection()" style="width:100%;padding:11px;border:0;border-radius:10px;background:#315f4d;color:#fff;font-weight:800">🔗 Gmail sicher verbinden</button>
+      <button type="button" onclick="refreshRestaurantGmailConnection()" style="width:100%;margin-top:7px;padding:10px;border:1px solid #315f4d;border-radius:10px;background:#fff;color:#315f4d;font-weight:800">Verbindung prüfen</button>
+    </div>
+    <div style="margin:12px 0;padding:13px;border:1px solid #dce7df;border-radius:14px;background:#f5f8f5">
+      <button type="button" onclick="togglePaymentReplyImport()" style="width:100%;padding:11px;border:0;border-radius:10px;background:#315f4d;color:#fff;font-weight:800">📥 E-Mail-Antworten übernehmen (bisheriger Import)</button>
       <div id="paymentReplyImportPanel" hidden style="margin-top:12px">
         <p style="margin:0 0 8px;color:#53675b;font-size:12px;line-height:1.5">Füge hier den Importtext ein, den ChatGPT nach Prüfung deiner Gmail-Antworten erstellt. Es werden nur bereits vorhandene Anfrage-IDs angenommen. Vor dem Speichern siehst du eine Vorschau.</p>
         <textarea id="paymentReplyImportInput" rows="6" placeholder='[{"id":"payment-003","methods":["cash","girocard","visa","mastercard"],"note":"Antwort vom ..."}]' style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #d5e0d7;border-radius:10px;font:12px/1.45 monospace;background:#fff;color:#20382e"></textarea>
@@ -6886,6 +6891,46 @@ function togglePaymentReplyImport(){
   const panel=document.getElementById("paymentReplyImportPanel");
   if(panel) panel.hidden=!panel.hidden;
 }
+async function getPaymentTrackerAdminPassword(){
+  if(paymentRequestAdminPassword) return paymentRequestAdminPassword;
+  const entered=await askAdminPassword("Bitte Admin-Passwort eingeben, um die Gmail-Verbindung zu verwalten.");
+  if(entered===null||!entered) return null;
+  paymentRequestAdminPassword=entered;
+  return entered;
+}
+async function startRestaurantGmailConnection(){
+  const status=document.getElementById("gmailConnectionStatus");
+  const button=document.querySelector('#paymentRequestTrackerOverlay button[onclick="startRestaurantGmailConnection()"]');
+  const password=await getPaymentTrackerAdminPassword();
+  if(!password) return;
+  if(button){button.disabled=true;button.textContent="Google-Verbindung wird vorbereitet …";}
+  if(status)status.textContent="Sichere Verbindung wird vorbereitet …";
+  try{
+    const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"gmailOAuthStart"})});
+    let data={};try{data=await response.json();}catch(_){}
+    if(response.status===401){paymentRequestAdminPassword=null;throw new Error("Das Admin-Passwort wurde nicht akzeptiert. Bitte erneut versuchen.");}
+    if(!response.ok||!data.success||!data.authUrl)throw new Error(data.error||"Die Gmail-Verbindung konnte nicht gestartet werden.");
+    window.location.href=data.authUrl;
+  }catch(error){
+    if(status)status.textContent=error.message||"Verbindung fehlgeschlagen.";
+    if(button){button.disabled=false;button.textContent="🔗 Gmail sicher verbinden";}
+  }
+}
+async function refreshRestaurantGmailConnection(){
+  const status=document.getElementById("gmailConnectionStatus");
+  const password=await getPaymentTrackerAdminPassword();
+  if(!password)return;
+  if(status)status.textContent="Verbindungsstatus wird geprüft …";
+  try{
+    const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"gmailConnectionStatus"})});
+    let data={};try{data=await response.json();}catch(_){}
+    if(response.status===401){paymentRequestAdminPassword=null;throw new Error("Das Admin-Passwort wurde nicht akzeptiert.");}
+    if(!response.ok||!data.success)throw new Error(data.error||"Status konnte nicht geladen werden.");
+    if(status)status.textContent=data.connected
+      ?"Verbunden mit "+data.email+" · seit "+new Date(data.connectedAt).toLocaleString("de-DE")+"."
+      :"Noch nicht verbunden. Tippe auf „Gmail sicher verbinden“.";
+  }catch(error){if(status)status.textContent=error.message||"Statusprüfung fehlgeschlagen.";}
+}
 function previewPaymentReplyImport(){
   const input=document.getElementById("paymentReplyImportInput");
   const preview=document.getElementById("paymentReplyImportPreview");
@@ -6946,6 +6991,8 @@ function showPaymentRequestTracker(){
   const overlay = document.getElementById("paymentRequestTrackerOverlay");
   if(overlay) overlay.style.display = "flex";
   loadPaymentRequestTracker().catch(error => alert(error.message || "Die Anfragenliste konnte nicht geladen werden."));
+  const gmailStatus=document.getElementById("gmailConnectionStatus");
+  if(gmailStatus)gmailStatus.textContent="Tippe auf „Verbindung prüfen“, um den Gmail-Status zu laden.";
 }
 function closePaymentRequestTracker(){
   const overlay = document.getElementById("paymentRequestTrackerOverlay");
