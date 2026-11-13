@@ -2460,6 +2460,10 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
       <button type="button" onclick="refreshRestaurantGmailConnection()" style="width:100%;margin-top:7px;padding:10px;border:1px solid #315f4d;border-radius:10px;background:#fff;color:#315f4d;font-weight:800">Verbindung prüfen</button>
     </div>
     <div style="margin:12px 0;padding:13px;border:1px solid #dce7df;border-radius:14px;background:#f5f8f5">
+      <button type="button" id="gmailReplyScanButton" onclick="scanRestaurantGmailReplies()" style="width:100%;padding:11px;border:0;border-radius:10px;background:#315f4d;color:#fff;font-weight:800">🔎 Gmail nach Antworten durchsuchen</button>
+      <div id="gmailReplyScanStatus" style="margin-top:8px;color:#53675b;font-size:12px;line-height:1.5">Sucht nur nach möglichen Antworten von den E-Mail-Adressen deiner offenen Zahlungsarten-Anfragen. Gefundene Antworten werden zuerst geprüft und nicht automatisch gespeichert.</div>
+    </div>
+    <div style="margin:12px 0;padding:13px;border:1px solid #dce7df;border-radius:14px;background:#f5f8f5">
       <button type="button" onclick="togglePaymentReplyImport()" style="width:100%;padding:11px;border:0;border-radius:10px;background:#315f4d;color:#fff;font-weight:800">📥 E-Mail-Antworten übernehmen (bisheriger Import)</button>
       <div id="paymentReplyImportPanel" hidden style="margin-top:12px">
         <p style="margin:0 0 8px;color:#53675b;font-size:12px;line-height:1.5">Füge hier den Importtext ein, den ChatGPT nach Prüfung deiner Gmail-Antworten erstellt. Es werden nur bereits vorhandene Anfrage-IDs angenommen. Vor dem Speichern siehst du eine Vorschau.</p>
@@ -6930,6 +6934,35 @@ async function refreshRestaurantGmailConnection(){
       ?"Verbunden mit "+data.email+" · seit "+new Date(data.connectedAt).toLocaleString("de-DE")+"."
       :"Noch nicht verbunden. Tippe auf „Gmail sicher verbinden“.";
   }catch(error){if(status)status.textContent=error.message||"Statusprüfung fehlgeschlagen.";}
+}
+async function scanRestaurantGmailReplies(){
+  const button=document.getElementById("gmailReplyScanButton");
+  const status=document.getElementById("gmailReplyScanStatus");
+  const input=document.getElementById("paymentReplyImportInput");
+  const password=await getPaymentTrackerAdminPassword();
+  if(!password)return;
+  if(button){button.disabled=true;button.textContent="Gmail wird durchsucht …";}
+  if(status)status.textContent="Suche nach Antworten auf deine offenen Zahlungsarten-Anfragen. Das kann einen Moment dauern …";
+  try{
+    const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"gmailScanPaymentReplies"})});
+    let data={};try{data=await response.json();}catch(_){}
+    if(response.status===401){paymentRequestAdminPassword=null;throw new Error("Das Admin-Passwort wurde nicht akzeptiert. Bitte erneut versuchen.");}
+    if(!response.ok||!data.success)throw new Error(data.error||"Gmail konnte nicht durchsucht werden.");
+    if(!Array.isArray(data.candidates)||!data.candidates.length){
+      if(status)status.textContent=(data.message||"Keine passenden Antworten gefunden.")+(data.ambiguous?" "+data.ambiguous+" Nachricht(en) konnten wegen mehrfach verwendeter Absenderadressen nicht eindeutig zugeordnet werden.":"");
+      return;
+    }
+    const payload=data.candidates.map(item=>({id:item.id,methods:Array.isArray(item.methods)?item.methods:[],note:item.note}));
+    if(input)input.value=JSON.stringify(payload,null,2);
+    const panel=document.getElementById("paymentReplyImportPanel");
+    if(panel)panel.hidden=false;
+    previewPaymentReplyImport();
+    if(status)status.textContent=data.message+" Konto: "+data.account+". "+(data.ambiguous?data.ambiguous+" weitere Nachricht(en) wurden wegen nicht eindeutiger Zuordnung nicht übernommen.":"Alle gefundenen Nachrichten konnten einer einzelnen Anfrage zugeordnet werden.")+" Bitte die Vorschau darunter sorgfältig prüfen.";
+  }catch(error){
+    if(status)status.textContent=error.message||"Die Gmail-Suche ist fehlgeschlagen.";
+  }finally{
+    if(button){button.disabled=false;button.textContent="🔎 Gmail nach Antworten durchsuchen";}
+  }
 }
 function previewPaymentReplyImport(){
   const input=document.getElementById("paymentReplyImportInput");
