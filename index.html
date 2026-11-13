@@ -6075,7 +6075,7 @@ function getFormData(){
       ["f_payment_debitkarte","debitkarte"],
       ["f_payment_kreditkarte","kreditkarte"]
     ].filter(([id]) => document.getElementById(id).checked).map(([,value]) => value),
-    zahlungsarten_status: ["red","yellow","green"].includes(window.selectedPaymentStatus) ? window.selectedPaymentStatus : "",
+    zahlungsarten_status: (() => { const selected = document.querySelector('input[name="f_payment_status"]:checked'); return selected && ["red","yellow","green"].includes(selected.value) ? selected.value : ""; })(),
 
     notizen:
       document.getElementById(
@@ -6213,6 +6213,11 @@ async function savePlace(){
     ...Object.fromEntries(["speisekarte","getraenkekarte","dessertkarte","brotzeitkarte","saisonkarte"].map(kind => [kind, pendingCardPdfFiles[kind] || document.getElementById("f_"+kind+"_pdf")?.files?.[0] || null]))
   };
   const restaurant = getFormData();
+  // Den tatsächlich markierten Radio-Button direkt vor dem Speichern auslesen.
+  // Ein leerer Wert ist nur dann erlaubt, wenn „Keine Ampel“ ausgewählt ist.
+  const selectedPaymentRadio = document.querySelector('input[name="f_payment_status"]:checked');
+  const selectedPaymentRadioValue = selectedPaymentRadio ? selectedPaymentRadio.value : "";
+  restaurant.zahlungsarten_status = ["red","yellow","green"].includes(selectedPaymentRadioValue) ? selectedPaymentRadioValue : "";
 
   if(restaurant.ort === "Anderer Ort"){
     const otherOrt = prompt("Bitte den Ortsnamen eingeben:");
@@ -6288,6 +6293,15 @@ async function savePlace(){
 
     if(!savedRestaurant){
       alert("Die Restaurantdaten wurden vom Server angenommen, aber der Eintrag wurde nach dem Neuladen nicht gefunden. Bitte prüfe die Restaurantliste, bevor du erneut speicherst.");
+      return;
+    }
+    const expectedPaymentStatus = restaurant.zahlungsarten_status || "";
+    const reloadedPaymentStatus = savedRestaurant.zahlungsarten_status || "";
+    if(reloadedPaymentStatus !== expectedPaymentStatus){
+      alert("Achtung: Der Ampelstatus wurde nicht übernommen. Ausgewählt: " +
+        (expectedPaymentStatus || "Keine Ampel") + ". Nach dem Neuladen gespeichert: " +
+        (reloadedPaymentStatus || "Keine Ampel") +
+        ". Die übrigen Restaurantdaten wurden gespeichert. Bitte den Ampelstatus noch nicht als erledigt betrachten.");
       return;
     }
 
