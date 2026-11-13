@@ -8530,7 +8530,11 @@ async function pollRestaurantWebsiteMonitor(password,runId){
       if(bar)bar.style.width="100%";
       if(current)current.textContent="Alle Quellen dieses Prüflaufs wurden abgearbeitet. Die Baseline-Abdeckung zeigt separat, für welche Quellen ein Vergleichsstand gespeichert wurde.";
       if(stats)stats.textContent=(r.restaurants||0)+" eigene Websites · "+(r.externalEntries||0)+" externe Einträge geprüft · "+(Array.isArray(r.withoutWebsite)?r.withoutWebsite.length:0)+" ohne eigene Website · "+(Array.isArray(r.errors)?r.errors.length:0)+" Fehler";
-      if(status)status.textContent="Fertig: "+(r.restaurants||0)+" eigene Websites und "+(r.externalEntries||0)+" externe Einträge geprüft.";
+      if(status){
+        status.textContent="Fertig: "+(r.restaurants||0)+" eigene Websites und "+(r.externalEntries||0)+" externe Einträge geprüft.";
+        if(r.email?.sent)status.textContent+=" Der E-Mail-Prüfbericht wurde an "+(r.email.recipient||"msc4021@arcor.de")+" versendet.";
+        else if(r.email)status.textContent+=" E-Mail-Versand nicht bestätigt: "+(r.email.reason||"Bitte Brevo-Einstellungen prüfen.");
+      }
       await loadRestaurantWebsiteMonitorCoverage(password).catch(error=>{
         const container=document.getElementById("websiteMonitorCoverage");
         if(container){container.style.display="block";container.textContent=error.message||"Baseline-Abdeckung konnte nicht geladen werden.";}
