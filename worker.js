@@ -308,6 +308,44 @@ export default {
       return data;
     }
 
+    // Mehrere Monitor-Schreibvorgänge in EINER Turso-Pipeline ausführen.
+    // Das spart Cloudflare-Worker-Subrequests, ohne Restaurantdaten anzufassen.
+    turso.batch = async function batch(statements) {
+      const items = Array.isArray(statements) ? statements.filter(item => item && item.sql) : [];
+      if (!items.length) return { results: [] };
+      const response = await fetch(dbUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.TURSO_AUTH_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          baton: null,
+          requests: [
+            ...items.map(item => ({
+              type: "execute",
+              stmt: { sql: item.sql, args: item.args || [], want_rows: false }
+            })),
+            { type: "close" }
+          ]
+        })
+      });
+      const responseText = await response.text();
+      let data;
+      try { data = JSON.parse(responseText); } catch { data = null; }
+      if (!response.ok) {
+        const detail = String(data?.error || data?.message || responseText || "").slice(0, 240);
+        throw new Error(`Turso-Batch HTTP-Fehler (${response.status})${detail ? ": " + detail : ""}`);
+      }
+      if (!data) throw new Error("Turso-Batch lieferte keine gültige JSON-Antwort.");
+      for (const result of data.results || []) {
+        if (result?.type === "error" || result?.error || result?.response?.error) {
+          throw new Error(result.error?.message || result.response?.error?.message || "Datenbank-Batch fehlgeschlagen");
+        }
+      }
+      return data;
+    };
+
     function textArg(value) {
       return { type: "text", value: value == null ? "" : String(value) };
     }
