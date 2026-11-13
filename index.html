@@ -6596,13 +6596,209 @@ const PAYMENT_RESEARCH_ITEMS = [
   ["Weissachalm","Noch nicht offiziell bestätigt","Die aktuelle Anbieterbeschreibung auf tegernsee.com wurde am 13.11.2026 geprüft; sie nennt keine Zahlungsarten."],
   ["Wirtshaus Aibl Alm","Noch nicht offiziell bestätigt","Offizielle Website aibl.de am 13.11.2026 geprüft: keine Zahlungsarten veröffentlicht; der frühere EC-Hinweis bleibt unbestätigt."]
 ];
-function getPaymentResearchDone(){try{return JSON.parse(localStorage.getItem("tegernsee_payment_research_done_v1")||"{}")||{};}catch(e){return {};}}
-function getDeletedPaymentResearch(){try{return JSON.parse(localStorage.getItem("tegernsee_payment_research_deleted_v1")||"{}")||{};}catch(e){return {};}}
-function setPaymentResearchDone(name,done){const state=getPaymentResearchDone();if(done)state[name]=true;else delete state[name];try{localStorage.setItem("tegernsee_payment_research_done_v1",JSON.stringify(state));}catch(e){}renderPaymentResearch();}
-function deleteMarkedPaymentResearch(){const done=getPaymentResearchDone();const deleted=getDeletedPaymentResearch();const marked=PAYMENT_RESEARCH_ITEMS.filter(item=>done[item[0]]&&!deleted[item[0]]);if(!marked.length)return;if(!confirm(marked.length+" markierte Einträge aus der Zahlungsarten-Prüfliste entfernen? Die Restaurant-Einträge bleiben unverändert."))return;marked.forEach(item=>{deleted[item[0]]=true;});try{localStorage.setItem("tegernsee_payment_research_deleted_v1",JSON.stringify(deleted));}catch(e){alert("Die Markierungen konnten nicht gespeichert werden. Bitte Speicherplatz bzw. Browsereinstellungen prüfen.");return;}renderPaymentResearch();}
-function renderPaymentResearch(){const list=document.getElementById("paymentResearchList");const summary=document.getElementById("paymentResearchSummary");if(!list||!summary)return;const done=getPaymentResearchDone();const deleted=getDeletedPaymentResearch();const visible=PAYMENT_RESEARCH_ITEMS.map((item,index)=>({item,index})).filter(entry=>!deleted[entry.item[0]]);const count=visible.filter(entry=>done[entry.item[0]]).length;summary.innerHTML='<strong>'+visible.length+' Einträge in der Prüfliste</strong> · '+count+' markiert';if(!visible.length){list.innerHTML='<p style="margin:14px 0;padding:16px;border-radius:12px;background:#edf4ef;color:#315f4d;font-weight:700">Die Prüfliste ist leer. Dein Restaurantverzeichnis bleibt vollständig erhalten.</p>';return;}list.innerHTML=visible.map(({item,index})=>'<section class="website-change-card" style="margin-top:9px;padding:12px"><label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer"><input type="checkbox" data-payment-research-name="'+escapeHtml(item[0])+'" '+(done[item[0]]?'checked':'')+' style="width:19px;height:19px;flex:0 0 19px;margin-top:2px"><span style="min-width:0;flex:1"><strong style="display:block;font-size:15px;color:#20382e">'+(index+1)+'. '+escapeHtml(item[0])+'</strong><span style="display:block;margin-top:4px;font-size:13px;font-weight:800;color:#315f4d">'+escapeHtml(item[1])+'</span><span style="display:block;margin-top:4px;font-size:12px;line-height:1.45;color:#66766d">'+escapeHtml(item[2])+'</span></span></label></section>').join("")+'<div style="position:sticky;bottom:0;margin-top:14px;padding:12px 0;background:#fff"><button type="button" onclick="deleteMarkedPaymentResearch()" '+(count?'':'disabled')+' style="width:100%;padding:13px 16px;border:0;border-radius:11px;background:'+(count?'#315f4d':'#aab7b0')+';color:#fff;font-weight:800;font-size:15px;opacity:'+(count?'1':'.7')+'">Markierte Einträge löschen ('+count+')</button></div>';list.querySelectorAll('input[data-payment-research-name]').forEach(function(box){box.addEventListener('change',function(){setPaymentResearchDone(this.getAttribute('data-payment-research-name'),this.checked);});});}
-function showPaymentResearch(){closeAppMenu();renderPaymentResearch();const overlay=document.getElementById("paymentResearchOverlay");if(overlay)overlay.style.display="flex";}
-function closePaymentResearch(){const overlay=document.getElementById("paymentResearchOverlay");if(overlay)overlay.style.display="none";}
+let paymentResearchAdminPassword = null;
+let paymentResearchSyncing = false;
+let paymentResearchSyncTimer = null;
+
+function getPaymentResearchDone(){
+  try { return JSON.parse(localStorage.getItem("tegernsee_payment_research_done_v1") || "{}") || {}; }
+  catch(e) { return {}; }
+}
+function getDeletedPaymentResearch(){
+  try { return JSON.parse(localStorage.getItem("tegernsee_payment_research_deleted_v1") || "{}") || {}; }
+  catch(e) { return {}; }
+}
+function storePaymentResearchLocal(done, deleted){
+  try {
+    localStorage.setItem("tegernsee_payment_research_done_v1", JSON.stringify(done || {}));
+    localStorage.setItem("tegernsee_payment_research_deleted_v1", JSON.stringify(deleted || {}));
+  } catch(e) {
+    console.warn("Lokaler Prüflisten-Zwischenspeicher konnte nicht aktualisiert werden.", e);
+  }
+}
+
+async function savePaymentResearchStatuses(items){
+  for(let attempt = 0; attempt < 2; attempt++){
+    if(!paymentResearchAdminPassword){
+      const entered = await askAdminPassword("Bitte Admin-Passwort eingeben, um die Zahlungsarten-Prüfliste geräteübergreifend zu speichern.");
+      if(entered === null || !entered) throw new Error("Speichern abgebrochen. Die Änderung wurde nicht übernommen.");
+      paymentResearchAdminPassword = entered;
+    }
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + paymentResearchAdminPassword
+      },
+      body: JSON.stringify({action:"savePaymentResearchStatus", items})
+    });
+    let data = {};
+    try { data = await response.json(); } catch(e) {}
+    if(response.status === 401){
+      paymentResearchAdminPassword = null;
+      continue;
+    }
+    if(!response.ok || data.error || data.success !== true || data.verified !== true){
+      throw new Error(data.error || "Die gemeinsame Prüfliste konnte nicht gespeichert werden.");
+    }
+    return data;
+  }
+  throw new Error("Das Admin-Passwort wurde nicht akzeptiert. Bitte erneut versuchen.");
+}
+
+async function loadPaymentResearchFromServer(importLocal){
+  if(paymentResearchSyncing) return;
+  paymentResearchSyncing = true;
+  renderPaymentResearch();
+  try {
+    const response = await fetch(API_URL + "?action=paymentResearchStatus&_=" + Date.now(), {
+      method: "GET",
+      cache: "no-store",
+      headers: {"Accept":"application/json"}
+    });
+    let data = {};
+    try { data = await response.json(); } catch(e) {}
+    if(!response.ok || !Array.isArray(data.items)){
+      throw new Error(data.error || "Der gemeinsame Prüflistenstand konnte nicht geladen werden.");
+    }
+
+    const remote = {};
+    data.items.forEach(item => {
+      const name = String(item.name || "");
+      const status = String(item.status || "");
+      if(name && ["open","done","deleted"].includes(status)) remote[name] = status;
+    });
+
+    // Beim ersten Geräteabgleich lokale Altmarkierungen übernehmen, aber niemals
+    // einen bereits zentral gespeicherten neueren Status überschreiben.
+    const localDone = getPaymentResearchDone();
+    const localDeleted = getDeletedPaymentResearch();
+    const imports = [];
+    if(importLocal){
+      PAYMENT_RESEARCH_ITEMS.forEach(item => {
+        const name = item[0];
+        if(Object.prototype.hasOwnProperty.call(remote, name)) return;
+        if(localDeleted[name]) imports.push({name, status:"deleted"});
+        else if(localDone[name]) imports.push({name, status:"done"});
+      });
+    }
+    if(imports.length){
+      await savePaymentResearchStatuses(imports);
+      imports.forEach(item => { remote[item.name] = item.status; });
+    }
+
+    const done = {};
+    const deleted = {};
+    PAYMENT_RESEARCH_ITEMS.forEach(item => {
+      const status = remote[item[0]];
+      if(status === "done") done[item[0]] = true;
+      if(status === "deleted") deleted[item[0]] = true;
+    });
+    storePaymentResearchLocal(done, deleted);
+  } finally {
+    paymentResearchSyncing = false;
+    renderPaymentResearch();
+  }
+}
+
+async function setPaymentResearchDone(name, doneValue){
+  if(paymentResearchSyncing) return;
+  const oldDone = getPaymentResearchDone();
+  const oldDeleted = getDeletedPaymentResearch();
+  if(oldDeleted[name]) return;
+  const nextDone = {...oldDone};
+  if(doneValue) nextDone[name] = true;
+  else delete nextDone[name];
+  storePaymentResearchLocal(nextDone, oldDeleted);
+  paymentResearchSyncing = true;
+  renderPaymentResearch();
+  try {
+    await savePaymentResearchStatuses([{name, status:doneValue ? "done" : "open"}]);
+  } catch(error) {
+    storePaymentResearchLocal(oldDone, oldDeleted);
+    alert(error.message || "Die Markierung konnte nicht gespeichert werden.");
+  } finally {
+    paymentResearchSyncing = false;
+    renderPaymentResearch();
+  }
+}
+
+async function deleteMarkedPaymentResearch(){
+  if(paymentResearchSyncing) return;
+  const done = getPaymentResearchDone();
+  const oldDeleted = getDeletedPaymentResearch();
+  const marked = PAYMENT_RESEARCH_ITEMS.filter(item => done[item[0]] && !oldDeleted[item[0]]);
+  if(!marked.length) return;
+  if(!confirm(marked.length + " markierte Einträge aus der Zahlungsarten-Prüfliste entfernen? Die Restaurant-Einträge bleiben unverändert.")) return;
+
+  const nextDone = {...done};
+  const nextDeleted = {...oldDeleted};
+  marked.forEach(item => {
+    delete nextDone[item[0]];
+    nextDeleted[item[0]] = true;
+  });
+  storePaymentResearchLocal(nextDone, nextDeleted);
+  paymentResearchSyncing = true;
+  renderPaymentResearch();
+  try {
+    await savePaymentResearchStatuses(marked.map(item => ({name:item[0], status:"deleted"})));
+  } catch(error) {
+    storePaymentResearchLocal(done, oldDeleted);
+    alert(error.message || "Die erledigten Einträge konnten nicht zentral entfernt werden.");
+  } finally {
+    paymentResearchSyncing = false;
+    renderPaymentResearch();
+  }
+}
+
+function renderPaymentResearch(){
+  const list = document.getElementById("paymentResearchList");
+  const summary = document.getElementById("paymentResearchSummary");
+  if(!list || !summary) return;
+  const done = getPaymentResearchDone();
+  const deleted = getDeletedPaymentResearch();
+  const visible = PAYMENT_RESEARCH_ITEMS.map((item,index)=>({item,index})).filter(entry=>!deleted[entry.item[0]]);
+  const count = visible.filter(entry=>done[entry.item[0]]).length;
+  summary.innerHTML = "<strong>" + visible.length + " Einträge in der Prüfliste</strong> · " + count + " markiert" + (paymentResearchSyncing ? " · Synchronisiere …" : " · Geräteübergreifend gespeichert");
+  if(!visible.length){
+    list.innerHTML = '<p style="margin:14px 0;padding:16px;border-radius:12px;background:#edf4ef;color:#315f4d;font-weight:700">Die Prüfliste ist leer. Dein Restaurantverzeichnis bleibt vollständig erhalten.</p>';
+    return;
+  }
+  list.innerHTML = visible.map(({item,index}) =>
+    '<section class="website-change-card" style="margin-top:9px;padding:12px"><label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer"><input type="checkbox" data-payment-research-name="' + escapeHtml(item[0]) + '" ' + (done[item[0]] ? "checked" : "") + (paymentResearchSyncing ? " disabled" : "") + ' style="width:19px;height:19px;flex:0 0 19px;margin-top:2px"><span style="min-width:0;flex:1"><strong style="display:block;font-size:15px;color:#20382e">' + (index+1) + ". " + escapeHtml(item[0]) + '</strong><span style="display:block;margin-top:4px;font-size:13px;font-weight:800;color:#315f4d">' + escapeHtml(item[1]) + '</span><span style="display:block;margin-top:4px;font-size:12px;line-height:1.45;color:#66766d">' + escapeHtml(item[2]) + '</span></span></label></section>'
+  ).join("") + '<div style="position:sticky;bottom:0;margin-top:14px;padding:12px 0;background:#fff"><button type="button" onclick="deleteMarkedPaymentResearch()" ' + (count && !paymentResearchSyncing ? "" : "disabled") + ' style="width:100%;padding:13px 16px;border:0;border-radius:11px;background:' + (count && !paymentResearchSyncing ? "#315f4d" : "#aab7b0") + ';color:#fff;font-weight:800;font-size:15px;opacity:' + (count && !paymentResearchSyncing ? "1" : ".7") + '">Markierte Einträge löschen (' + count + ')</button></div>';
+  list.querySelectorAll("input[data-payment-research-name]").forEach(function(box){
+    box.addEventListener("change", function(){
+      setPaymentResearchDone(this.getAttribute("data-payment-research-name"), this.checked);
+    });
+  });
+}
+
+function showPaymentResearch(){
+  closeAppMenu();
+  const overlay = document.getElementById("paymentResearchOverlay");
+  if(overlay) overlay.style.display = "flex";
+  renderPaymentResearch();
+  loadPaymentResearchFromServer(true).catch(error => {
+    alert("Die gemeinsame Prüfliste konnte nicht geladen werden. Bitte Internetverbindung prüfen.\n\n" + (error.message || ""));
+  });
+  if(paymentResearchSyncTimer) clearInterval(paymentResearchSyncTimer);
+  paymentResearchSyncTimer = setInterval(function(){
+    const current = document.getElementById("paymentResearchOverlay");
+    if(current && current.style.display === "flex"){
+      loadPaymentResearchFromServer(false).catch(() => {});
+    }
+  }, 20000);
+}
+
+function closePaymentResearch(){
+  const overlay = document.getElementById("paymentResearchOverlay");
+  if(overlay) overlay.style.display = "none";
+  if(paymentResearchSyncTimer){
+    clearInterval(paymentResearchSyncTimer);
+    paymentResearchSyncTimer = null;
+  }
+}
 
 function openAppMenu(){document.getElementById('appMenuOverlay').style.display='block';}
 function closeAppMenu(){document.getElementById('appMenuOverlay').style.display='none';}
