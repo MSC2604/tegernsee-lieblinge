@@ -2424,7 +2424,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     <button class="app-menu-item" onclick="closeAppMenu();showFavorites()"><span>♥</span><span>Meine Favoriten</span></button>
     <button class="app-menu-item" type="button" onclick="shareRestaurantApp()"><span>↗️</span><span>App teilen</span></button>
     <section class="menu-admin-group" aria-label="Verwaltung">
-      <button class="app-menu-item menu-admin-toggle" type="button" id="toggleAdminMenu" aria-expanded="false" aria-controls="adminMenuItems" onclick="toggleAdminMenu()">
+      <button class="app-menu-item menu-admin-toggle" type="button" id="adminMenuToggleButton" aria-expanded="false" aria-controls="adminMenuItems" onclick="toggleAdminMenu()">
         <span>⚙️</span><span>Verwaltung</span><span class="menu-admin-chevron" aria-hidden="true">⌄</span>
       </button>
       <div id="adminMenuItems" class="menu-admin-items" hidden>
@@ -7183,7 +7183,7 @@ async function deletePaymentRequestItem(id){
 
 function openAppMenu(){document.getElementById('appMenuOverlay').style.display='block';}
 function toggleAdminMenu(){
-  const button=document.getElementById('toggleAdminMenu');
+  const button=document.getElementById('adminMenuToggleButton');
   const items=document.getElementById('adminMenuItems');
   if(!button||!items)return;
   const expanded=button.getAttribute('aria-expanded')==='true';
