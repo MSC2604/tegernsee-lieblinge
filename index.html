@@ -2443,7 +2443,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 <div class="website-changes-overlay" id="paymentResearchOverlay" onclick="if(event.target===this)closePaymentResearch()">
   <section class="website-changes-panel" role="dialog" aria-modal="true" aria-labelledby="paymentResearchTitle">
     <div class="website-changes-head"><h2 id="paymentResearchTitle">💳 Zahlungsarten – Prüfliste</h2><button class="website-changes-close" type="button" aria-label="Schließen" onclick="closePaymentResearch()">×</button></div>
-    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Rechercheübersicht für deine 41 bestehenden Einträge. Die Angaben sind nur eine Entscheidungshilfe und ändern keine Restaurantdaten. Setze morgen bei jedem Restaurant einen Haken, sobald du die Zahlungsarten selbst in „Bearbeiten“ eingetragen hast. Die Haken bleiben auf diesem Gerät in diesem Browser gespeichert.</p>
+    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Rechercheübersicht für deine 41 bestehenden Einträge. Es zählen nur eindeutige Angaben auf offiziellen Betreiber-Webseiten oder offiziellen Unterlagen. Drittanbieter-Verzeichnisse gelten nicht als Bestätigung. Unklare Fälle bleiben ausdrücklich offen. Die Angaben sind nur eine Entscheidungshilfe und ändern keine Restaurantdaten. Setze einen Haken, sobald du die Zahlungsarten selbst in „Bearbeiten“ eingetragen hast. Die Haken bleiben auf diesem Gerät in diesem Browser gespeichert.</p>
     <div class="website-change-summary" id="paymentResearchSummary">41 Restaurants · 0 erledigt</div>
     <div id="paymentResearchList"></div>
   </section>
@@ -6555,46 +6555,46 @@ const GEOCODE_CACHE_KEY = 'tegernseeMapCoordinates_v2';
 
 const PAYMENT_RESEARCH_ITEMS = [
   ["Almhof Oafach","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Almwirtschaft Siebenhütten","Bisherige Recherche: nur Bargeld","Bitte vor dem Eintragen noch einmal vor Ort oder telefonisch bestätigen."],
+  ["Almwirtschaft Siebenhütten","Noch nicht offiziell bestätigt","Bisherige Hinweise auf Barzahlung reichen ohne eindeutige Betreiberangabe nicht als Bestätigung."],
   ["Alpenwildpark","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Aueralm","Keine Kartenzahlung","Laut offizieller Website nur Bargeld und PayPal; PayPal ist keine auswählbare Kartenart."],
+  ["Aueralm","Nur Bargeld (keine Karten)","Offizielle Website aueralm.de: „Nur Barzahlung und PayPal möglich“. PayPal ist keine Kartenart."],
   ["Bäckerei und Café Tremmel","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Berggasthaus Riederstein am Galaun","Keine Kartenzahlung","In deinem bisherigen Eintrag ist „Keine Kartenzahlung möglich“ vermerkt."],
-  ["Berggasthof Lukas-Alm","Keine Kartenzahlung","Offizielle Website: nur Barzahlung."],
+  ["Berggasthaus Riederstein am Galaun","Noch nicht offiziell bestätigt","Im bisherigen Eintrag steht „Keine Kartenzahlung möglich“; eine eindeutige aktuelle Betreiberbestätigung liegt hier nicht vor."],
+  ["Berggasthof Lukas-Alm","Nur Bargeld (keine Karten)","Offizielle Website lukas-alm.de: „KEINE KARTENZAHLUNG MÖGLICH – Nur Barzahlung“."],
   ["Berggasthof Moni-Alm","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Berggasthof Neureuth","Keine Kartenzahlung","Offizielle Kontaktseite: keine Kartenzahlung."],
+  ["Berggasthof Neureuth","Nur Bargeld (keine Karten)","Offizielle Website neureuth.com: „Keine Kartenzahlung möglich – Cash only“."],
   ["Berggasthof Obere Firstalm","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
   ["Biergarten Gut Kaltenbrunn","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Bräustüberl Tegernsee","Girocard + Kreditkarte","Beide Kartenarten wurden in den recherchierten Unterlagen genannt."],
-  ["Cafe Restaurant Angermaier","Girocard / EC-Karte","EC-Kartenzahlung wurde recherchiert."],
+  ["Bräustüberl Tegernsee","Girocard + Kreditkarte","Offizielles PDF „Das Bräustüberl auf einen Blick“: EC-Karte und alle gängigen Kreditkarten werden akzeptiert."],
+  ["Cafe Restaurant Angermaier","Noch nicht offiziell bestätigt","Bisheriger Hinweis auf EC-Karte; eine eindeutige Angabe auf der offiziellen Betreiberseite fehlt."],
   ["Cristallo Café","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
   ["Dorfschänke","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Fischerei Tegernsee","Kartenzahlung erwähnt – Kartenart offen","Kreditkarte wird in einer Quelle genannt; bitte klären, ob dies für den Restaurant-/Verkaufsbereich gilt."],
-  ["Gasthaus Schießstätte","Kartenzahlung erwähnt – Kartenart offen","Drittanbieter nennen Kartenzahlung, konkrete Kartenarten sind nicht sicher belegt."],
+  ["Fischerei Tegernsee","Noch nicht offiziell bestätigt","Bisherige Kartenhinweise sind nicht eindeutig dem Restaurant-/Verkaufsbereich zuzuordnen; offizielle Bestätigung fehlt."],
+  ["Gasthaus Schießstätte","Noch nicht offiziell bestätigt","Bisherige Hinweise stammen nicht aus einer eindeutigen offiziellen Betreiberangabe."],
   ["Gasthof Batznhäusl","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Gasthof Glashütte","Widersprüchliche Angaben","Eine Quelle nennt Kartenzahlung, eine ältere Bewertung verneint Karten. Vor Ort nachfragen."],
-  ["Gasthof Herzog Maximilian","Girocard + Kreditkarte","Girocard/EC sowie Visa, Mastercard und American Express wurden genannt."],
+  ["Gasthof Glashütte","Noch nicht offiziell bestätigt","Bisherige Angaben widersprechen sich; eine eindeutige aktuelle Betreiberangabe fehlt."],
+  ["Gasthof Herzog Maximilian","Noch nicht offiziell bestätigt","Die offizielle Website gasthof-maximilian.de nennt keine Zahlungsarten; frühere Kartenhinweise sind daher nicht bestätigt."],
   ["Gasthof zum Hagn","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
   ["Gasthof zum Rosser","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
   ["Herzogliche Fischzucht Wildbad Kreuth","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
   ["Hofhaus am See","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
   ["Königslinde am Tegernsee","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Mesner Gütl","Girocard + Kreditkarte","EC-Karte und Kreditkarte wurden genannt."],
+  ["Mesner Gütl","Noch nicht offiziell bestätigt","Die offizielle Website mesnerguetl.de nennt keine Zahlungsarten; frühere Kartenhinweise sind daher nicht bestätigt."],
   ["Metzgerei Trettenhann","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Naturkäserei TegernseerLand eG","Debitkarte + Kreditkarte","Diese Kartenarten werden in Verzeichnissen genannt; nicht direkt offiziell bestätigt."],
-  ["Panoramarestaurant Wallberg","Kreditkarte","Visa und Mastercard wurden in einer Quelle genannt."],
-  ["Postillion Tegernsee","Girocard / EC-Karte","EC-/Maestro-Zahlung wird in einem Branchenverzeichnis genannt."],
+  ["Naturkäserei TegernseerLand eG","Noch nicht offiziell bestätigt","Kartenhinweise aus Verzeichnissen werden nicht als Betreiberbestätigung gewertet; offizielle Angabe fehlt."],
+  ["Panoramarestaurant Wallberg","Noch nicht offiziell bestätigt","Die bisherige Kartenangabe ist nicht durch eine eindeutige offizielle Betreiberquelle belegt."],
+  ["Postillion Tegernsee","Noch nicht offiziell bestätigt","Bisheriger EC-/Maestro-Hinweis stammt aus einem Branchenverzeichnis; offizielle Bestätigung fehlt."],
   ["Rainer Stuben (Rainerstüberl)","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Ratskeller Schliersee","Kartenzahlung erwähnt – Kartenart offen","Kartenzahlung wurde in einer früheren Recherche erwähnt; konkrete Kartenart nicht gesichert."],
-  ["Restaurant & Cafe Strandbad Seeglas","Kartenzahlung erwähnt – Kartenart offen","Eine Quelle nennt gängige Bankkarten; konkrete Kartenarten nicht gesichert."],
+  ["Ratskeller Schliersee","Noch nicht offiziell bestätigt","Bisherige Hinweise nennen keine konkrete Kartenart und sind nicht offiziell bestätigt."],
+  ["Restaurant & Cafe Strandbad Seeglas","Noch nicht offiziell bestätigt","Bisheriger Hinweis auf Bankkarten ist nicht durch eine eindeutige offizielle Betreiberangabe belegt."],
   ["Restaurant Café Pension Haus Göttfried","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
   ["Riedler Alm","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Schlosswirtschaft Tegernsee","Girocard + Kreditkarte","Offizielle Website nennt EC-Karte und gängige Kreditkarten."],
-  ["Schwarzentenn-Alm","Bisherige Recherche: nur Bargeld","Bitte vor dem Eintragen noch einmal vor Ort oder telefonisch bestätigen."],
+  ["Schlosswirtschaft Tegernsee","Girocard + Kreditkarte","Offizielle Website des Herzoglichen Brauhauses nennt EC-Karte und alle gängigen Kreditkarten."],
+  ["Schwarzentenn-Alm","Noch nicht offiziell bestätigt","Bisherige Hinweise auf Barzahlung reichen ohne eindeutige Betreiberangabe nicht als Bestätigung."],
   ["Viet Cuisine","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Voitlhof 1532","Girocard + Kreditkarte","EC-Karte und Kreditkarte werden in mehreren Verzeichnissen genannt."],
+  ["Voitlhof 1532","Noch nicht offiziell bestätigt","Kartenhinweise aus Restaurantverzeichnissen werden nicht als Betreiberbestätigung gewertet."],
   ["Weissachalm","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Wirtshaus Aibl Alm","Girocard / EC-Karte","EC-Kartenzahlung wird in einem Branchenverzeichnis genannt."]
+  ["Wirtshaus Aibl Alm","Noch nicht offiziell bestätigt","Bisheriger EC-Hinweis stammt aus einem Branchenverzeichnis; offizielle Bestätigung fehlt."]
 ];
 function getPaymentResearchDone(){try{return JSON.parse(localStorage.getItem("tegernsee_payment_research_done_v1")||"{}")||{};}catch(e){return {};}}
 function setPaymentResearchDone(name,done){const state=getPaymentResearchDone();if(done)state[name]=true;else delete state[name];try{localStorage.setItem("tegernsee_payment_research_done_v1",JSON.stringify(state));}catch(e){}renderPaymentResearch();}
