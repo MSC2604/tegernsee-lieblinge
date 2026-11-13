@@ -6582,19 +6582,19 @@ const PAYMENT_RESEARCH_ITEMS = [
   ["Mesner Gütl","Noch nicht offiziell bestätigt","Offizielle Website mesnerguetl.de am 13.11.2026 geprüft: keine Zahlungsarten veröffentlicht."],
   ["Metzgerei Trettenhann","Noch nicht offiziell bestätigt","Offizielle Website metzgereitrettenhann.de am 13.11.2026 geprüft: keine Zahlungsarten veröffentlicht; daher keine Aussage zu Karten möglich."],
   ["Naturkäserei TegernseerLand eG","Noch nicht offiziell bestätigt","Kartenhinweise aus Verzeichnissen werden nicht als Betreiberbestätigung gewertet; offizielle Angabe fehlt."],
-  ["Panoramarestaurant Wallberg","Noch nicht offiziell bestätigt","Die bisherige Kartenangabe ist nicht durch eine eindeutige offizielle Betreiberquelle belegt."],
+  ["Panoramarestaurant Wallberg","Noch nicht offiziell bestätigt","Offizielle Wallbergbahn-Seite wallbergbahn.de am 13.11.2026 geprüft: keine Zahlungsarten veröffentlicht. Drittanbieterangaben zu Kreditkarten bleiben unbestätigt."],
   ["Postillion Tegernsee","Noch nicht offiziell bestätigt","Bisheriger EC-/Maestro-Hinweis stammt aus einem Branchenverzeichnis; offizielle Bestätigung fehlt."],
   ["Rainer Stuben (Rainerstüberl)","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
   ["Ratskeller Schliersee","Noch nicht offiziell bestätigt","Offizielle Website ratskeller-schliersee.de am 13.11.2026 geprüft: keine Zahlungsarten veröffentlicht; daher keine Aussage zu Karten möglich."],
   ["Restaurant & Cafe Strandbad Seeglas","Noch nicht offiziell bestätigt","Bisheriger Hinweis auf Bankkarten ist nicht durch eine eindeutige offizielle Betreiberangabe belegt."],
   ["Restaurant Café Pension Haus Göttfried","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Riedler Alm","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
+  ["Riedler Alm","Noch nicht offiziell bestätigt","Offizielle Website riedler-alm.de am 13.11.2026 geprüft: keine Zahlungsarten veröffentlicht; daher keine Aussage zu Karten möglich."],
   ["Schlosswirtschaft Tegernsee","Girocard + Kreditkarte","Offizielle Website des Herzoglichen Brauhauses nennt EC-Karte und alle gängigen Kreditkarten."],
   ["Schwarzentenn-Alm","Noch nicht offiziell bestätigt","Offizielle Website schwarzentennalm.de am 13.11.2026 geprüft: keine Zahlungsarten veröffentlicht; der bisherige Barzahlungshinweis bleibt unbestätigt."],
   ["Viet Cuisine","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Voitlhof 1532","Noch nicht offiziell bestätigt","Kartenhinweise aus Restaurantverzeichnissen werden nicht als Betreiberbestätigung gewertet."],
+  ["Voitlhof 1532","Noch nicht offiziell bestätigt","Offizielle Betreiberseite tegernseer-gastro.de am 13.11.2026 geprüft: keine Zahlungsarten veröffentlicht. Drittanbieterangaben zu Karten werden nicht als Bestätigung gewertet."],
   ["Weissachalm","Noch ungeklärt","Keine verlässliche Kartenangabe gefunden."],
-  ["Wirtshaus Aibl Alm","Noch nicht offiziell bestätigt","Bisheriger EC-Hinweis stammt aus einem Branchenverzeichnis; offizielle Bestätigung fehlt."]
+  ["Wirtshaus Aibl Alm","Noch nicht offiziell bestätigt","Offizielle Website aibl.de am 13.11.2026 geprüft: keine Zahlungsarten veröffentlicht; der frühere EC-Hinweis bleibt unbestätigt."]
 ];
 function getPaymentResearchDone(){try{return JSON.parse(localStorage.getItem("tegernsee_payment_research_done_v1")||"{}")||{};}catch(e){return {};}}
 function setPaymentResearchDone(name,done){const state=getPaymentResearchDone();if(done)state[name]=true;else delete state[name];try{localStorage.setItem("tegernsee_payment_research_done_v1",JSON.stringify(state));}catch(e){}renderPaymentResearch();}
