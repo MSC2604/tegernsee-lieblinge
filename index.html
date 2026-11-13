@@ -3046,6 +3046,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     <p style="margin:0;color:#63736a;font-size:13px">Hier siehst du nur inhaltliche Änderungen. Technische Unterschiede werden ausgeblendet. Deine Restaurant-Einträge werden niemals automatisch geändert.</p>
     <button type="button" id="startWebsiteMonitor" onclick="startRestaurantWebsiteMonitor()" style="margin:14px 0;padding:11px 16px;border:0;border-radius:10px;background:#2d6a56;color:#fff;font-weight:700;cursor:pointer">Jetzt Webseiten prüfen</button>
     <button type="button" id="testWebsiteMonitorEmail" onclick="sendWebsiteMonitorTestEmail()" style="margin:0 0 14px 8px;padding:11px 16px;border:1px solid #cbded5;border-radius:10px;background:#f4f8f5;color:#2d6a56;font-weight:700;cursor:pointer">Test-E-Mail senden</button>
+    <button type="button" id="runFullWebsiteMonitorTest" onclick="runFullRestaurantMonitoringTest()" style="margin:0 0 14px 8px;padding:11px 16px;border:0;border-radius:10px;background:#294d3e;color:#fff;font-weight:700;cursor:pointer">Gesamten Prüflauf jetzt testen</button>
     <div id="websiteMonitorRunStatus" role="status" aria-live="polite" style="margin:0 0 8px;color:#63736a;font-size:13px"></div>
     <div id="websiteMonitorProgress" style="display:none;margin:0 0 14px;padding:12px;border:1px solid #dce7e0;border-radius:12px;background:#f7faf8">
       <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700;color:#294d3e"><span id="websiteMonitorProgressLabel">Prüfung läuft …</span><span id="websiteMonitorProgressPercent">0 %</span></div>
@@ -8408,6 +8409,29 @@ function showWebsiteMonitorCopyableError(status,message){
   };
   status.append(heading,field,copy);
 }
+async function runFullRestaurantMonitoringTest(authenticatedPassword){
+  const button=document.getElementById("runFullWebsiteMonitorTest");
+  const status=document.getElementById("websiteMonitorRunStatus");
+  let password=authenticatedPassword;
+  if(!password)password=await askAdminPassword("Bitte Admin-Passwort eingeben, um den vollständigen Restaurant-Prüflauf zu starten.");
+  if(password===null||!password)return;
+  if(button)button.disabled=true;
+  if(status)status.textContent="Der vollständige Prüflauf wird gestartet. Webseiten, externe Einträge sowie Speise- und Getränkekarten werden geprüft …";
+  try{
+    const response=await fetch(API_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},
+      body:JSON.stringify({action:"runRestaurantMonitoringFullTest"})
+    });
+    let data={};try{data=await response.json();}catch(_){}
+    if(!response.ok||!data.success)throw new Error(data.error||"Der vollständige Prüflauf konnte nicht gestartet werden.");
+    if(status)status.textContent="Der vollständige Prüflauf läuft jetzt im Hintergrund. Du erhältst anschließend den gemeinsamen Bericht per E-Mail. Restaurant-Einträge werden nicht automatisch geändert.";
+    alert("Der vollständige Prüflauf wurde gestartet. Bitte warte auf die gemeinsame Ergebnis-E-Mail. Es werden keine Restaurant-Einträge automatisch geändert.");
+  }catch(error){
+    if(status)status.textContent=error.message||"Der vollständige Prüflauf konnte nicht gestartet werden.";
+    if(button)button.disabled=false;
+  }
+}
 async function sendWebsiteMonitorTestEmail(authenticatedPassword){
   const button=document.getElementById("testWebsiteMonitorEmail");
   const status=document.getElementById("websiteMonitorRunStatus");
@@ -8556,6 +8580,8 @@ async function showRestaurantWebsiteChanges(){
   const startButton=document.getElementById("startWebsiteMonitor");
   if(startButton)startButton.onclick=()=>startRestaurantWebsiteMonitor(password);
   const testButton=document.getElementById("testWebsiteMonitorEmail");
+  const fullTestButton=document.getElementById("runFullWebsiteMonitorTest");
+  if(fullTestButton)fullTestButton.onclick=()=>runFullRestaurantMonitoringTest(password);
   if(testButton)testButton.onclick=()=>sendWebsiteMonitorTestEmail(password);
   try{
     await loadRestaurantWebsiteChanges(password);
