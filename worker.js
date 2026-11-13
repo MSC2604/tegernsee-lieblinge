@@ -2576,7 +2576,7 @@ console.log("Tavily usage account:", {
           // Nach dem UPDATE den gespeicherten Wert direkt aus Turso zurücklesen.
           // So melden wir keinen Erfolg, wenn der externe Link nicht dauerhaft angekommen ist.
           const verification = await turso(
-            "SELECT externer_eintrag, zahlungsarten FROM restaurants WHERE id = ?",
+            "SELECT externer_eintrag, zahlungsarten, zahlungsarten_status FROM restaurants WHERE id = ?",
             [integerArg(body.id)],
             true
           );
@@ -2592,17 +2592,24 @@ console.log("Tavily usage account:", {
             ? r.zahlungsarten.filter(item => ["girocard", "debitkarte", "kreditkarte"].includes(item))
             : [];
           const paymentTypesMatch = JSON.stringify([...storedPaymentTypes].sort()) === JSON.stringify([...expectedPaymentTypes].sort());
-          if (verifiedRows.length === 0 || storedExternalEntry !== expectedExternalEntry || !paymentTypesMatch) {
+          const expectedPaymentStatus = ["red","yellow","green"].includes(r.zahlungsarten_status) ? r.zahlungsarten_status : "";
+          const storedPaymentStatus = String(rowValue(verifiedRows?.[0]?.[2]) || "");
+          const paymentStatusMatch = storedPaymentStatus === expectedPaymentStatus;
+          if (verifiedRows.length === 0 || storedExternalEntry !== expectedExternalEntry || !paymentTypesMatch || !paymentStatusMatch) {
+            const errorMessage = !paymentTypesMatch
+              ? "Die Zahlungsarten konnten nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen."
+              : !paymentStatusMatch
+                ? "Der Ampelstatus konnte nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen."
+                : "Der externe Eintrag konnte nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen.";
             return json({
-              error: !paymentTypesMatch
-                ? "Die Zahlungsarten konnten nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen."
-                : "Der externe Eintrag konnte nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen.",
+              error: errorMessage,
               verified: false,
-              paymentTypesVerified: paymentTypesMatch
+              paymentTypesVerified: paymentTypesMatch,
+              paymentStatusVerified: paymentStatusMatch
             }, 500);
           }
 
-          return json({ success: true, action: "update", verified: true, paymentTypesVerified: true, result });
+          return json({ success: true, action: "update", verified: true, paymentTypesVerified: true, paymentStatusVerified: true, result });
         }
 
         if (body.action === "delete") {
