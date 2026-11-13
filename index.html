@@ -8416,7 +8416,7 @@ async function runFullRestaurantMonitoringTest(authenticatedPassword){
   if(!password)password=await askAdminPassword("Bitte Admin-Passwort eingeben, um den vollständigen Restaurant-Prüflauf zu starten.");
   if(password===null||!password)return;
   if(button)button.disabled=true;
-  if(status)status.textContent="Der vollständige Prüflauf wird gestartet. Webseiten, externe Einträge sowie Speise- und Getränkekarten werden geprüft …";
+  if(status)status.textContent="Der vollständige Prüflauf läuft. Bitte lass dieses Fenster geöffnet; die Abschlussmeldung erscheint nach beiden Prüfungen und dem E-Mail-Versand …";
   try{
     const response=await fetch(API_URL,{
       method:"POST",
@@ -8424,11 +8424,16 @@ async function runFullRestaurantMonitoringTest(authenticatedPassword){
       body:JSON.stringify({action:"runRestaurantMonitoringFullTest"})
     });
     let data={};try{data=await response.json();}catch(_){}
-    if(!response.ok||!data.success)throw new Error(data.error||"Der vollständige Prüflauf konnte nicht gestartet werden.");
-    if(status)status.textContent="Der vollständige Prüflauf läuft jetzt im Hintergrund. Du erhältst anschließend den gemeinsamen Bericht per E-Mail. Restaurant-Einträge werden nicht automatisch geändert.";
-    alert("Der vollständige Prüflauf wurde gestartet. Bitte warte auf die gemeinsame Ergebnis-E-Mail. Es werden keine Restaurant-Einträge automatisch geändert.");
+    if(!response.ok||!data.completed)throw new Error(data.emailReason||data.error||"Der vollständige Prüflauf konnte nicht abgeschlossen werden.");
+    if(!data.emailSent)throw new Error("Die Prüfungen sind abgeschlossen, aber der E-Mail-Versand ist fehlgeschlagen: "+(data.emailReason||"Keine Bestätigung von Brevo."));
+    const s=data.summary||{};
+    const message="Prüflauf abgeschlossen. Geprüft: "+(s.restaurantsChecked||0)+" Restaurant-Websites, "+(s.externalEntriesChecked||0)+" externe Einträge, "+(s.pagesChecked||0)+" Seiten und "+(s.cardsChecked||0)+" Kartenlinks. Prüfprobleme: "+(s.errors||0)+". Brevo hat den Bericht an "+(data.recipient||"msc4021@arcor.de")+" zum Versand angenommen. Deine Restaurant-Einträge wurden nicht automatisch geändert.";
+    if(status)status.textContent=message;
+    alert(message);
   }catch(error){
-    if(status)status.textContent=error.message||"Der vollständige Prüflauf konnte nicht gestartet werden.";
+    if(status)status.textContent=error.message||"Der vollständige Prüflauf konnte nicht abgeschlossen werden.";
+    alert(error.message||"Der vollständige Prüflauf konnte nicht abgeschlossen werden.");
+  }finally{
     if(button)button.disabled=false;
   }
 }
