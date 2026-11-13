@@ -2141,7 +2141,43 @@ console.log("Tavily usage account:", {
                textArg(finished ? "completed" : "running"),
                textArg(finished ? new Date().toISOString() : ""), textArg(runId), textArg(lockToken)]
             );
-            return json({ success: true, processed: restaurant.name || restaurant.id, completed: cumulative.completed, total: claimedQueue.length, finished });
+            let emailReport = null;
+            if (finished) {
+              try {
+                emailReport = await sendRestaurantWebsiteDigest({
+                  db: turso,
+                  env,
+                  summary: {
+                    restaurantsChecked: cumulative.restaurants,
+                    externalEntriesChecked: cumulative.externalEntries,
+                    pagesChecked: cumulative.pages,
+                    cardsChecked: 0,
+                    errors: (Array.isArray(cumulative.errors) ? cumulative.errors : []).map(issue => ({
+                      name: issue.name || "Restaurant",
+                      url: issue.url || "",
+                      detail: issue.error || "Website-Prüfung fehlgeschlagen."
+                    }))
+                  }
+                });
+              } catch (emailError) {
+                emailReport = { sent: false, reason: String(emailError?.message || emailError).slice(0, 500) };
+                console.error("E-Mail nach manuellem Website-Prüflauf fehlgeschlagen:", emailReport.reason);
+              }
+              cumulative.email = emailReport;
+              await turso(
+                "UPDATE restaurant_website_monitor_runs SET report_json=? WHERE id=1 AND run_id=? AND status='completed'",
+                [textArg(JSON.stringify(cumulative)), textArg(runId)]
+              );
+            }
+            return json({
+              success: true,
+              processed: restaurant.name || restaurant.id,
+              completed: cumulative.completed,
+              total: claimedQueue.length,
+              finished,
+              emailSent: emailReport?.sent === true,
+              emailReason: emailReport?.sent ? "" : (emailReport?.reason || "")
+            });
           } catch (error) {
             const failed = { ...cumulative, phase: "failed", error: String(error?.message || error).slice(0, 400), activeRestaurants: [] };
             await turso(
