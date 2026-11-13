@@ -2443,7 +2443,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 <div class="website-changes-overlay" id="paymentResearchOverlay" onclick="if(event.target===this)closePaymentResearch()">
   <section class="website-changes-panel" role="dialog" aria-modal="true" aria-labelledby="paymentResearchTitle">
     <div class="website-changes-head"><h2 id="paymentResearchTitle">💳 Zahlungsarten – Prüfliste</h2><button class="website-changes-close" type="button" aria-label="Schließen" onclick="closePaymentResearch()">×</button></div>
-    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Rechercheübersicht für deine 41 bestehenden Einträge. Es zählen nur eindeutige Angaben auf offiziellen Betreiber-Webseiten oder offiziellen Unterlagen. Drittanbieter-Verzeichnisse gelten nicht als Bestätigung. Unklare Fälle bleiben ausdrücklich offen. Die Angaben sind nur eine Entscheidungshilfe und ändern keine Restaurantdaten. Setze einen Haken, sobald du die Zahlungsarten selbst in „Bearbeiten“ eingetragen hast. Markierungen und erledigte Einträge werden zentral gespeichert und automatisch zwischen Handy und Tablet abgeglichen. Für die erste Speicherung kann einmalig das Admin-Passwort abgefragt werden.</p>
+    <p style="margin:0;color:#63736a;font-size:13px;line-height:1.5">Rechercheübersicht für deine 41 bestehenden Einträge. Es zählen nur eindeutige Angaben auf offiziellen Betreiber-Webseiten oder offiziellen Unterlagen. Drittanbieter-Verzeichnisse gelten nicht als Bestätigung. Unklare Fälle bleiben ausdrücklich offen. Die Angaben sind nur eine Entscheidungshilfe und ändern keine Restaurantdaten. Setze einen Haken, sobald du die Zahlungsarten selbst in „Bearbeiten“ eingetragen hast. Markierungen und erledigte Einträge werden zentral gespeichert und automatisch zwischen Handy und Tablet abgeglichen. Beim ersten Speichern in einer App-Sitzung kann das Admin-Passwort abgefragt werden.</p>
     <div class="website-change-summary" id="paymentResearchSummary">41 Restaurants · 0 erledigt</div>
     <div id="paymentResearchList"></div>
   </section>
@@ -6598,6 +6598,7 @@ const PAYMENT_RESEARCH_ITEMS = [
 ];
 let paymentResearchAdminPassword = null;
 let paymentResearchSyncing = false;
+let paymentResearchServerConnected = false;
 let paymentResearchSyncTimer = null;
 
 function getPaymentResearchDone(){
@@ -6641,8 +6642,10 @@ async function savePaymentResearchStatuses(items){
     if(!response.ok || data.error || data.success !== true || data.verified !== true){
       throw new Error(data.error || "Die gemeinsame Prüfliste konnte nicht gespeichert werden.");
     }
+    paymentResearchServerConnected = true;
     return data;
   }
+  paymentResearchServerConnected = false;
   throw new Error("Das Admin-Passwort wurde nicht akzeptiert. Bitte erneut versuchen.");
 }
 
@@ -6695,6 +6698,10 @@ async function loadPaymentResearchFromServer(importLocal){
       if(status === "deleted") deleted[item[0]] = true;
     });
     storePaymentResearchLocal(done, deleted);
+    paymentResearchServerConnected = true;
+  } catch(error) {
+    paymentResearchServerConnected = false;
+    throw error;
   } finally {
     paymentResearchSyncing = false;
     renderPaymentResearch();
@@ -6716,6 +6723,7 @@ async function setPaymentResearchDone(name, doneValue){
     await savePaymentResearchStatuses([{name, status:doneValue ? "done" : "open"}]);
   } catch(error) {
     storePaymentResearchLocal(oldDone, oldDeleted);
+    paymentResearchServerConnected = false;
     alert(error.message || "Die Markierung konnte nicht gespeichert werden.");
   } finally {
     paymentResearchSyncing = false;
@@ -6744,6 +6752,7 @@ async function deleteMarkedPaymentResearch(){
     await savePaymentResearchStatuses(marked.map(item => ({name:item[0], status:"deleted"})));
   } catch(error) {
     storePaymentResearchLocal(done, oldDeleted);
+    paymentResearchServerConnected = false;
     alert(error.message || "Die erledigten Einträge konnten nicht zentral entfernt werden.");
   } finally {
     paymentResearchSyncing = false;
@@ -6759,7 +6768,7 @@ function renderPaymentResearch(){
   const deleted = getDeletedPaymentResearch();
   const visible = PAYMENT_RESEARCH_ITEMS.map((item,index)=>({item,index})).filter(entry=>!deleted[entry.item[0]]);
   const count = visible.filter(entry=>done[entry.item[0]]).length;
-  summary.innerHTML = "<strong>" + visible.length + " Einträge in der Prüfliste</strong> · " + count + " markiert" + (paymentResearchSyncing ? " · Synchronisiere …" : " · Geräteübergreifend gespeichert");
+  summary.innerHTML = "<strong>" + visible.length + " Einträge in der Prüfliste</strong> · " + count + " markiert" + (paymentResearchSyncing ? " · Synchronisiere …" : (paymentResearchServerConnected ? " · Geräteübergreifend gespeichert" : " · Verbindung nicht bestätigt"));
   if(!visible.length){
     list.innerHTML = '<p style="margin:14px 0;padding:16px;border-radius:12px;background:#edf4ef;color:#315f4d;font-weight:700">Die Prüfliste ist leer. Dein Restaurantverzeichnis bleibt vollständig erhalten.</p>';
     return;
