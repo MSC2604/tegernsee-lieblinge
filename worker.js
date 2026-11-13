@@ -1026,6 +1026,18 @@ console.log("Tavily usage account:", {
         updated_at TEXT NOT NULL DEFAULT ''
       )`);
 
+      await turso(`CREATE TABLE IF NOT EXISTS restaurant_payment_requests (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL DEFAULT '',
+        sent_at TEXT NOT NULL DEFAULT '',
+        response_status TEXT NOT NULL DEFAULT 'pending' CHECK (response_status IN ('pending', 'received')),
+        payment_methods TEXT NOT NULL DEFAULT '[]',
+        response_note TEXT NOT NULL DEFAULT '',
+        deleted INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL DEFAULT ''
+      )`);
+
       if (request.method === "GET") {
         const url = new URL(request.url);
         const action = url.searchParams.get("action");
@@ -1043,6 +1055,34 @@ console.log("Tavily usage account:", {
               status: String(rowValue(row[1]) || ""),
               updatedAt: String(rowValue(row[2]) || "")
             }))
+          });
+        }
+
+        if (action === "paymentRequestTracker") {
+          const result = await turso(
+            "SELECT id, name, email, sent_at, response_status, payment_methods, response_note, updated_at FROM restaurant_payment_requests WHERE deleted = 0 ORDER BY sent_at DESC, name COLLATE NOCASE",
+            [],
+            true
+          );
+          const rows = result?.results?.[0]?.response?.result?.rows || [];
+          return json({
+            items: rows.map(row => {
+              let methods = [];
+              try {
+                const parsed = JSON.parse(String(rowValue(row[5]) || "[]"));
+                if (Array.isArray(parsed)) methods = parsed.filter(value => ["cash", "girocard", "visa", "mastercard"].includes(value));
+              } catch {}
+              return {
+                id: String(rowValue(row[0]) || ""),
+                name: String(rowValue(row[1]) || ""),
+                email: String(rowValue(row[2]) || ""),
+                sentAt: String(rowValue(row[3]) || ""),
+                status: String(rowValue(row[4]) || "pending"),
+                methods,
+                note: String(rowValue(row[6]) || ""),
+                updatedAt: String(rowValue(row[7]) || "")
+              };
+            })
           });
         }
 
@@ -1282,6 +1322,67 @@ console.log("Tavily usage account:", {
             return json({ error: "Die Prüflistenänderungen konnten nicht vollständig bestätigt werden." }, 500);
           }
           return json({ success: true, verified: true, saved: cleanItems.length });
+        }
+
+        if (body.action === "savePaymentRequestTracker") {
+          const items = Array.isArray(body.items) ? body.items.slice(0, 100) : [];
+          if (!items.length) return json({ error: "Keine Anfragen-Einträge übergeben." }, 400);
+          const allowedMethods = new Set(["cash", "girocard", "visa", "mastercard"]);
+          const clean = [];
+          const seen = new Set();
+          for (const item of items) {
+            const id = String(item?.id || "").trim().slice(0, 80);
+            const name = String(item?.name || "").trim().slice(0, 160);
+            const email = String(item?.email || "").trim().slice(0, 254);
+            const sentAt = String(item?.sentAt || "").trim().slice(0, 30);
+            const status = String(item?.status || "pending");
+            const methods = Array.isArray(item?.methods) ? [...new Set(item.methods.filter(value => allowedMethods.has(value)))] : [];
+            const note = String(item?.note || "").trim().slice(0, 2000);
+            if (!id || !name || !email || !sentAt || !["pending", "received"].includes(status) ||
+                /[\u0000-\u001f]/.test(id + name + email + sentAt + note)) {
+              return json({ error: "Ungültiger Anfragen-Eintrag." }, 400);
+            }
+            if (seen.has(id)) continue;
+            seen.add(id);
+            clean.push({ id, name, email, sentAt, status, methods, note });
+          }
+          const now = new Date().toISOString();
+          for (const item of clean) {
+            await turso(
+              `INSERT INTO restaurant_payment_requests
+                (id, name, email, sent_at, response_status, payment_methods, response_note, deleted, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                 name = excluded.name, email = excluded.email, sent_at = excluded.sent_at,
+                 response_status = excluded.response_status, payment_methods = excluded.payment_methods,
+                 response_note = excluded.response_note, deleted = 0, updated_at = excluded.updated_at`,
+              [textArg(item.id), textArg(item.name), textArg(item.email), textArg(item.sentAt),
+               textArg(item.status), textArg(JSON.stringify(item.methods)), textArg(item.note), textArg(now)]
+            );
+          }
+          const verify = await turso(
+            "SELECT id FROM restaurant_payment_requests WHERE deleted = 0",
+            [],
+            true
+          );
+          const savedIds = new Set((verify?.results?.[0]?.response?.result?.rows || []).map(row => String(rowValue(row[0]) || "")));
+          if (!clean.every(item => savedIds.has(item.id))) {
+            return json({ error: "Die Anfragenliste konnte nicht vollständig bestätigt werden." }, 500);
+          }
+          return json({ success: true, verified: true, saved: clean.length });
+        }
+
+        if (body.action === "deletePaymentRequestTrackerItem") {
+          const id = String(body.id || "").trim().slice(0, 80);
+          if (!id) return json({ error: "Eintrags-ID fehlt." }, 400);
+          await turso(
+            "UPDATE restaurant_payment_requests SET deleted = 1, updated_at = ? WHERE id = ?",
+            [textArg(new Date().toISOString()), textArg(id)]
+          );
+          const verify = await turso("SELECT deleted FROM restaurant_payment_requests WHERE id = ?", [textArg(id)], true);
+          const row = verify?.results?.[0]?.response?.result?.rows?.[0];
+          if (!row || Number(rowValue(row[0])) !== 1) return json({ error: "Der Eintrag konnte nicht gelöscht werden." }, 500);
+          return json({ success: true, verified: true });
         }
 
         if (body.action === "sendRestaurantWebsiteTestEmail") {
