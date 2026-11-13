@@ -1,6 +1,211 @@
 import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./worker/restaurant-monitor-email.mjs";
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
 
+async function runScheduledRestaurantMonitoring(env, ctx) {
+    if (!env.TURSO_DATABASE_URL || !env.TURSO_AUTH_TOKEN) {
+      console.error("Kartenprüfung: Turso-Konfiguration fehlt.");
+      return;
+    }
+    const dbUrl = env.TURSO_DATABASE_URL.replace(/^libsql:\/\//, "https://") + "/v3/pipeline";
+    async function db(sql, args = [], wantRows = false) {
+      const response = await fetch(dbUrl, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env.TURSO_AUTH_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ baton: null, requests: [
+          { type: "execute", stmt: { sql, args, want_rows: wantRows } },
+          { type: "close" }
+        ] })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(`Turso HTTP ${response.status}`);
+      const first = data?.results?.[0];
+      if (first?.type === "error" || first?.error || first?.response?.error) {
+        throw new Error(first.error?.message || first.response?.error?.message || "Turso-Abfrage fehlgeschlagen");
+      }
+      return data;
+    }
+    const arg = value => ({ type: "text", value: value == null ? "" : String(value) });
+    const cell = value => value == null ? "" : (typeof value === "object" && "value" in value ? value.value : value);
+    await db(`CREATE TABLE IF NOT EXISTS restaurant_card_checks (
+      restaurant_id TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL,
+      checked_at TEXT NOT NULL DEFAULT '', changed_at TEXT NOT NULL DEFAULT '',
+      content_hash TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '',
+      detail TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, kind)
+    )`);
+    const query = await db(
+      "SELECT restaurant_id, kind, url FROM restaurant_cards WHERE url <> '' AND kind IN ('speisekarte','getraenkekarte')",
+      [], true
+    );
+    const rows = query?.results?.[0]?.response?.result?.rows || [];
+    const entries = rows.map(row => ({ restaurantId: String(cell(row[0]) || ""), kind: String(cell(row[1]) || ""), url: String(cell(row[2]) || "") }))
+      .filter(x => x.restaurantId && x.url);
+
+    function safeUrl(raw) {
+      let u;
+      try { u = new URL(raw); } catch { return null; }
+      if (!["http:", "https:"].includes(u.protocol) || u.username || u.password) return null;
+      const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+      if (!h || h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") ||
+          /^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) ||
+          /^172\.(1[6-9]|2\d|3[01])\./.test(h) || h === "::1" || h.startsWith("fc") ||
+          h.startsWith("fd") || h.startsWith("fe80:") || h === "169.254.169.254") return null;
+      return u;
+    }
+
+    async function check(item) {
+      const now = new Date().toISOString();
+      let status = "ok", detail = "", hash = "";
+      try {
+        let current = item.url, response;
+        for (let hop = 0; hop <= 3; hop++) {
+          const parsed = safeUrl(current);
+          if (!parsed) throw new Error("URL aus Sicherheitsgründen nicht geprüft.");
+          const abort = new AbortController();
+          const timer = setTimeout(() => abort.abort(), 8000);
+          try {
+            response = await fetch(parsed.href, {
+              redirect: "manual", signal: abort.signal,
+              headers: { "User-Agent": "TegernseeRestaurantMenuChecker/1.0", "Accept": "text/html,application/pdf,*/*;q=0.5" }
+            });
+          } finally { clearTimeout(timer); }
+          if ([301,302,303,307,308].includes(response.status)) {
+            const loc = response.headers.get("Location");
+            if (!loc || hop === 3) throw new Error("Weiterleitung nicht auflösbar.");
+            current = new URL(loc, parsed.href).href;
+            continue;
+          }
+          break;
+        }
+        if (!response?.ok) {
+          status = "unreachable";
+          detail = response ? `HTTP ${response.status}` : "Keine Antwort";
+        } else {
+          const reader = response.body?.getReader();
+          if (!reader) throw new Error("Antwortinhalt nicht lesbar.");
+          const chunks = []; let total = 0, tooLarge = false;
+          while (true) {
+            const part = await reader.read();
+            if (part.done) break;
+            total += part.value.byteLength;
+            if (total > 1048576) { tooLarge = true; await reader.cancel(); break; }
+            chunks.push(part.value);
+          }
+          if (tooLarge) {
+            status = "too_large"; detail = "Quelle über 1 MB; Inhaltsvergleich übersprungen.";
+          } else {
+            const bytes = new Uint8Array(total); let offset = 0;
+            for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+            const digest = await crypto.subtle.digest("SHA-256", bytes);
+            hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+            detail = "Quelle erreichbar; Inhalt geprüft.";
+          }
+        }
+      } catch (error) {
+        status = "error";
+        detail = error?.name === "AbortError" ? "Zeitüberschreitung." : String(error?.message || error).slice(0, 220);
+      }
+
+      const oldResult = await db(
+        "SELECT url, content_hash, changed_at FROM restaurant_card_checks WHERE restaurant_id = ? AND kind = ?",
+        [arg(item.restaurantId), arg(item.kind)], true
+      );
+      const old = oldResult?.results?.[0]?.response?.result?.rows?.[0];
+      const oldUrl = old ? String(cell(old[0]) || "") : "";
+      const oldHash = old ? String(cell(old[1]) || "") : "";
+      const oldChanged = old ? String(cell(old[2]) || "") : "";
+      const changedAt = hash && oldUrl === item.url && oldHash && oldHash !== hash ? now :
+        (oldUrl === item.url ? oldChanged : (hash ? now : ""));
+      if (hash && oldUrl === item.url && oldHash && oldHash !== hash) status = "changed";
+      if (hash && oldUrl === item.url && oldHash === hash) status = "unchanged";
+      if (hash && (!oldHash || oldUrl !== item.url)) status = "baseline";
+      await db(`INSERT INTO restaurant_card_checks
+        (restaurant_id, kind, url, checked_at, changed_at, content_hash, status, detail)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(restaurant_id, kind) DO UPDATE SET
+          url=excluded.url, checked_at=excluded.checked_at, changed_at=excluded.changed_at,
+          content_hash=CASE WHEN excluded.content_hash <> '' THEN excluded.content_hash
+            WHEN restaurant_card_checks.url = excluded.url THEN restaurant_card_checks.content_hash ELSE '' END,
+          status=CASE WHEN restaurant_card_checks.status='changed' AND restaurant_card_checks.notified_at='' AND excluded.status='unchanged' THEN 'changed' ELSE excluded.status END,
+          detail=excluded.detail,
+          notified_at=CASE WHEN excluded.status='changed' THEN '' ELSE restaurant_card_checks.notified_at END`,
+        [arg(item.restaurantId), arg(item.kind), arg(item.url), arg(now), arg(changedAt), arg(hash), arg(status), arg(detail)]
+      );
+    }
+    const cardRunStartedAt = new Date().toISOString();
+    for (let i = 0; i < entries.length; i += 5) {
+      await Promise.all(entries.slice(i, i + 5).map(check));
+    }
+    console.log(`Kartenprüfung abgeschlossen: ${entries.length} offizielle Kartenlinks geprüft.`);
+    const cardIssueResult = await db(
+      "SELECT r.name, c.kind, c.url, c.status, c.detail FROM restaurant_card_checks c LEFT JOIN restaurants r ON CAST(r.id AS TEXT)=c.restaurant_id WHERE c.checked_at >= ? AND c.status IN ('unreachable','error','too_large') ORDER BY r.name, c.kind",
+      [arg(cardRunStartedAt)], true
+    );
+    const cardIssues = (cardIssueResult?.results?.[0]?.response?.result?.rows || []).map(row => ({
+      name: String(cell(row[0]) || "Restaurant"), kind: String(cell(row[1]) || ""),
+      url: String(cell(row[2]) || ""), status: String(cell(row[3]) || ""),
+      detail: String(cell(row[4]) || "")
+    }));
+
+    await db(`CREATE TABLE IF NOT EXISTS restaurant_site_snapshots (
+      restaurant_id TEXT NOT NULL, page_url TEXT NOT NULL, checked_at TEXT NOT NULL DEFAULT '',
+      content_hash TEXT NOT NULL DEFAULT '', extracted_data_json TEXT NOT NULL DEFAULT '{}',
+      content_text TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, page_url)
+    )`);
+    await db(`CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, restaurant_id TEXT NOT NULL, field_name TEXT NOT NULL,
+      old_value TEXT NOT NULL DEFAULT '', new_value TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL,
+      detected_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'accepted', 'rejected')), reviewed_at TEXT NOT NULL DEFAULT '',
+    notified_at TEXT NOT NULL DEFAULT '',
+      UNIQUE (restaurant_id, field_name, old_value, new_value)
+    )`);
+    await db("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
+    const restaurantResult = await db(
+      "SELECT id, name, website, externer_eintrag FROM restaurants WHERE (website IS NOT NULL AND TRIM(website) <> '') OR (externer_eintrag IS NOT NULL AND TRIM(externer_eintrag) <> '')",
+      [], true
+    );
+    const restaurantRows = restaurantResult?.results?.[0]?.response?.result?.rows || [];
+    const allSources = restaurantRows.map(row => ({
+      id:String(cell(row[0]) || ""), name:String(cell(row[1]) || ""),
+      website:String(cell(row[2]) || ""), externer_eintrag:String(cell(row[3]) || "")
+    })).filter(item => item.id);
+    const websiteSources = [
+      ...allSources.filter(item => item.website).map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
+      ...allSources.filter(item => item.externer_eintrag).map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
+    ];
+    const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources });
+    console.log("Website-Prüfung:", JSON.stringify({
+      restaurants:monitorReport.restaurants, externalEntries:monitorReport.externalEntries,
+      pages:monitorReport.pages, baselines:monitorReport.baselines,
+      proposals:monitorReport.proposals, errors:monitorReport.errors.length
+    }));
+    for (const issue of monitorReport.errors.slice(0, 30)) {
+      console.warn("Website-Prüfung nicht möglich:", JSON.stringify(issue));
+    }
+    const dailyErrors = [
+      ...monitorReport.errors.map(issue => ({ name: issue.name || "Restaurant", url: issue.url || "", detail: issue.error || "Website-Prüfung fehlgeschlagen." })),
+      ...cardIssues.map(issue => ({
+        name: issue.name, url: issue.url,
+        detail: (issue.kind === "speisekarte" ? "Speisekarte" : "Getränkekarte") + ": " + issue.detail
+      }))
+    ];
+    try {
+      const emailReport = await sendRestaurantWebsiteDigest({
+        db, env,
+        summary: {
+          restaurantsChecked: monitorReport.restaurants,
+          externalEntriesChecked: monitorReport.externalEntries,
+          pagesChecked: monitorReport.pages,
+          cardsChecked: entries.length,
+          errors: dailyErrors
+        }
+      });
+      console.log("Täglicher Restaurant-Prüfbericht:", JSON.stringify(emailReport));
+    } catch (error) {
+      console.error("Täglicher Restaurant-Prüfbericht fehlgeschlagen:", String(error?.message || error).slice(0, 300));
+    }
+  }
+
 export default {
   async fetch(request, env, ctx) {
     const corsHeaders = {
@@ -1680,6 +1885,22 @@ console.log("Tavily usage account:", {
           return json({ success: true, verified: true });
         }
 
+        if (body.action === "runRestaurantMonitoringFullTest") {
+          if (!ctx || typeof ctx.waitUntil !== "function") {
+            return json({ success: false, error: "Hintergrundausführung ist in dieser Umgebung nicht verfügbar." }, 503);
+          }
+          ctx.waitUntil(
+            runScheduledRestaurantMonitoring(env, ctx).catch(error => {
+              console.error("Manueller Gesamttest fehlgeschlagen:", String(error?.message || error).slice(0, 500));
+            })
+          );
+          return json({
+            success: true,
+            started: true,
+            message: "Der vollständige Prüflauf wurde gestartet. Beide Prüfungen und der gemeinsame E-Mail-Bericht laufen im Hintergrund."
+          }, 202);
+        }
+
         if (body.action === "sendRestaurantWebsiteTestEmail") {
           const result = await sendRestaurantWebsiteTestEmail({ env });
           if (!result.sent) {
@@ -2289,207 +2510,6 @@ console.log("Tavily usage account:", {
     }
   },
   async scheduled(controller, env, ctx) {
-    if (!env.TURSO_DATABASE_URL || !env.TURSO_AUTH_TOKEN) {
-      console.error("Kartenprüfung: Turso-Konfiguration fehlt.");
-      return;
-    }
-    const dbUrl = env.TURSO_DATABASE_URL.replace(/^libsql:\/\//, "https://") + "/v3/pipeline";
-    async function db(sql, args = [], wantRows = false) {
-      const response = await fetch(dbUrl, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${env.TURSO_AUTH_TOKEN}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ baton: null, requests: [
-          { type: "execute", stmt: { sql, args, want_rows: wantRows } },
-          { type: "close" }
-        ] })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(`Turso HTTP ${response.status}`);
-      const first = data?.results?.[0];
-      if (first?.type === "error" || first?.error || first?.response?.error) {
-        throw new Error(first.error?.message || first.response?.error?.message || "Turso-Abfrage fehlgeschlagen");
-      }
-      return data;
-    }
-    const arg = value => ({ type: "text", value: value == null ? "" : String(value) });
-    const cell = value => value == null ? "" : (typeof value === "object" && "value" in value ? value.value : value);
-    await db(`CREATE TABLE IF NOT EXISTS restaurant_card_checks (
-      restaurant_id TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL,
-      checked_at TEXT NOT NULL DEFAULT '', changed_at TEXT NOT NULL DEFAULT '',
-      content_hash TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '',
-      detail TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, kind)
-    )`);
-    const query = await db(
-      "SELECT restaurant_id, kind, url FROM restaurant_cards WHERE url <> '' AND kind IN ('speisekarte','getraenkekarte')",
-      [], true
-    );
-    const rows = query?.results?.[0]?.response?.result?.rows || [];
-    const entries = rows.map(row => ({ restaurantId: String(cell(row[0]) || ""), kind: String(cell(row[1]) || ""), url: String(cell(row[2]) || "") }))
-      .filter(x => x.restaurantId && x.url);
-
-    function safeUrl(raw) {
-      let u;
-      try { u = new URL(raw); } catch { return null; }
-      if (!["http:", "https:"].includes(u.protocol) || u.username || u.password) return null;
-      const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-      if (!h || h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") ||
-          /^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) ||
-          /^172\.(1[6-9]|2\d|3[01])\./.test(h) || h === "::1" || h.startsWith("fc") ||
-          h.startsWith("fd") || h.startsWith("fe80:") || h === "169.254.169.254") return null;
-      return u;
-    }
-
-    async function check(item) {
-      const now = new Date().toISOString();
-      let status = "ok", detail = "", hash = "";
-      try {
-        let current = item.url, response;
-        for (let hop = 0; hop <= 3; hop++) {
-          const parsed = safeUrl(current);
-          if (!parsed) throw new Error("URL aus Sicherheitsgründen nicht geprüft.");
-          const abort = new AbortController();
-          const timer = setTimeout(() => abort.abort(), 8000);
-          try {
-            response = await fetch(parsed.href, {
-              redirect: "manual", signal: abort.signal,
-              headers: { "User-Agent": "TegernseeRestaurantMenuChecker/1.0", "Accept": "text/html,application/pdf,*/*;q=0.5" }
-            });
-          } finally { clearTimeout(timer); }
-          if ([301,302,303,307,308].includes(response.status)) {
-            const loc = response.headers.get("Location");
-            if (!loc || hop === 3) throw new Error("Weiterleitung nicht auflösbar.");
-            current = new URL(loc, parsed.href).href;
-            continue;
-          }
-          break;
-        }
-        if (!response?.ok) {
-          status = "unreachable";
-          detail = response ? `HTTP ${response.status}` : "Keine Antwort";
-        } else {
-          const reader = response.body?.getReader();
-          if (!reader) throw new Error("Antwortinhalt nicht lesbar.");
-          const chunks = []; let total = 0, tooLarge = false;
-          while (true) {
-            const part = await reader.read();
-            if (part.done) break;
-            total += part.value.byteLength;
-            if (total > 1048576) { tooLarge = true; await reader.cancel(); break; }
-            chunks.push(part.value);
-          }
-          if (tooLarge) {
-            status = "too_large"; detail = "Quelle über 1 MB; Inhaltsvergleich übersprungen.";
-          } else {
-            const bytes = new Uint8Array(total); let offset = 0;
-            for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-            const digest = await crypto.subtle.digest("SHA-256", bytes);
-            hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
-            detail = "Quelle erreichbar; Inhalt geprüft.";
-          }
-        }
-      } catch (error) {
-        status = "error";
-        detail = error?.name === "AbortError" ? "Zeitüberschreitung." : String(error?.message || error).slice(0, 220);
-      }
-
-      const oldResult = await db(
-        "SELECT url, content_hash, changed_at FROM restaurant_card_checks WHERE restaurant_id = ? AND kind = ?",
-        [arg(item.restaurantId), arg(item.kind)], true
-      );
-      const old = oldResult?.results?.[0]?.response?.result?.rows?.[0];
-      const oldUrl = old ? String(cell(old[0]) || "") : "";
-      const oldHash = old ? String(cell(old[1]) || "") : "";
-      const oldChanged = old ? String(cell(old[2]) || "") : "";
-      const changedAt = hash && oldUrl === item.url && oldHash && oldHash !== hash ? now :
-        (oldUrl === item.url ? oldChanged : (hash ? now : ""));
-      if (hash && oldUrl === item.url && oldHash && oldHash !== hash) status = "changed";
-      if (hash && oldUrl === item.url && oldHash === hash) status = "unchanged";
-      if (hash && (!oldHash || oldUrl !== item.url)) status = "baseline";
-      await db(`INSERT INTO restaurant_card_checks
-        (restaurant_id, kind, url, checked_at, changed_at, content_hash, status, detail)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(restaurant_id, kind) DO UPDATE SET
-          url=excluded.url, checked_at=excluded.checked_at, changed_at=excluded.changed_at,
-          content_hash=CASE WHEN excluded.content_hash <> '' THEN excluded.content_hash
-            WHEN restaurant_card_checks.url = excluded.url THEN restaurant_card_checks.content_hash ELSE '' END,
-          status=CASE WHEN restaurant_card_checks.status='changed' AND restaurant_card_checks.notified_at='' AND excluded.status='unchanged' THEN 'changed' ELSE excluded.status END,
-          detail=excluded.detail,
-          notified_at=CASE WHEN excluded.status='changed' THEN '' ELSE restaurant_card_checks.notified_at END`,
-        [arg(item.restaurantId), arg(item.kind), arg(item.url), arg(now), arg(changedAt), arg(hash), arg(status), arg(detail)]
-      );
-    }
-    const cardRunStartedAt = new Date().toISOString();
-    for (let i = 0; i < entries.length; i += 5) {
-      await Promise.all(entries.slice(i, i + 5).map(check));
-    }
-    console.log(`Kartenprüfung abgeschlossen: ${entries.length} offizielle Kartenlinks geprüft.`);
-    const cardIssueResult = await db(
-      "SELECT r.name, c.kind, c.url, c.status, c.detail FROM restaurant_card_checks c LEFT JOIN restaurants r ON CAST(r.id AS TEXT)=c.restaurant_id WHERE c.checked_at >= ? AND c.status IN ('unreachable','error','too_large') ORDER BY r.name, c.kind",
-      [arg(cardRunStartedAt)], true
-    );
-    const cardIssues = (cardIssueResult?.results?.[0]?.response?.result?.rows || []).map(row => ({
-      name: String(cell(row[0]) || "Restaurant"), kind: String(cell(row[1]) || ""),
-      url: String(cell(row[2]) || ""), status: String(cell(row[3]) || ""),
-      detail: String(cell(row[4]) || "")
-    }));
-
-    await db(`CREATE TABLE IF NOT EXISTS restaurant_site_snapshots (
-      restaurant_id TEXT NOT NULL, page_url TEXT NOT NULL, checked_at TEXT NOT NULL DEFAULT '',
-      content_hash TEXT NOT NULL DEFAULT '', extracted_data_json TEXT NOT NULL DEFAULT '{}',
-      content_text TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, page_url)
-    )`);
-    await db(`CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, restaurant_id TEXT NOT NULL, field_name TEXT NOT NULL,
-      old_value TEXT NOT NULL DEFAULT '', new_value TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL,
-      detected_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
-        CHECK (status IN ('pending', 'accepted', 'rejected')), reviewed_at TEXT NOT NULL DEFAULT '',
-    notified_at TEXT NOT NULL DEFAULT '',
-      UNIQUE (restaurant_id, field_name, old_value, new_value)
-    )`);
-    await db("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
-    const restaurantResult = await db(
-      "SELECT id, name, website, externer_eintrag FROM restaurants WHERE (website IS NOT NULL AND TRIM(website) <> '') OR (externer_eintrag IS NOT NULL AND TRIM(externer_eintrag) <> '')",
-      [], true
-    );
-    const restaurantRows = restaurantResult?.results?.[0]?.response?.result?.rows || [];
-    const allSources = restaurantRows.map(row => ({
-      id:String(cell(row[0]) || ""), name:String(cell(row[1]) || ""),
-      website:String(cell(row[2]) || ""), externer_eintrag:String(cell(row[3]) || "")
-    })).filter(item => item.id);
-    const websiteSources = [
-      ...allSources.filter(item => item.website).map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
-      ...allSources.filter(item => item.externer_eintrag).map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
-    ];
-    const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources });
-    console.log("Website-Prüfung:", JSON.stringify({
-      restaurants:monitorReport.restaurants, externalEntries:monitorReport.externalEntries,
-      pages:monitorReport.pages, baselines:monitorReport.baselines,
-      proposals:monitorReport.proposals, errors:monitorReport.errors.length
-    }));
-    for (const issue of monitorReport.errors.slice(0, 30)) {
-      console.warn("Website-Prüfung nicht möglich:", JSON.stringify(issue));
-    }
-    const dailyErrors = [
-      ...monitorReport.errors.map(issue => ({ name: issue.name || "Restaurant", url: issue.url || "", detail: issue.error || "Website-Prüfung fehlgeschlagen." })),
-      ...cardIssues.map(issue => ({
-        name: issue.name, url: issue.url,
-        detail: (issue.kind === "speisekarte" ? "Speisekarte" : "Getränkekarte") + ": " + issue.detail
-      }))
-    ];
-    try {
-      const emailReport = await sendRestaurantWebsiteDigest({
-        db, env,
-        summary: {
-          restaurantsChecked: monitorReport.restaurants,
-          externalEntriesChecked: monitorReport.externalEntries,
-          pagesChecked: monitorReport.pages,
-          cardsChecked: entries.length,
-          errors: dailyErrors
-        }
-      });
-      console.log("Täglicher Restaurant-Prüfbericht:", JSON.stringify(emailReport));
-    } catch (error) {
-      console.error("Täglicher Restaurant-Prüfbericht fehlgeschlagen:", String(error?.message || error).slice(0, 300));
-    }
+    return runScheduledRestaurantMonitoring(env, ctx);
   }
 };
