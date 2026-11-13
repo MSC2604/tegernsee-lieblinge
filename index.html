@@ -6919,9 +6919,9 @@ async function loadPaymentRequestTracker(){
     }else{
       paymentRequestItems=data.items.map(item=>({...item,methods:Array.isArray(item.methods)?item.methods:[]}));
     }
-    renderPaymentRequestTracker();
   }finally{
     paymentRequestBusy=false;
+    renderPaymentRequestTracker();
   }
 }
 function renderPaymentRequestTracker(){
