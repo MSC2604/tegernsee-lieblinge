@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - ".github/workflows/cloudflare-observability-check.yml"
+      - "wrangler.toml"
   workflow_dispatch:
 
 jobs:
