@@ -12,7 +12,21 @@ jobs:
   check-observability:
     runs-on: ubuntu-latest
     steps:
-      - name: Query recent Worker logs through the existing Cloudflare token
+      - name: Create a harmless Worker request to test log ingestion
+        shell: bash
+        run: |
+          set -euo pipefail
+          STATUS=$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" \
+            "https://tegernsee-restaurants-api.msc4021.workers.dev/?action=paymentResearchStatus")
+          echo "Read-only Worker health request HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]]; then
+            echo "::error::The read-only Worker health request failed."
+            exit 1
+          fi
+          echo "The request only reads the payment research status; it does not change restaurant data."
+          sleep 15
+
+      - name: Query recent Worker telemetry through the existing Cloudflare token
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -26,23 +40,17 @@ jobs:
           fi
 
           NOW_MS=$(date +%s000)
-          FROM_MS=$((NOW_MS - 86400000))
+          FROM_MS=$((NOW_MS - 1800000))
           BODY=$(jq -n \
             --argjson from "$FROM_MS" \
             --argjson to "$NOW_MS" \
             '{
-              queryId: "restaurant-worker-observability-diagnostic",
+              queryId: "restaurant-worker-observability-live-diagnostic",
               timeframe: {from: $from, to: $to},
               dry: true,
-              limit: 100,
+              limit: 2000,
               parameters: {
                 datasets: ["cloudflare-workers"],
-                filters: [{
-                  key: "$metadata.service",
-                  operation: "eq",
-                  type: "string",
-                  value: "tegernsee-restaurants-api"
-                }],
                 view: "events"
               }
             }')
@@ -58,30 +66,30 @@ jobs:
             --data "$BODY")
 
           echo "Cloudflare Observability API HTTP status: $STATUS"
-
           if [[ "$STATUS" != "200" ]]; then
             jq -r '.errors[]?.message // .messages[]?.message // "No API error details returned."' "$RESPONSE" || true
-            if [[ "$STATUS" == "403" ]]; then
-              echo "::error::The existing Cloudflare token does not have the required Workers Observability permission."
-            elif [[ "$STATUS" == "401" ]]; then
-              echo "::error::The existing Cloudflare token was rejected."
-            else
-              echo "::error::Cloudflare Observability query failed."
-            fi
+            echo "::error::Cloudflare Observability query failed."
             exit 1
           fi
 
           jq -r '
             "Query status: " + (.result.run.status // "unknown"),
-            "Events returned: " + ((.result.events.events // []) | length | tostring),
-            ((.result.events.events // [])[] |
-              [
-                (.timestamp // 0 | tostring),
-                (.["$workers"].eventType // .["$metadata"].eventType // "unknown"),
-                (.["$workers"].outcome // .["$metadata"].outcome // "unknown"),
-                (.source.message // .source // "" | tostring | .[0:500])
-              ] | @tsv
-            )
+            "All events returned in the last 30 minutes: " + ((.result.events.events // []) | length | tostring),
+            "Events attributed to tegernsee-restaurants-api: " +
+              (([.result.events.events[]? |
+                select(
+                  (.["$metadata"].service // "") == "tegernsee-restaurants-api" or
+                  (.["$workers"].scriptName // "") == "tegernsee-restaurants-api"
+                )] | length) | tostring),
+            (([.result.events.events[]? |
+              select(
+                (.["$metadata"].service // "") == "tegernsee-restaurants-api" or
+                (.["$workers"].scriptName // "") == "tegernsee-restaurants-api"
+              )] |
+              group_by(.["$workers"].eventType // "unknown")[] |
+              "Worker event type " + (.[0]["$workers"].eventType // "unknown") +
+              ": " + (length | tostring)
+            ))
           ' "$RESPONSE"
 
           echo "Cloudflare Observability API access confirmed."
