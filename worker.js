@@ -2637,6 +2637,26 @@ console.log("Tavily usage account:", {
     }
   },
   async scheduled(controller, env, ctx) {
-    return runScheduledRestaurantMonitoring(env, ctx);
+    const startedAt = new Date().toISOString();
+    console.log("[CRON] Restaurant-Monitor gestartet:", JSON.stringify({
+      cron: controller?.cron || "",
+      scheduledTime: controller?.scheduledTime || null,
+      startedAt
+    }));
+    try {
+      const result = await runScheduledRestaurantMonitoring(env, ctx);
+      console.log("[CRON] Restaurant-Monitor abgeschlossen:", JSON.stringify({
+        finishedAt: new Date().toISOString(),
+        result
+      }));
+      return result;
+    } catch (error) {
+      console.error("[CRON] Restaurant-Monitor fehlgeschlagen:", JSON.stringify({
+        failedAt: new Date().toISOString(),
+        message: String(error?.message || error).slice(0, 1000),
+        stack: String(error?.stack || "").slice(0, 2000)
+      }));
+      throw error;
+    }
   }
 };
