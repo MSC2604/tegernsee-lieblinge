@@ -98,7 +98,7 @@ jobs:
             --argjson from "$FROM_MS" \
             --argjson to "$NOW_MS" \
             '{
-              queryId: "restaurant-worker-observability-live-diagnostic",
+              queryId: "restaurant-worker-observability-verify-v2",
               timeframe: {from: $from, to: $to},
               dry: false,
               limit: 2000,
