@@ -49,6 +49,36 @@ jobs:
           jq -r '"Telemetry fields discovered: " + ((.result // []) | length | tostring), ((.result // [])[]?.key // empty)' "$KEYS_RESPONSE"
 
 
+      - name: Verify the Worker service name exists in telemetry
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOW_MS=$(date +%s000)
+          FROM_MS=$((NOW_MS - 86400000))
+          VALUES_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
+            datasets: ["cloudflare-workers"],
+            key: "$metadata.service",
+            timeframe: {from: $from, to: $to},
+            type: "string"
+          }')
+          VALUES_RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error --output "$VALUES_RESPONSE" --write-out "%{http_code}" \
+            --request POST \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/values" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "$VALUES_BODY")
+          echo "Telemetry service-values API HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]]; then
+            jq -r '.errors[]?.message // "No API error details returned."' "$VALUES_RESPONSE" || true
+            exit 1
+          fi
+          jq -r '"Services found in the last 24 hours: " + ((.result // []) | length | tostring),
+            "Tegernsee Worker service found: " + (if any(.result[]?; .value == "tegernsee-restaurants-api") then "yes" else "no" end)' "$VALUES_RESPONSE"
+
       - name: Query recent Worker telemetry through the existing Cloudflare token
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -98,6 +128,7 @@ jobs:
           jq -r '
             "Query status: " + (.result.run.status // "unknown"),
             "All events returned in the last 30 minutes: " + ((.result.events.events // []) | length | tostring),
+            "Total matching event count: " + ((.result.events.count // 0) | tostring),
             "Events attributed to tegernsee-restaurants-api: " +
               (([.result.events.events[]? |
                 select(
