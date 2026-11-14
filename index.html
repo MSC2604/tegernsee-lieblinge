@@ -4661,7 +4661,7 @@ function render(){
               <div class="tile-payment" aria-label="Zahlungsmöglichkeiten">
                 <div class="tile-payment-top">
                   <div class="tile-payment-heading">Zahlungsmöglichkeiten</div>
-                  ${place.zahlungsarten_status === "confirmed" ? '<span class="payment-status-label confirmed">Offiziell bestätigt</span>' : place.zahlungsarten_status === "clarification" ? '<span class="payment-status-label clarification">In Bearbeitung/Klärung</span>' : ""}
+                  ${place.zahlungsarten_status === "confirmed" ? '<span class="payment-status-label confirmed">Offiziell bestätigt</span>' : place.zahlungsarten_status === "clarification" ? '<span class="payment-status-label clarification">In Klärung</span>' : ""}
                 </div>
                 <div class="tile-payment-list" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;min-width:0;">
                   ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).length === 0
