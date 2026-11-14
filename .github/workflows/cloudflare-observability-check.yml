@@ -1,0 +1,87 @@
+name: Check Cloudflare Worker Observability
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/cloudflare-observability-check.yml"
+  workflow_dispatch:
+
+jobs:
+  check-observability:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query recent Worker logs through the existing Cloudflare token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${CLOUDFLARE_API_TOKEN:-}" || -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
+            echo "::error::Cloudflare API token or account ID is missing in GitHub Actions secrets."
+            exit 1
+          fi
+
+          NOW_MS=$(date +%s000)
+          FROM_MS=$((NOW_MS - 86400000))
+          BODY=$(jq -n \
+            --argjson from "$FROM_MS" \
+            --argjson to "$NOW_MS" \
+            '{
+              queryId: "restaurant-worker-observability-diagnostic",
+              timeframe: {from: $from, to: $to},
+              dry: true,
+              limit: 100,
+              parameters: {
+                datasets: ["cloudflare-workers"],
+                filters: [{
+                  key: "$metadata.service",
+                  operation: "eq",
+                  type: "string",
+                  value: "tegernsee-restaurants-api"
+                }],
+                view: "events"
+              }
+            }')
+
+          RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error \
+            --output "$RESPONSE" \
+            --write-out "%{http_code}" \
+            --request POST \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "$BODY")
+
+          echo "Cloudflare Observability API HTTP status: $STATUS"
+
+          if [[ "$STATUS" != "200" ]]; then
+            jq -r '.errors[]?.message // .messages[]?.message // "No API error details returned."' "$RESPONSE" || true
+            if [[ "$STATUS" == "403" ]]; then
+              echo "::error::The existing Cloudflare token does not have the required Workers Observability permission."
+            elif [[ "$STATUS" == "401" ]]; then
+              echo "::error::The existing Cloudflare token was rejected."
+            else
+              echo "::error::Cloudflare Observability query failed."
+            fi
+            exit 1
+          fi
+
+          jq -r '
+            "Query status: " + (.result.run.status // "unknown"),
+            "Events returned: " + ((.result.events.events // []) | length | tostring),
+            ((.result.events.events // [])[] |
+              [
+                (.timestamp // 0 | tostring),
+                (.["$workers"].eventType // .["$metadata"].eventType // "unknown"),
+                (.["$workers"].outcome // .["$metadata"].outcome // "unknown"),
+                (.source.message // .source // "" | tostring | .[0:500])
+              ] | @tsv
+            )
+          ' "$RESPONSE"
+
+          echo "Cloudflare Observability API access confirmed."
