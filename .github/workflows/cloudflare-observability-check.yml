@@ -46,7 +46,7 @@ jobs:
             jq -r '.errors[]?.message // "No API error details returned."' "$KEYS_RESPONSE" || true
             exit 1
           fi
-          jq -r '"Telemetry fields discovered: " + ((.result // []) | length | tostring), ((.result // [])[]?.key // empty)' "$KEYS_RESPONSE"
+          jq -r '"Telemetry fields discovered: " + ((.result // []) | length | tostring), "Last seen for service field: " + (([.result[]? | select(.key == "$metadata.service")][0].lastSeenAt // 0) | tostring), ((.result // [])[]?.key // empty)' "$KEYS_RESPONSE"
 
 
       - name: Verify the Worker service name exists in telemetry
