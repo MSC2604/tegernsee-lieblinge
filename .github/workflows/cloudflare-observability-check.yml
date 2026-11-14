@@ -100,7 +100,7 @@ jobs:
             '{
               queryId: "restaurant-worker-observability-live-diagnostic",
               timeframe: {from: $from, to: $to},
-              dry: true,
+              dry: false,
               limit: 2000,
               parameters: {
                 datasets: ["cloudflare-workers"],
