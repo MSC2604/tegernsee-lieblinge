@@ -1633,7 +1633,7 @@ console.log("Tavily usage account:", {
               return Array.isArray(value) ? value.filter(item => ["girocard", "debitkarte", "kreditkarte"].includes(item)) : [];
             } catch { return []; }
           })(),
-          zahlungsarten_status: ["red","yellow","green"].includes(String(rowValue(row[17]) || "")) ? String(rowValue(row[17])) : ""
+          zahlungsarten_status: ["confirmed","clarification"].includes(String(rowValue(row[17]) || "")) ? String(rowValue(row[17])) : ""
         })));
       }
 
@@ -2537,7 +2537,7 @@ console.log("Tavily usage account:", {
               textArg(r.ruhetag), textArg(r.betriebsferien_start), textArg(r.betriebsferien_ende),
               textArg(r.notizen), textArg(r.bild), textArg(r.reservierung), textArg(r.externer_eintrag),
               textArg(JSON.stringify(Array.isArray(r.zahlungsarten) ? r.zahlungsarten.filter(item => ["girocard", "debitkarte", "kreditkarte"].includes(item)) : [])),
-              textArg(["red","yellow","green"].includes(body.paymentStatus) ? body.paymentStatus : (["red","yellow","green"].includes(r.zahlungsarten_status) ? r.zahlungsarten_status : ""))
+              textArg(["confirmed","clarification"].includes(body.paymentStatus) ? body.paymentStatus : (["confirmed","clarification"].includes(r.zahlungsarten_status) ? r.zahlungsarten_status : ""))
             ]
           );
 
@@ -2568,7 +2568,7 @@ console.log("Tavily usage account:", {
               textArg(r.ruhetag), textArg(r.betriebsferien_start), textArg(r.betriebsferien_ende),
               textArg(r.notizen), textArg(r.bild), textArg(r.reservierung), textArg(r.externer_eintrag),
               textArg(JSON.stringify(Array.isArray(r.zahlungsarten) ? r.zahlungsarten.filter(item => ["girocard", "debitkarte", "kreditkarte"].includes(item)) : [])),
-              textArg(["red","yellow","green"].includes(body.paymentStatus) ? body.paymentStatus : (["red","yellow","green"].includes(r.zahlungsarten_status) ? r.zahlungsarten_status : "")),
+              textArg(["confirmed","clarification"].includes(body.paymentStatus) ? body.paymentStatus : (["confirmed","clarification"].includes(r.zahlungsarten_status) ? r.zahlungsarten_status : "")),
               integerArg(body.id)
             ]
           );
@@ -2592,14 +2592,14 @@ console.log("Tavily usage account:", {
             ? r.zahlungsarten.filter(item => ["girocard", "debitkarte", "kreditkarte"].includes(item))
             : [];
           const paymentTypesMatch = JSON.stringify([...storedPaymentTypes].sort()) === JSON.stringify([...expectedPaymentTypes].sort());
-          const expectedPaymentStatus = ["red","yellow","green"].includes(body.paymentStatus) ? body.paymentStatus : (["red","yellow","green"].includes(r.zahlungsarten_status) ? r.zahlungsarten_status : "");
+          const expectedPaymentStatus = ["confirmed","clarification"].includes(body.paymentStatus) ? body.paymentStatus : (["confirmed","clarification"].includes(r.zahlungsarten_status) ? r.zahlungsarten_status : "");
           const storedPaymentStatus = String(rowValue(verifiedRows?.[0]?.[2]) || "");
           const paymentStatusMatch = storedPaymentStatus === expectedPaymentStatus;
           if (verifiedRows.length === 0 || storedExternalEntry !== expectedExternalEntry || !paymentTypesMatch || !paymentStatusMatch) {
             const errorMessage = !paymentTypesMatch
               ? "Die Zahlungsarten konnten nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen."
               : !paymentStatusMatch
-                ? "Der Ampelstatus konnte nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen."
+                ? "Der Zahlungsarten-Prüfstatus konnte nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen."
                 : "Der externe Eintrag konnte nicht dauerhaft gespeichert und bestätigt werden. Bitte erneut versuchen.";
             return json({
               error: errorMessage,
