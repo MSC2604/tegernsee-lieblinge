@@ -2349,18 +2349,10 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
 #cards .card .tile-payment{display:grid;gap:8px;min-width:0;margin-top:3px;padding-top:12px;border-top:1px solid #eee9df}
 #cards .card .tile-payment-heading{color:#718075;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
 #cards .card .tile-payment-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
-/* Dezente Mini-Ampel im klassischen rechteckigen Gehäuse (Variante 1) */
-/* Dezente Statuspunkte ohne Gehäuse – passend zum ruhigen Kartenlayout */
-#cards .card .payment-traffic{position:relative;display:inline-flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;flex:0 0 auto;width:auto;height:auto;padding:6px 8px;border:1px solid #dce5da;border-radius:9px;background:#f4f7f1;box-shadow:0 1px 3px rgba(23,53,45,.035)}
-#cards .card .payment-traffic-light{position:relative;display:block;width:9px;height:9px;flex:0 0 9px;border-radius:50%;opacity:.2;border:1px solid rgba(55,70,60,.18);box-shadow:inset 0 1px 1px rgba(255,255,255,.55)}
-#cards .card .payment-traffic-light:before{content:none}
-#cards .card .payment-traffic-light.red{background:#df655d}
-#cards .card .payment-traffic-light.yellow{background:#dfb64f}
-#cards .card .payment-traffic-light.green{background:#55a879}
-#cards .card .payment-traffic-light.active{opacity:1;box-shadow:0 0 0 2px rgba(65,90,72,.08),0 0 5px currentColor,inset 0 1px 1px rgba(255,255,255,.55)}
-#cards .card .payment-traffic-light.red.active{color:#df655d}
-#cards .card .payment-traffic-light.yellow.active{color:#dfb64f}
-#cards .card .payment-traffic-light.green.active{color:#55a879}
+/* Dezente Textkennzeichnung anstelle der Ampel */
+#cards .card .payment-status-label{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;max-width:62%;padding:6px 9px;border:1px solid #dce5da;border-radius:9px;background:#f4f7f1;color:#456251;font-size:10px;font-weight:750;line-height:1.25;text-align:center}
+#cards .card .payment-status-label.confirmed{border-color:#cbded1;background:#edf6ef;color:#315f43}
+#cards .card .payment-status-label.clarification{border-color:#ead9b8;background:#fbf5e9;color:#80602b}
 #cards .card .tile-payment-list{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
 #cards .card .tile-payment-chip{display:inline-flex;align-items:center;min-height:27px;padding:5px 9px;border:1px solid #dce5da;border-radius:999px;background:#f4f7f1;color:#456251;font-size:11px;font-weight:650;line-height:1.2;white-space:normal}
 #cards .card .tile-payment-none{background:#fff5e9;border-color:#ead6b8;color:#80552d;font-weight:750}
@@ -2944,13 +2936,12 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
         <label><input type="checkbox" id="f_payment_kreditkarte"> Kreditkarte (z. B. Visa, Mastercard, American Express)</label>
         <div class="payment-status-editor">
           <strong>Prüfstatus</strong>
-          <small>Optional: Eine Farbe auswählen. Ohne Auswahl wird auf der Restaurant-Kachel keine Ampel angezeigt.</small>
-          <div class="payment-status-options">
-            <label><input type="radio" name="f_payment_status" value="red" onchange="window.selectedPaymentStatus=this.value"> 🔴 Offen</label>
-            <label><input type="radio" name="f_payment_status" value="yellow" onchange="window.selectedPaymentStatus=this.value"> 🟡 Teilweise / Rückfrage</label>
-            <label><input type="radio" name="f_payment_status" value="green" onchange="window.selectedPaymentStatus=this.value"> 🟢 Geprüft</label>
-            <label><input type="radio" name="f_payment_status" value="" onchange="window.selectedPaymentStatus=''"> Keine Ampel</label>
-          </div>
+          <small>Wähle aus, ob die Zahlungsarten offiziell bestätigt sind oder noch geklärt werden.</small>
+          <select id="f_payment_status">
+            <option value="">Keine Auswahl</option>
+            <option value="confirmed">Offiziell bestätigt</option>
+            <option value="clarification">In Bearbeitung/Klärung</option>
+          </select>
         </div>
       </div>
 
@@ -3500,9 +3491,9 @@ function normalizeRestaurant(r){
         ? r.zahlungsarten.filter(type => ["girocard", "debitkarte", "kreditkarte"].includes(type))
         : [],
 
-    // Ampelstatus aus der zentralen API übernehmen und beim Bearbeiten erhalten.
+    // Zahlungsarten-Prüfstatus aus der zentralen API übernehmen.
     zahlungsarten_status:
-      ["red", "yellow", "green"].includes(String(r.zahlungsarten_status || ""))
+      ["confirmed", "clarification"].includes(String(r.zahlungsarten_status || ""))
         ? String(r.zahlungsarten_status)
         : "",
 
@@ -4670,7 +4661,7 @@ function render(){
               <div class="tile-payment" aria-label="Zahlungsmöglichkeiten">
                 <div class="tile-payment-top">
                   <div class="tile-payment-heading">Zahlungsmöglichkeiten</div>
-                  ${["red","yellow","green"].includes(place.zahlungsarten_status) ? `<div class="payment-traffic" role="img" aria-label="Zahlungsarten-Prüfstatus: ${{red:"offen",yellow:"teilweise geprüft oder Rückfrage",green:"geprüft"}[place.zahlungsarten_status]}"><span class="payment-traffic-light red ${place.zahlungsarten_status==="red"?"active":""}"></span><span class="payment-traffic-light yellow ${place.zahlungsarten_status==="yellow"?"active":""}"></span><span class="payment-traffic-light green ${place.zahlungsarten_status==="green"?"active":""}"></span></div>` : ""}
+                  ${place.zahlungsarten_status === "confirmed" ? '<span class="payment-status-label confirmed">Offiziell bestätigt</span>' : place.zahlungsarten_status === "clarification" ? '<span class="payment-status-label clarification">In Bearbeitung/Klärung</span>' : ""}
                 </div>
                 <div class="tile-payment-list" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;min-width:0;">
                   ${(Array.isArray(place.zahlungsarten) ? place.zahlungsarten : []).filter(type => ["girocard","debitkarte","kreditkarte"].includes(type)).length === 0
@@ -5871,10 +5862,10 @@ function editPlace(){
   document.getElementById("f_payment_girocard").checked = savedPaymentTypes.includes("girocard");
   document.getElementById("f_payment_debitkarte").checked = savedPaymentTypes.includes("debitkarte");
   document.getElementById("f_payment_kreditkarte").checked = savedPaymentTypes.includes("kreditkarte");
-  document.querySelectorAll('input[name="f_payment_status"]').forEach(input => {
-    input.checked = input.value === (["red","yellow","green"].includes(currentPlace.zahlungsarten_status) ? currentPlace.zahlungsarten_status : "");
-    window.selectedPaymentStatus = ["red","yellow","green"].includes(currentPlace.zahlungsarten_status) ? currentPlace.zahlungsarten_status : "";
-  });
+  document.getElementById("f_payment_status").value =
+    ["confirmed","clarification"].includes(currentPlace.zahlungsarten_status)
+      ? currentPlace.zahlungsarten_status
+      : "";
 
   document.getElementById(
     "f_notizen"
@@ -5913,8 +5904,8 @@ function editPlace(){
 function clearForm(){
 
   cardEditorState = {restaurantId:null,status:"idle"};
-  document.querySelectorAll('input[name="f_payment_status"]').forEach(input => { input.checked = input.value === ""; });
-  window.selectedPaymentStatus = "";
+  const paymentStatusSelect = document.getElementById("f_payment_status");
+  if(paymentStatusSelect) paymentStatusSelect.value = "";
   ["f_speisekarte_pdf","f_getraenkekarte_pdf","f_dessertkarte_pdf","f_brotzeitkarte_pdf","f_saisonkarte_pdf"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
   ["f_speisekarte_pdf_status","f_getraenkekarte_pdf_status","f_dessertkarte_pdf_status","f_brotzeitkarte_pdf_status","f_saisonkarte_pdf_status"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent="Keine neue PDF ausgewählt.";});
   ["f_speisekarte_url","f_getraenkekarte_url"].forEach(id => {
@@ -6087,7 +6078,9 @@ function getFormData(){
       ["f_payment_debitkarte","debitkarte"],
       ["f_payment_kreditkarte","kreditkarte"]
     ].filter(([id]) => document.getElementById(id).checked).map(([,value]) => value),
-    zahlungsarten_status: (() => { const selected = document.querySelector('input[name="f_payment_status"]:checked'); return selected && ["red","yellow","green"].includes(selected.value) ? selected.value : ""; })(),
+    zahlungsarten_status: ["confirmed","clarification"].includes(document.getElementById("f_payment_status").value)
+      ? document.getElementById("f_payment_status").value
+      : "",
 
     notizen:
       document.getElementById(
@@ -6273,11 +6266,9 @@ async function savePlace(){
     ...Object.fromEntries(["speisekarte","getraenkekarte","dessertkarte","brotzeitkarte","saisonkarte"].map(kind => [kind, pendingCardPdfFiles[kind] || document.getElementById("f_"+kind+"_pdf")?.files?.[0] || null]))
   };
   const restaurant = getFormData();
-  // Den tatsächlich markierten Radio-Button direkt vor dem Speichern auslesen.
-  // Ein leerer Wert ist nur dann erlaubt, wenn „Keine Ampel“ ausgewählt ist.
-  const selectedPaymentRadio = document.querySelector('input[name="f_payment_status"]:checked');
-  const selectedPaymentRadioValue = selectedPaymentRadio ? selectedPaymentRadio.value : "";
-  restaurant.zahlungsarten_status = ["red","yellow","green"].includes(selectedPaymentRadioValue) ? selectedPaymentRadioValue : "";
+  // Den ausgewählten Prüfstatus unmittelbar vor dem Speichern übernehmen.
+  const selectedPaymentStatus = document.getElementById("f_payment_status").value;
+  restaurant.zahlungsarten_status = ["confirmed","clarification"].includes(selectedPaymentStatus) ? selectedPaymentStatus : "";
 
   if(restaurant.ort === "Anderer Ort"){
     const otherOrt = prompt("Bitte den Ortsnamen eingeben:");
