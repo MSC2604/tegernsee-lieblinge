@@ -9,3 +9,8 @@ BREVO_FROM_EMAIL = "msc4021@arcor.de"
 
 [triggers]
 crons = ["0 5 * * *"]
+
+# Cloudflare Workers Logs: dauerhaft mit dem Dashboard synchronisieren
+[observability.logs]
+enabled = true
+invocation_logs = true
