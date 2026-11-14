@@ -27,6 +27,28 @@ jobs:
           echo "The request only reads the payment research status; it does not change restaurant data."
           sleep 15
 
+      - name: Discover available telemetry fields
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYS_RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error --output "$KEYS_RESPONSE" --write-out "%{http_code}" \
+            --request POST \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/keys" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{"datasets":["cloudflare-workers"]}')
+          echo "Telemetry keys API HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]]; then
+            jq -r '.errors[]?.message // "No API error details returned."' "$KEYS_RESPONSE" || true
+            exit 1
+          fi
+          jq -r '"Telemetry fields discovered: " + ((.result // []) | length | tostring), ((.result // [])[]?.key // empty)' "$KEYS_RESPONSE"
+
+
       - name: Query recent Worker telemetry through the existing Cloudflare token
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
