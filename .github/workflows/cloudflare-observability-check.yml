@@ -93,7 +93,7 @@ jobs:
           fi
 
           NOW_MS=$(date +%s000)
-          FROM_MS=$((NOW_MS - 1800000))
+          FROM_MS=$((NOW_MS - 86400000))
           BODY=$(jq -n \
             --argjson from "$FROM_MS" \
             --argjson to "$NOW_MS" \
@@ -127,7 +127,7 @@ jobs:
 
           jq -r '
             "Query status: " + (.result.run.status // "unknown"),
-            "All events returned in the last 30 minutes: " + ((.result.events.events // []) | length | tostring),
+            "All events returned in the last 24 hours: " + ((.result.events.events // []) | length | tostring),
             "Total matching event count: " + ((.result.events.count // 0) | tostring),
             "Events attributed to tegernsee-restaurants-api: " +
               (([.result.events.events[]? |
