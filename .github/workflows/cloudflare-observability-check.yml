@@ -152,8 +152,15 @@ jobs:
             dry: false,
             parameters: {
               datasets: ["cloudflare-workers"],
+              filters: [{
+                key: "$metadata.service",
+                operation: "eq",
+                type: "string",
+                value: "tegernsee-restaurants-api"
+              }],
               view: "calculations",
-              calculations: [{operator: "count", alias: "events_total"}]
+              calculations: [{operator: "count", alias: "events_total"}],
+              groupBys: [{type: "string", value: "$workers.eventType"}]
             }
           }')
           COUNT_RESPONSE=$(mktemp)
@@ -170,6 +177,7 @@ jobs:
           fi
           jq -r '"Aggregate calculations returned: " + ((.result.calculations // []) | length | tostring),
             ((.result.calculations // [])[]? | "Calculation: " + (.calculation // "unknown"),
-              "Aggregate values: " + ((.aggregates // []) | map(.value // 0 | tostring) | join(", ")))' "$COUNT_RESPONSE"
+              ((.aggregates // [])[]? | "Event type groups: " + ((.groups // []) | map(.value // "unknown" | tostring) | join(", ")) +
+                "; count: " + (.value // 0 | tostring)))' "$COUNT_RESPONSE"
 
           echo "Cloudflare Observability API access confirmed."
