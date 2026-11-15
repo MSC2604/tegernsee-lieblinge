@@ -6,10 +6,10 @@ compatibility_date = "2026-10-16"
 BREVO_FROM_EMAIL = "msc4021@arcor.de"
 MONITOR_NOTIFICATION_EMAIL = "msc4021@arcor.de"
 
-# Trigger fresh deployment
-
+# Cloudflare Cron uses UTC: 11:00 UTC = 12:00 German winter time.
+# During German summer time this runs at 13:00 local time.
 [triggers]
-crons = ["0 5 * * *"]
+crons = ["0 11 * * *"]
 
 # Cloudflare Workers Observability: persist logs and invocation events.
 [observability]
