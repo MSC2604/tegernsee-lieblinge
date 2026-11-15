@@ -2073,6 +2073,16 @@ console.log("Tavily usage account:", {
             UNIQUE (restaurant_id, field_name, old_value, new_value)
           )`);
           await turso("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
+          await turso(`CREATE TABLE IF NOT EXISTS restaurant_website_monitor_state (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            baseline_complete_at TEXT NOT NULL DEFAULT '',
+            baseline_started_at TEXT NOT NULL DEFAULT '',
+            baseline_finished_at TEXT NOT NULL DEFAULT ''
+          )`);
+          await turso("INSERT OR IGNORE INTO restaurant_website_monitor_state (id, baseline_complete_at) VALUES (1, '')");
+          const baselineStateResult = await turso("SELECT baseline_complete_at FROM restaurant_website_monitor_state WHERE id=1", [], true);
+          const baselineCompleteAt = String(rowValue(baselineStateResult?.results?.[0]?.response?.result?.rows?.[0]?.[0]) || "");
+          const baselineOnly = !baselineCompleteAt;
           const source = await turso(
             "SELECT id, name, website, externer_eintrag FROM restaurants ORDER BY name COLLATE NOCASE",
             [], true
@@ -2086,20 +2096,15 @@ console.log("Tavily usage account:", {
           const restaurants = allRestaurants.filter(item => item.website);
           const externalEntries = allRestaurants.filter(item => item.externer_eintrag);
           const withoutWebsite = allRestaurants.filter(item => !item.website).map(item => item.name);
-          const websiteCoverage = await turso(`SELECT COUNT(DISTINCT r.id) FROM restaurants r
-            INNER JOIN restaurant_site_snapshots s
-              ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT) AND s.page_url=TRIM(r.website)
-            WHERE TRIM(COALESCE(r.website, '')) <> ''`, [], true);
-          const coveredOfficialWebsites = Number(rowValue(websiteCoverage?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
-          const baselineOnly = coveredOfficialWebsites < restaurants.length;
           const monitorQueue = [
             ...restaurants.map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
             ...externalEntries.map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
           ];
           const initialReport = {
-            phase: "running", completed: 0, total: monitorQueue.length, activeRestaurants: [],
+            phase: "running", startedAt, completed: 0, total: monitorQueue.length, activeRestaurants: [],
             restaurants: 0, externalEntries: 0, withoutWebsite, pages: 0, baselines: 0,
-            homepageSnapshots: 0, baselineOnly, proposals: 0, errors: []
+            homepageSnapshots: 0, baselineOnly, baselineComplete: !!baselineCompleteAt,
+            officialWebsiteCount: restaurants.length, proposals: 0, errors: []
           };
           await turso(`INSERT INTO restaurant_website_monitor_runs
             (id, run_id, status, started_at, finished_at, report_json, queue_json, cursor, batch_lock, batch_lock_at)
@@ -2174,7 +2179,8 @@ console.log("Tavily usage account:", {
             return json({ success: true, finished: true });
           }
           cumulative = {
-            phase: "running", completed: claimedCursor, total: claimedQueue.length,
+            phase: "running", startedAt: String(cumulative.startedAt || ""),
+            completed: claimedCursor, total: claimedQueue.length,
             activeRestaurants: [String(restaurant.name || "Restaurant")],
             restaurants: Number(cumulative.restaurants) || 0,
             externalEntries: Number(cumulative.externalEntries) || 0,
@@ -2182,6 +2188,8 @@ console.log("Tavily usage account:", {
             baselines: Number(cumulative.baselines) || 0,
             homepageSnapshots: Number(cumulative.homepageSnapshots) || 0,
             baselineOnly: cumulative.baselineOnly === true,
+            baselineComplete: cumulative.baselineComplete === true,
+            officialWebsiteCount: Number(cumulative.officialWebsiteCount) || 0,
             proposals: Number(cumulative.proposals) || 0,
             withoutWebsite: Array.isArray(cumulative.withoutWebsite) ? cumulative.withoutWebsite : [],
             errors: Array.isArray(cumulative.errors) ? cumulative.errors : []
@@ -2202,13 +2210,30 @@ console.log("Tavily usage account:", {
             cumulative.completed = claimedCursor + 1;
             cumulative.activeRestaurants = [];
             const finished = cumulative.completed >= claimedQueue.length;
+            const finishedAt = finished ? new Date().toISOString() : "";
             cumulative.phase = finished ? "completed" : "running";
             await turso(
               "UPDATE restaurant_website_monitor_runs SET cursor=?, report_json=?, status=?, finished_at=?, batch_lock='', batch_lock_at='' WHERE id=1 AND run_id=? AND batch_lock=?",
               [integerArg(cumulative.completed), textArg(JSON.stringify(cumulative)),
                textArg(finished ? "completed" : "running"),
-               textArg(finished ? new Date().toISOString() : ""), textArg(runId), textArg(lockToken)]
+               textArg(finishedAt), textArg(runId), textArg(lockToken)]
             );
+            if (finished && cumulative.baselineOnly) {
+              const baselineCoverage = await turso(`SELECT COUNT(DISTINCT r.id) FROM restaurants r
+                INNER JOIN restaurant_site_snapshots s
+                  ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT)
+                  AND s.page_url=TRIM(r.website) AND s.checked_at >= ? AND s.checked_at <= ?
+                WHERE TRIM(COALESCE(r.website, '')) <> ''`,
+                [textArg(cumulative.startedAt), textArg(finishedAt)], true);
+              const coveredInRun = Number(rowValue(baselineCoverage?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
+              cumulative.baselineComplete = coveredInRun >= cumulative.officialWebsiteCount;
+              if (cumulative.baselineComplete) {
+                await turso(`UPDATE restaurant_website_monitor_state
+                  SET baseline_complete_at=?, baseline_started_at=?, baseline_finished_at=?
+                  WHERE id=1 AND baseline_complete_at=''`,
+                  [textArg(finishedAt), textArg(cumulative.startedAt), textArg(finishedAt)]);
+              }
+            }
             let emailReport = null;
             if (finished) {
               try {
