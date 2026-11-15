@@ -129,17 +129,18 @@ export async function runRestaurantWebsiteMonitor({
   restaurants,
   fetchImpl = fetch,
   now = () => new Date().toISOString(),
-  onProgress
+  onProgress,
+  baselineOnly = false
 }) {
   if (typeof db !== "function") throw new Error("Datenbankfunktion fehlt.");
   const list = Array.isArray(restaurants) ? restaurants : [];
-  const report = { restaurants: 0, externalEntries: 0, pages: 0, baselines: 0, proposals: 0, errors: [] };
+  const report = { restaurants: 0, externalEntries: 0, pages: 0, baselines: 0, homepageSnapshots: 0, proposals: 0, baselineOnly: baselineOnly === true, errors: [] };
   let completed = 0;
   const active = new Set();
   let progressQueue = Promise.resolve();
   const publishProgress = () => {
     if (typeof onProgress !== "function") return progressQueue;
-    const snapshot = { phase: "running", completed, total: list.length, activeRestaurants: [...active], restaurants: report.restaurants, pages: report.pages, baselines: report.baselines, proposals: report.proposals, errors: report.errors.length };
+    const snapshot = { phase: "running", completed, total: list.length, activeRestaurants: [...active], restaurants: report.restaurants, pages: report.pages, baselines: report.baselines, homepageSnapshots: report.homepageSnapshots, proposals: report.proposals, baselineOnly: report.baselineOnly, errors: report.errors.length };
     progressQueue = progressQueue.then(() => onProgress(snapshot)).catch(error => {
       console.error("Website-Monitor-Fortschritt konnte nicht gespeichert werden:", String(error?.message || error));
     });
@@ -245,7 +246,7 @@ export async function runRestaurantWebsiteMonitor({
       const stamp = now();
       if (!oldRow) {
         report.baselines++;
-      } else if (sourceType === "official" && oldHash && oldHash !== hash) {
+      } else if (!baselineOnly && sourceType === "official" && oldHash && oldHash !== hash) {
         const changes = findRestaurantChanges(oldData, found);
         for (const change of changes) {
           pendingWrites.push({
@@ -265,6 +266,7 @@ export async function runRestaurantWebsiteMonitor({
         for (const write of pendingWrites.splice(0)) await db(write.sql, write.args);
       }
       report.pages++;
+      if (pageUrl === root.href) report.homepageSnapshots++;
     };
     // Homepage first to discover subpages. Fetch up to three subpages in parallel,
     // but process their snapshots/proposals sequentially to avoid concurrent DB writes.
