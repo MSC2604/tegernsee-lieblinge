@@ -183,11 +183,25 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
       ...allSources.filter(item => item.website).map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
       ...allSources.filter(item => item.externer_eintrag).map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
     ];
-    const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources });
+    const officialWebsiteCount = allSources.filter(item => item.website).length;
+    const coverageSql = `SELECT COUNT(DISTINCT r.id) FROM restaurants r
+      INNER JOIN restaurant_site_snapshots s
+        ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT) AND s.page_url=TRIM(r.website)
+      WHERE TRIM(COALESCE(r.website, '')) <> ''`;
+    const coverageBefore = await db(coverageSql, [], true);
+    const coveredBefore = Number(cell(coverageBefore?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
+    // Solange auch nur eine konfigurierte offizielle Website keinen Homepage-Snapshot
+    // besitzt, wird ausschließlich die Baseline aufgebaut; es entstehen keine Vorschläge.
+    const baselineOnly = coveredBefore < officialWebsiteCount;
+    const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources, baselineOnly });
+    const coverageAfter = await db(coverageSql, [], true);
+    const officialHomepageSnapshots = Number(cell(coverageAfter?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
+    const baselineComplete = officialHomepageSnapshots >= officialWebsiteCount;
     console.log("Website-Prüfung:", JSON.stringify({
       restaurants:monitorReport.restaurants, externalEntries:monitorReport.externalEntries,
       pages:monitorReport.pages, baselines:monitorReport.baselines,
-      proposals:monitorReport.proposals, errors:monitorReport.errors.length
+      proposals:monitorReport.proposals, errors:monitorReport.errors.length,
+      baselineOnly, officialWebsiteCount, officialHomepageSnapshots, baselineComplete
     }));
     for (const issue of monitorReport.errors.slice(0, 30)) {
       console.warn("Website-Prüfung nicht möglich:", JSON.stringify(issue));
@@ -222,7 +236,8 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
       pagesChecked: monitorReport.pages,
       cardsChecked: entries.length,
       changes: monitorReport.proposals,
-      errors: dailyErrors.length
+      errors: dailyErrors.length,
+      baselineOnly, officialWebsiteCount, officialHomepageSnapshots, baselineComplete
     };
     if (emailReport?.sent !== true) {
       const reason = String(emailReport?.reason || "Brevo hat den täglichen Prüfbericht nicht bestätigt.").slice(0, 500);
@@ -2055,13 +2070,20 @@ console.log("Tavily usage account:", {
           const restaurants = allRestaurants.filter(item => item.website);
           const externalEntries = allRestaurants.filter(item => item.externer_eintrag);
           const withoutWebsite = allRestaurants.filter(item => !item.website).map(item => item.name);
+          const websiteCoverage = await turso(`SELECT COUNT(DISTINCT r.id) FROM restaurants r
+            INNER JOIN restaurant_site_snapshots s
+              ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT) AND s.page_url=TRIM(r.website)
+            WHERE TRIM(COALESCE(r.website, '')) <> ''`, [], true);
+          const coveredOfficialWebsites = Number(rowValue(websiteCoverage?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
+          const baselineOnly = coveredOfficialWebsites < restaurants.length;
           const monitorQueue = [
             ...restaurants.map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
             ...externalEntries.map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
           ];
           const initialReport = {
             phase: "running", completed: 0, total: monitorQueue.length, activeRestaurants: [],
-            restaurants: 0, externalEntries: 0, withoutWebsite, pages: 0, baselines: 0, proposals: 0, errors: []
+            restaurants: 0, externalEntries: 0, withoutWebsite, pages: 0, baselines: 0,
+            homepageSnapshots: 0, baselineOnly, proposals: 0, errors: []
           };
           await turso(`INSERT INTO restaurant_website_monitor_runs
             (id, run_id, status, started_at, finished_at, report_json, queue_json, cursor, batch_lock, batch_lock_at)
@@ -2141,18 +2163,24 @@ console.log("Tavily usage account:", {
             restaurants: Number(cumulative.restaurants) || 0,
             externalEntries: Number(cumulative.externalEntries) || 0,
             pages: Number(cumulative.pages) || 0,
-            baselines: Number(cumulative.baselines) || 0, proposals: Number(cumulative.proposals) || 0,
+            baselines: Number(cumulative.baselines) || 0,
+            homepageSnapshots: Number(cumulative.homepageSnapshots) || 0,
+            baselineOnly: cumulative.baselineOnly === true,
+            proposals: Number(cumulative.proposals) || 0,
             withoutWebsite: Array.isArray(cumulative.withoutWebsite) ? cumulative.withoutWebsite : [],
             errors: Array.isArray(cumulative.errors) ? cumulative.errors : []
           };
           await turso("UPDATE restaurant_website_monitor_runs SET report_json=? WHERE id=1 AND run_id=? AND batch_lock=?",
             [textArg(JSON.stringify(cumulative)), textArg(runId), textArg(lockToken)]);
           try {
-            const result = await runRestaurantWebsiteMonitor({ db: turso, restaurants: [restaurant] });
+            const result = await runRestaurantWebsiteMonitor({
+              db: turso, restaurants: [restaurant], baselineOnly: cumulative.baselineOnly
+            });
             cumulative.restaurants += Number(result.restaurants) || 0;
             cumulative.externalEntries += Number(result.externalEntries) || 0;
             cumulative.pages += Number(result.pages) || 0;
             cumulative.baselines += Number(result.baselines) || 0;
+            cumulative.homepageSnapshots += Number(result.homepageSnapshots) || 0;
             cumulative.proposals += Number(result.proposals) || 0;
             if (Array.isArray(result.errors)) cumulative.errors.push(...result.errors);
             cumulative.completed = claimedCursor + 1;
