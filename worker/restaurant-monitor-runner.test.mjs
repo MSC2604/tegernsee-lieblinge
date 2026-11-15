@@ -69,6 +69,19 @@ assert.equal(changed.proposals, 1);
 assert.ok([...dbState.proposals.values()].some(row => row[1] === "telefon" && row[3] === "08022 222222"));
 assert.ok(![...dbState.proposals.values()].some(row => row[1] === "website_text"));
 
+// A first baseline must overwrite any partial/old snapshot without creating proposals.
+const baselineOnlyState = makeDb();
+contactHtml = '<html><body><h1>Kontakt</h1><p>Telefon: 08022 111111</p><p>E-Mail: info@example.de</p></body></html>';
+await runRestaurantWebsiteMonitor({ db: baselineOnlyState.db, restaurants, fetchImpl });
+contactHtml = '<html><body><h1>Kontakt</h1><p>Telefon: 08022 444444</p><p>E-Mail: info@example.de</p><p>Neue Telefonnummer</p></body></html>';
+const protectedBaseline = await runRestaurantWebsiteMonitor({
+  db: baselineOnlyState.db, restaurants, fetchImpl, baselineOnly: true
+});
+assert.equal(protectedBaseline.baselineOnly, true);
+assert.equal(protectedBaseline.proposals, 0);
+assert.equal(protectedBaseline.homepageSnapshots, 1);
+assert.equal(baselineOnlyState.proposals.size, 0);
+
 contactHtml = '<html><body><script type="application/ld+json">{"@type":"Restaurant","telephone":"08022 333333"}</script><h1>Kontakt</h1><p>Telefon: 08022 222222</p><p>E-Mail: info@example.de</p><p>Neue Telefonnummer ab sofort</p></body></html>';
 const structuredOnly = await runRestaurantWebsiteMonitor({ db: dbState.db, restaurants, fetchImpl });
 assert.ok(structuredOnly.proposals >= 1);
