@@ -103,7 +103,12 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
         current = new URL(location, url.href).href;
         continue;
       }
-      if (!response.ok) throw new Error("Website antwortet mit HTTP " + response.status + ".");
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error("Automatischer Abruf blockiert (HTTP 403). Die Website kann für Besucher trotzdem erreichbar sein; erneuter Versuch beim nächsten Prüflauf.");
+        }
+        throw new Error("Website antwortet mit HTTP " + response.status + ".");
+      }
       const type = (response.headers.get("Content-Type") || "").toLowerCase();
       // Some hosts mislabel HTML as text/plain or application/octet-stream.
       // Read it with the same strict size cap and verify the actual document
