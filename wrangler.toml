@@ -4,6 +4,7 @@ compatibility_date = "2026-10-16"
 
 [vars]
 BREVO_FROM_EMAIL = "msc4021@arcor.de"
+MONITOR_NOTIFICATION_EMAIL = "msc4021@arcor.de"
 
 # Trigger fresh deployment
 
