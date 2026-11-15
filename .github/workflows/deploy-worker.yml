@@ -25,13 +25,19 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Verify Brevo sender configuration
+      - name: Verify Brevo sender and recipient configuration
+        shell: bash
         run: |
+          set -euo pipefail
           if ! grep -Eq '^BREVO_FROM_EMAIL[[:space:]]*=[[:space:]]*"[^"]+@[^"]+"$' wrangler.toml; then
             echo "::error::BREVO_FROM_EMAIL fehlt oder ist ungueltig in wrangler.toml. Deployment wird abgebrochen."
             exit 1
           fi
-          echo "BREVO_FROM_EMAIL ist in wrangler.toml vorhanden."
+          if ! grep -Eq '^MONITOR_NOTIFICATION_EMAIL[[:space:]]*=[[:space:]]*"[^"]+@[^"]+"$' wrangler.toml; then
+            echo "::error::MONITOR_NOTIFICATION_EMAIL fehlt oder ist ungueltig in wrangler.toml. Deployment wird abgebrochen."
+            exit 1
+          fi
+          echo "Brevo-Absender und Empfaenger sind explizit konfiguriert."
 
       - name: Deploy Worker to Cloudflare
         env:
