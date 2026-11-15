@@ -16,6 +16,33 @@ jobs:
   check-observability:
     runs-on: ubuntu-latest
     steps:
+      - name: Read the actual Cloudflare Cron schedule (read-only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${CLOUDFLARE_API_TOKEN:-}" || -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
+            echo "::error::Cloudflare API token or account ID is missing in GitHub Actions secrets."
+            exit 1
+          fi
+          RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" \\
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/tegernsee-restaurants-api/schedules" \\
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          echo "Cloudflare Cron schedules API HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]]; then
+            jq -r '.errors[]?.message // "No API error details returned."' "$RESPONSE" || true
+            exit 1
+          fi
+          echo "Cron schedule(s) actually stored in Cloudflare:"
+          jq -r '.result.schedules[]?.cron // empty' "$RESPONSE"
+          if ! jq -e '.result.schedules | length == 1 and .[0].cron == "0 11 * * *"' "$RESPONSE" >/dev/null; then
+            echo "::error::Cloudflare Cron schedule differs from the desired daily schedule 0 11 * * *."
+            exit 1
+          fi
+          echo "Verified: exactly one daily Cron trigger is configured."
       - name: Create a harmless Worker request to test log ingestion
         shell: bash
         run: |
