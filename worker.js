@@ -216,16 +216,22 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
       emailReport = { sent: false, reason: String(error?.message || error).slice(0, 500) };
       console.error("Restaurant-Prüfbericht fehlgeschlagen:", emailReport.reason);
     }
+    const scanSummary = {
+      restaurantsChecked: monitorReport.restaurants,
+      externalEntriesChecked: monitorReport.externalEntries,
+      pagesChecked: monitorReport.pages,
+      cardsChecked: entries.length,
+      changes: monitorReport.proposals,
+      errors: dailyErrors.length
+    };
+    if (emailReport?.sent !== true) {
+      const reason = String(emailReport?.reason || "Brevo hat den täglichen Prüfbericht nicht bestätigt.").slice(0, 500);
+      console.error("[CRON] Prüfung ausgeführt, aber E-Mail nicht versendet:", reason);
+      return { completed: false, scanCompleted: true, summary: scanSummary, email: emailReport, error: reason };
+    }
     return {
       completed: true,
-      summary: {
-        restaurantsChecked: monitorReport.restaurants,
-        externalEntriesChecked: monitorReport.externalEntries,
-        pagesChecked: monitorReport.pages,
-        cardsChecked: entries.length,
-        changes: monitorReport.proposals,
-        errors: dailyErrors.length
-      },
+      summary: scanSummary,
       email: emailReport
     };
   }
@@ -2645,6 +2651,9 @@ console.log("Tavily usage account:", {
     }));
     try {
       const result = await runScheduledRestaurantMonitoring(env, ctx);
+      if (result?.completed !== true) {
+        throw new Error(result?.error || "Restaurant-Prüfung oder E-Mail-Versand wurde nicht vollständig bestätigt.");
+      }
       console.log("[CRON] Restaurant-Monitor abgeschlossen:", JSON.stringify({
         finishedAt: new Date().toISOString(),
         result
