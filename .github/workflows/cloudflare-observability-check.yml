@@ -28,9 +28,7 @@ jobs:
             exit 1
           fi
           RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" \\
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/tegernsee-restaurants-api/schedules" \\
-            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/tegernsee-restaurants-api/schedules" --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
           echo "Cloudflare Cron schedules API HTTP status: $STATUS"
           if [[ "$STATUS" != "200" ]]; then
             jq -r '.errors[]?.message // "No API error details returned."' "$RESPONSE" || true
