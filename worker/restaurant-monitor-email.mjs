@@ -93,20 +93,35 @@ export async function sendRestaurantWebsiteDigest({
     ${cardChanges.length?`<h3>Änderungen an Speise- und Getränkekarten${summary.cardsChecked == null ? " (separate Kartenprüfung)" : ""}</h3><ul>${cardChanges.map(item=>`<li><strong>${escapeHtml(item.name)}</strong> – ${escapeHtml(cardName(item.kind))}: <a href="${escapeHtml(item.url)}">Quelle öffnen</a></li>`).join("")}</ul>`:""}
     ${errors.length?`<h3>Prüfprobleme</h3><ul>${errors.map(item=>`<li><strong>${escapeHtml(item.name||"Restaurant")}</strong>: ${escapeHtml(item.detail||"Prüfung nicht möglich.")} ${item.url?`<a href="${escapeHtml(item.url)}">Quelle</a>`:""}</li>`).join("")}</ul>`:""}
     <p>Öffne die App und gehe im Menü zu „Änderungen auf Restaurant-Webseiten“.</p>`;
-  const response = await fetchImpl("https://api.brevo.com/v3/smtp/email", {
-    method:"POST",
-    headers:{"api-key":env.BREVO_API_KEY,"Content-Type":"application/json","Accept":"application/json"},
-    body:JSON.stringify({
-      sender:{email:env.BREVO_FROM_EMAIL,name:env.BREVO_FROM_NAME||"Meine Lieblings-Restaurants am Tegernsee"},
-      to:[{email:notificationEmail}],
-      subject:totalChanges
-        ? "Täglicher Restaurant-Prüfbericht – "+totalChanges+" Änderung(en)"
-        : errors.length ? "Täglicher Restaurant-Prüfbericht – keine Änderungen, Prüfprobleme"
-        : "Täglicher Restaurant-Prüfbericht – keine Änderungen",
-      textContent:textBody,htmlContent:htmlBody
-    })
-  });
-  if(!response.ok) throw new Error("Brevo hat den E-Mail-Versand abgelehnt (HTTP "+response.status+"): "+(await response.text()).slice(0,300));
+  const payload = {
+    sender:{email:env.BREVO_FROM_EMAIL,name:env.BREVO_FROM_NAME||"Meine Lieblings-Restaurants am Tegernsee"},
+    to:[{email:notificationEmail}],
+    subject:totalChanges
+      ? "Täglicher Restaurant-Prüfbericht – "+totalChanges+" Änderung(en)"
+      : errors.length ? "Täglicher Restaurant-Prüfbericht – keine Änderungen, Prüfprobleme"
+      : "Täglicher Restaurant-Prüfbericht – keine Änderungen",
+    textContent:textBody,htmlContent:htmlBody
+  };
+  let response, responseText = "";
+  // Nur eindeutig abgelehnte, vorübergehende HTTP-Fehler erneut versuchen.
+  // Bei Netzwerkabbrüchen wird nicht blind wiederholt, um Doppel-E-Mails zu vermeiden.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    response = await fetchImpl("https://api.brevo.com/v3/smtp/email", {
+      method:"POST",
+      headers:{"api-key":env.BREVO_API_KEY,"Content-Type":"application/json","Accept":"application/json"},
+      body:JSON.stringify(payload)
+    });
+    if (response.ok) break;
+    responseText = (await response.text()).slice(0,300);
+    const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+    if (!retryable || attempt === 3) {
+      throw new Error("Brevo hat den E-Mail-Versand abgelehnt (HTTP "+response.status+"): "+responseText);
+    }
+    await new Promise(resolve => setTimeout(resolve, attempt * 750));
+  }
+  if (!response?.ok) {
+    throw new Error("Brevo hat den E-Mail-Versand nach drei Versuchen nicht bestätigt: "+responseText);
+  }
   const stamp=now();
   for(const item of meaningfulProposals) await db("UPDATE restaurant_change_proposals SET notified_at=? WHERE id=? AND notified_at=''",[arg(stamp),arg(item.id)]);
   for(const item of cardChanges) await db("UPDATE restaurant_card_checks SET notified_at=? WHERE restaurant_id=? AND kind=? AND notified_at=''",[arg(stamp),arg(item.restaurantId),arg(item.kind)]);
