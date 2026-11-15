@@ -170,6 +170,16 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
       UNIQUE (restaurant_id, field_name, old_value, new_value)
     )`);
     await db("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
+    await db(`CREATE TABLE IF NOT EXISTS restaurant_website_monitor_state (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      baseline_complete_at TEXT NOT NULL DEFAULT '',
+      baseline_started_at TEXT NOT NULL DEFAULT '',
+      baseline_finished_at TEXT NOT NULL DEFAULT ''
+    )`);
+    await db("INSERT OR IGNORE INTO restaurant_website_monitor_state (id, baseline_complete_at) VALUES (1, '')");
+    const baselineStateResult = await db("SELECT baseline_complete_at FROM restaurant_website_monitor_state WHERE id=1", [], true);
+    const baselineCompleteAt = String(cell(baselineStateResult?.results?.[0]?.response?.result?.rows?.[0]?.[0]) || "");
+    const baselineOnly = !baselineCompleteAt;
     const restaurantResult = await db(
       "SELECT id, name, website, externer_eintrag FROM restaurants WHERE (website IS NOT NULL AND TRIM(website) <> '') OR (externer_eintrag IS NOT NULL AND TRIM(externer_eintrag) <> '')",
       [], true
@@ -183,25 +193,30 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
       ...allSources.filter(item => item.website).map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
       ...allSources.filter(item => item.externer_eintrag).map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
     ];
-    const officialWebsiteCount = allSources.filter(item => item.website).length;
-    const coverageSql = `SELECT COUNT(DISTINCT r.id) FROM restaurants r
-      INNER JOIN restaurant_site_snapshots s
-        ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT) AND s.page_url=TRIM(r.website)
-      WHERE TRIM(COALESCE(r.website, '')) <> ''`;
-    const coverageBefore = await db(coverageSql, [], true);
-    const coveredBefore = Number(cell(coverageBefore?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
-    // Solange auch nur eine konfigurierte offizielle Website keinen Homepage-Snapshot
-    // besitzt, wird ausschließlich die Baseline aufgebaut; es entstehen keine Vorschläge.
-    const baselineOnly = coveredBefore < officialWebsiteCount;
+    const officialWebsiteCount = allSources.filter(item => String(item.website || "").trim()).length;
+    const monitorStartedAt = new Date().toISOString();
     const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources, baselineOnly });
-    const coverageAfter = await db(coverageSql, [], true);
+    const monitorFinishedAt = new Date().toISOString();
+    const runCoverageSql = `SELECT COUNT(DISTINCT r.id) FROM restaurants r
+      INNER JOIN restaurant_site_snapshots s
+        ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT)
+        AND s.page_url=TRIM(r.website) AND s.checked_at >= ? AND s.checked_at <= ?
+      WHERE TRIM(COALESCE(r.website, '')) <> ''`;
+    const coverageAfter = await db(runCoverageSql, [arg(monitorStartedAt), arg(monitorFinishedAt)], true);
     const officialHomepageSnapshots = Number(cell(coverageAfter?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
-    const baselineComplete = officialHomepageSnapshots >= officialWebsiteCount;
+    const baselineComplete = !!baselineCompleteAt || officialHomepageSnapshots >= officialWebsiteCount;
+    if (baselineOnly && baselineComplete) {
+      await db(`UPDATE restaurant_website_monitor_state
+        SET baseline_complete_at=?, baseline_started_at=?, baseline_finished_at=?
+        WHERE id=1 AND baseline_complete_at=''`,
+        [arg(monitorFinishedAt), arg(monitorStartedAt), arg(monitorFinishedAt)]);
+    }
     console.log("Website-Prüfung:", JSON.stringify({
       restaurants:monitorReport.restaurants, externalEntries:monitorReport.externalEntries,
       pages:monitorReport.pages, baselines:monitorReport.baselines,
       proposals:monitorReport.proposals, errors:monitorReport.errors.length,
-      baselineOnly, officialWebsiteCount, officialHomepageSnapshots, baselineComplete
+      baselineOnly, officialWebsiteCount, officialHomepageSnapshots, baselineComplete,
+      startedAt:monitorStartedAt, finishedAt:monitorFinishedAt
     }));
     for (const issue of monitorReport.errors.slice(0, 30)) {
       console.warn("Website-Prüfung nicht möglich:", JSON.stringify(issue));
@@ -237,7 +252,8 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
       cardsChecked: entries.length,
       changes: monitorReport.proposals,
       errors: dailyErrors.length,
-      baselineOnly, officialWebsiteCount, officialHomepageSnapshots, baselineComplete
+      baselineOnly, officialWebsiteCount, officialHomepageSnapshots, baselineComplete,
+      monitorStartedAt, monitorFinishedAt
     };
     if (emailReport?.sent !== true) {
       const reason = String(emailReport?.reason || "Brevo hat den täglichen Prüfbericht nicht bestätigt.").slice(0, 500);
