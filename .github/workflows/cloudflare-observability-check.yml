@@ -9,8 +9,8 @@ on:
       - "wrangler.toml"
   workflow_dispatch:
   schedule:
-    # Verify the daily Worker Cron after its 11:00 UTC execution window.
-    - cron: "30 11 * * *"
+    # Verify the daily Worker Cron after its 05:00 UTC execution window.
+    - cron: "30 5 * * *"
 
 jobs:
   check-observability:
@@ -36,8 +36,8 @@ jobs:
           fi
           echo "Cron schedule(s) actually stored in Cloudflare:"
           jq -r '.result.schedules[]?.cron // empty' "$RESPONSE"
-          if ! jq -e '.result.schedules | length == 1 and .[0].cron == "0 11 * * *"' "$RESPONSE" >/dev/null; then
-            echo "::error::Cloudflare Cron schedule differs from the desired daily schedule 0 11 * * *."
+          if ! jq -e '.result.schedules | length == 1 and .[0].cron == "0 5 * * *"' "$RESPONSE" >/dev/null; then
+            echo "::error::Cloudflare Cron schedule differs from the desired daily schedule 0 5 * * *."
             exit 1
           fi
           echo "Verified: exactly one daily Cron trigger is configured."
