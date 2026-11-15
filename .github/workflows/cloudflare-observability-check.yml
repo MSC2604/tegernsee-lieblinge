@@ -8,6 +8,9 @@ on:
       - ".github/workflows/cloudflare-observability-check.yml"
       - "wrangler.toml"
   workflow_dispatch:
+  schedule:
+    # Verify the daily Worker Cron after its 11:00 UTC execution window.
+    - cron: "30 11 * * *"
 
 jobs:
   check-observability:
@@ -129,3 +132,69 @@ jobs:
                 "; count: " + (.value // 0 | tostring)))' "$COUNT_RESPONSE"
 
           echo "Cloudflare Observability API access confirmed."
+
+      - name: Inspect the latest scheduled website-monitor summary
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOW_MS=$(date +%s000)
+          FROM_MS=$((NOW_MS - 5400000))
+          EVENTS_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
+            queryId: "restaurant-website-monitor-scheduled-events-v1",
+            timeframe: {from: $from, to: $to},
+            dry: true,
+            parameters: {
+              datasets: ["cloudflare-workers"],
+              filters: [
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
+                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
+              ],
+              needle: {value: "Website-Prüfung:", isRegex: false, matchCase: false},
+              view: "events",
+              limit: 100
+            }
+          }')
+          EVENTS_RESPONSE=$(mktemp)
+          EVENTS_STATUS=$(curl --silent --show-error --output "$EVENTS_RESPONSE" --write-out "%{http_code}" \
+            --request POST \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "$EVENTS_BODY")
+          echo "Scheduled monitor-events API HTTP status: $EVENTS_STATUS"
+          if [[ "$EVENTS_STATUS" != "200" ]]; then
+            jq -r '.errors[]?.message // "No API error details returned."' "$EVENTS_RESPONSE" || true
+            exit 1
+          fi
+          LATEST_MESSAGE=$(jq -r '
+            [.result.events.events[]?
+             | {timestamp: (.timestamp // .["$metadata"].endTime // 0),
+                message: (.["$metadata"].message // .source.message // .message // "")}
+             | select(.message | contains("Website-Prüfung:"))]
+            | sort_by(.timestamp) | last | .message // ""
+          ' "$EVENTS_RESPONSE")
+          if [[ -z "$LATEST_MESSAGE" ]]; then
+            echo "No scheduled website-monitor summary found in the last 90 minutes; baseline is not verified yet."
+            exit 0
+          fi
+          SUMMARY_JSON="${LATEST_MESSAGE#*Website-Prüfung: }"
+          echo "Latest scheduled website-monitor summary: $SUMMARY_JSON"
+          BASELINE_ONLY=$(jq -r '.baselineOnly // false' <<< "$SUMMARY_JSON")
+          BASELINE_COMPLETE=$(jq -r '.baselineComplete // false' <<< "$SUMMARY_JSON")
+          PROPOSALS=$(jq -r '.proposals // -1' <<< "$SUMMARY_JSON")
+          if [[ "$BASELINE_ONLY" == "true" && "$PROPOSALS" != "0" ]]; then
+            echo "::error::Proposal-free baseline guarantee was violated."
+            exit 1
+          fi
+          if [[ "$BASELINE_ONLY" == "true" && "$BASELINE_COMPLETE" == "true" ]]; then
+            echo "Initial baseline verified: all configured official websites have homepage snapshots and zero proposals were created."
+          elif [[ "$BASELINE_ONLY" == "true" ]]; then
+            echo "Initial baseline remains proposal-free but incomplete. Homepage snapshots: $(jq -r '.officialHomepageSnapshots // 0' <<< "$SUMMARY_JSON") / $(jq -r '.officialWebsiteCount // 0' <<< "$SUMMARY_JSON")."
+          elif [[ "$BASELINE_COMPLETE" == "true" ]]; then
+            echo "All configured official websites already have homepage snapshots; this run was not in baseline-only mode."
+          else
+            echo "Baseline coverage is not yet complete."
+          fi
