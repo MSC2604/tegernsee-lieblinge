@@ -31,7 +31,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
     }
     const arg = value => ({ type: "text", value: value == null ? "" : String(value) });
     const cell = value => value == null ? "" : (typeof value === "object" && "value" in value ? value.value : value);
-    const SHARD_COUNT = 30;
+    const SHARD_COUNT = 40;
     if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= SHARD_COUNT) throw new Error('Ungültiger Prüfabschnitt: ' + shardIndex);
     db.batch = async statements => {
       if (!Array.isArray(statements) || !statements.length) return null;
@@ -2718,9 +2718,9 @@ console.log("Tavily usage account:", {
       }).formatToParts(scheduledInstant).map(part => [part.type, part.value])
     );
     // Cloudflare Free allows 50 external subrequests per invocation.
-    // Run 30 small, sequential shards between 06:00 and 06:29 local time.
+    // Run 40 small, sequential shards between 06:00 and 06:39 local time.
     const shardIndex = Number(berlinClock.minute);
-    if (berlinClock.hour !== "06" || !Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= 30) {
+    if (berlinClock.hour !== "06" || !Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= 40) {
       console.log("[CRON] Übersprungener UTC-Ausgleichslauf:", JSON.stringify({
         cron: controller?.cron || "",
         berlinTime: berlinClock.hour + ":" + berlinClock.minute,
@@ -2733,7 +2733,7 @@ console.log("Tavily usage account:", {
       scheduledTime: controller?.scheduledTime || null,
       berlinTime: berlinClock.hour + ":" + berlinClock.minute,
       shard: shardIndex + 1,
-      totalShards: 30,
+      totalShards: 40,
       startedAt
     }));
     try {
