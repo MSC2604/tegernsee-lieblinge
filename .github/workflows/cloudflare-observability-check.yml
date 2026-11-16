@@ -248,7 +248,8 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
+                {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker-log"}
               ],
               needle: {value: "Website-Prüfung:", isRegex: false, matchCase: false}
             }
@@ -313,7 +314,8 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
+                {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker-log"}
               ],
               needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false}
             }
