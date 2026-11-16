@@ -46,15 +46,30 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
       if (failed) throw new Error(failed.error?.message || failed.response?.error?.message || 'Turso-Batch fehlgeschlagen');
       return data;
     };
+    // Mehrere reine Leseabfragen in einem Turso-Pipeline-Aufruf bündeln.
+    // Das reduziert Cloudflare-Subrequests, ohne SQL-Ergebnisse oder Daten zu verändern.
+    db.readBatch = async statements => {
+      if (!Array.isArray(statements) || !statements.length) return null;
+      const requests = statements.map(item => ({ type: 'execute', stmt: { sql: item.sql, args: item.args || [], want_rows: true } }));
+      requests.push({ type: 'close' });
+      const response = await fetch(dbUrl, { method: 'POST', headers: { Authorization: 'Bearer ' + env.TURSO_AUTH_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ baton: null, requests }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error('Turso-Lese-Batch HTTP ' + response.status);
+      const failed = (data?.results || []).find(result => result?.type === 'error' || result?.error || result?.response?.error);
+      if (failed) throw new Error(failed.error?.message || failed.response?.error?.message || 'Turso-Lese-Batch fehlgeschlagen');
+      return data;
+    };
     const runDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(scheduledInstant instanceof Date && Number.isFinite(scheduledInstant.getTime()) ? scheduledInstant : new Date());
-    await db('CREATE TABLE IF NOT EXISTS restaurant_monitor_shards (run_date TEXT NOT NULL, shard INTEGER NOT NULL, summary_json TEXT NOT NULL, errors_json TEXT NOT NULL, completed_at TEXT NOT NULL, PRIMARY KEY (run_date, shard))');
-    await db(`CREATE TABLE IF NOT EXISTS restaurant_card_checks (
-      restaurant_id TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL,
-      checked_at TEXT NOT NULL DEFAULT '', changed_at TEXT NOT NULL DEFAULT '',
-      content_hash TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '',
-      detail TEXT NOT NULL DEFAULT '', notified_at TEXT NOT NULL DEFAULT '',
-      PRIMARY KEY (restaurant_id, kind)
-    )`);
+    await db.batch([
+      { sql: 'CREATE TABLE IF NOT EXISTS restaurant_monitor_shards (run_date TEXT NOT NULL, shard INTEGER NOT NULL, summary_json TEXT NOT NULL, errors_json TEXT NOT NULL, completed_at TEXT NOT NULL, PRIMARY KEY (run_date, shard))' },
+      { sql: `CREATE TABLE IF NOT EXISTS restaurant_card_checks (
+        restaurant_id TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL,
+        checked_at TEXT NOT NULL DEFAULT '', changed_at TEXT NOT NULL DEFAULT '',
+        content_hash TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '',
+        detail TEXT NOT NULL DEFAULT '', notified_at TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY (restaurant_id, kind)
+      )` }
+    ]);
     // Bestehende Tabellen aus älteren Läufen nachziehen: Der Upsert unten
     // verwendet notified_at auch dann, wenn die Tabelle bereits existiert.
     const cardCheckColumns = await db("PRAGMA table_info(restaurant_card_checks)", [], true);
@@ -189,36 +204,39 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
       detail: String(cell(row[4]) || "")
     }));
 
-    await db(`CREATE TABLE IF NOT EXISTS restaurant_site_snapshots (
-      restaurant_id TEXT NOT NULL, page_url TEXT NOT NULL, checked_at TEXT NOT NULL DEFAULT '',
-      content_hash TEXT NOT NULL DEFAULT '', extracted_data_json TEXT NOT NULL DEFAULT '{}',
-      content_text TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, page_url)
-    )`);
-    await db(`CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, restaurant_id TEXT NOT NULL, field_name TEXT NOT NULL,
-      old_value TEXT NOT NULL DEFAULT '', new_value TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL,
-      detected_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
-        CHECK (status IN ('pending', 'accepted', 'rejected')), reviewed_at TEXT NOT NULL DEFAULT '',
-    notified_at TEXT NOT NULL DEFAULT '',
-      UNIQUE (restaurant_id, field_name, old_value, new_value)
-    )`);
-    await db("CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)");
-    await db(`CREATE TABLE IF NOT EXISTS restaurant_website_monitor_state (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      baseline_complete_at TEXT NOT NULL DEFAULT '',
-      baseline_started_at TEXT NOT NULL DEFAULT '',
-      baseline_finished_at TEXT NOT NULL DEFAULT ''
-    )`);
-    await db("INSERT OR IGNORE INTO restaurant_website_monitor_state (id, baseline_complete_at) VALUES (1, '')");
-    const baselineStateResult = await db("SELECT baseline_complete_at FROM restaurant_website_monitor_state WHERE id=1", [], true);
-    const baselineCompleteAt = String(cell(baselineStateResult?.results?.[0]?.response?.result?.rows?.[0]?.[0]) || "");
+    await db.batch([
+      { sql: `CREATE TABLE IF NOT EXISTS restaurant_site_snapshots (
+        restaurant_id TEXT NOT NULL, page_url TEXT NOT NULL, checked_at TEXT NOT NULL DEFAULT '',
+        content_hash TEXT NOT NULL DEFAULT '', extracted_data_json TEXT NOT NULL DEFAULT '{}',
+        content_text TEXT NOT NULL DEFAULT '', PRIMARY KEY (restaurant_id, page_url)
+      )` },
+      { sql: `CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, restaurant_id TEXT NOT NULL, field_name TEXT NOT NULL,
+        old_value TEXT NOT NULL DEFAULT '', new_value TEXT NOT NULL DEFAULT '', source_url TEXT NOT NULL,
+        detected_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending', 'accepted', 'rejected')), reviewed_at TEXT NOT NULL DEFAULT '',
+        notified_at TEXT NOT NULL DEFAULT '',
+        UNIQUE (restaurant_id, field_name, old_value, new_value)
+      )` },
+      { sql: "CREATE INDEX IF NOT EXISTS idx_restaurant_change_proposals_status ON restaurant_change_proposals(status, detected_at)" },
+      { sql: `CREATE TABLE IF NOT EXISTS restaurant_website_monitor_state (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        baseline_complete_at TEXT NOT NULL DEFAULT '',
+        baseline_started_at TEXT NOT NULL DEFAULT '',
+        baseline_finished_at TEXT NOT NULL DEFAULT ''
+      )` },
+      { sql: "INSERT OR IGNORE INTO restaurant_website_monitor_state (id, baseline_complete_at) VALUES (1, '')" }
+    ]);
+    const initialReadResult = await db.readBatch([
+      { sql: "SELECT baseline_complete_at FROM restaurant_website_monitor_state WHERE id=1" },
+      { sql: "SELECT COUNT(*) FROM restaurants" },
+      { sql: "SELECT id, name, website, externer_eintrag FROM restaurants WHERE (website IS NOT NULL AND TRIM(website) <> '') OR (externer_eintrag IS NOT NULL AND TRIM(externer_eintrag) <> '') ORDER BY id" }
+    ]);
+    const initialReadRows = initialReadResult?.results || [];
+    const baselineCompleteAt = String(cell(initialReadRows[0]?.response?.result?.rows?.[0]?.[0]) || "");
     const baselineOnly = !baselineCompleteAt;
-    const totalRestaurantResult = await db("SELECT COUNT(*) FROM restaurants", [], true);
-    const totalRestaurantEntries = Number(cell(totalRestaurantResult?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
-    const restaurantResult = await db(
-      "SELECT id, name, website, externer_eintrag FROM restaurants WHERE (website IS NOT NULL AND TRIM(website) <> '') OR (externer_eintrag IS NOT NULL AND TRIM(externer_eintrag) <> '') ORDER BY id",
-      [], true
-    );
+    const totalRestaurantEntries = Number(cell(initialReadRows[1]?.response?.result?.rows?.[0]?.[0])) || 0;
+    const restaurantResult = { results: [initialReadRows[2] || {}] };
     const restaurantRows = restaurantResult?.results?.[0]?.response?.result?.rows || [];
     const allSources = restaurantRows.map(row => ({
       id:String(cell(row[0]) || ""), name:String(cell(row[1]) || ""),
