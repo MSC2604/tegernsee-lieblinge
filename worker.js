@@ -1,6 +1,6 @@
 import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./worker/restaurant-monitor-email.mjs";
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
-import { selectMonitorShard, getMonitorShardIndex } from "./worker/restaurant-monitor-sharding.mjs";
+import { selectMonitorShard, getMonitorShardIndex, isMonitorFinalizerTime } from "./worker/restaurant-monitor-sharding.mjs";
 
 async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledInstant = new Date()) {
     const missingMailSettings = [];
@@ -33,7 +33,8 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
     const arg = value => ({ type: "text", value: value == null ? "" : String(value) });
     const cell = value => value == null ? "" : (typeof value === "object" && "value" in value ? value.value : value);
     const SHARD_COUNT = 80;
-    if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= SHARD_COUNT) throw new Error('Ungültiger Prüfabschnitt: ' + shardIndex);
+    const isFinalizer = shardIndex === SHARD_COUNT;
+    if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex > SHARD_COUNT) throw new Error('Ungültiger Prüfabschnitt: ' + shardIndex);
     db.batch = async statements => {
       if (!Array.isArray(statements) || !statements.length) return null;
       const requests = statements.map(item => ({ type: 'execute', stmt: { sql: item.sql, args: item.args || [], want_rows: false } }));
@@ -71,7 +72,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
     const rows = query?.results?.[0]?.response?.result?.rows || [];
     const allCardEntries = rows.map(row => ({ restaurantId: String(cell(row[0]) || ""), kind: String(cell(row[1]) || ""), url: String(cell(row[2]) || "") }))
       .filter(x => x.restaurantId && x.url);
-    const entries = selectMonitorShard(allCardEntries, shardIndex, SHARD_COUNT);
+    const entries = isFinalizer ? [] : selectMonitorShard(allCardEntries, shardIndex, SHARD_COUNT);
 
     function safeUrl(raw) {
       let u;
@@ -218,7 +219,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
       ...allSources.filter(item => item.website).map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
       ...allSources.filter(item => item.externer_eintrag).map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
     ];
-    const websiteSources = selectMonitorShard(allWebsiteSources, shardIndex, SHARD_COUNT);
+    const websiteSources = isFinalizer ? [] : selectMonitorShard(allWebsiteSources, shardIndex, SHARD_COUNT);
     const officialWebsiteCount = allSources.filter(item => String(item.website || '').trim()).length;
     const monitorStartedAt = new Date().toISOString();
     const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources, baselineOnly });
@@ -231,9 +232,12 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
       ...cardIssues.map(issue => ({ name: issue.name, url: issue.url, detail: (issue.kind === 'speisekarte' ? 'Speisekarte' : 'Getränkekarte') + ': ' + issue.detail }))
     ];
     const shardSummary = { restaurantsChecked: monitorReport.restaurants, externalEntriesChecked: monitorReport.externalEntries, pagesChecked: monitorReport.pages, cardsChecked: entries.length, changes: monitorReport.proposals, errors: dailyErrors.length, officialHomepageSnapshots, monitorStartedAt, monitorFinishedAt };
-    await db('INSERT INTO restaurant_monitor_shards (run_date, shard, summary_json, errors_json, completed_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(run_date, shard) DO UPDATE SET summary_json=excluded.summary_json, errors_json=excluded.errors_json, completed_at=excluded.completed_at', [arg(runDate), arg(shardIndex), arg(JSON.stringify(shardSummary)), arg(JSON.stringify(dailyErrors)), arg(monitorFinishedAt)]);
-    console.log('[CRON] Restaurant-Prüfabschnitt gespeichert:', JSON.stringify({ runDate, shard: shardIndex + 1, totalShards: SHARD_COUNT, restaurants: shardSummary.restaurantsChecked, externalEntries: shardSummary.externalEntriesChecked, pages: shardSummary.pagesChecked, cards: shardSummary.cardsChecked, errors: shardSummary.errors }));
-    if (shardIndex !== SHARD_COUNT - 1) return { completed: true, shard: shardIndex + 1, totalShards: SHARD_COUNT, pendingEmail: true };
+    if (!isFinalizer) {
+      await db('INSERT INTO restaurant_monitor_shards (run_date, shard, summary_json, errors_json, completed_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(run_date, shard) DO UPDATE SET summary_json=excluded.summary_json, errors_json=excluded.errors_json, completed_at=excluded.completed_at', [arg(runDate), arg(shardIndex), arg(JSON.stringify(shardSummary)), arg(JSON.stringify(dailyErrors)), arg(monitorFinishedAt)]);
+      console.log('[CRON] Restaurant-Prüfabschnitt gespeichert:', JSON.stringify({ runDate, shard: shardIndex + 1, totalShards: SHARD_COUNT, restaurants: shardSummary.restaurantsChecked, externalEntries: shardSummary.externalEntriesChecked, pages: shardSummary.pagesChecked, cards: shardSummary.cardsChecked, errors: shardSummary.errors }));
+      return { completed: true, shard: shardIndex + 1, totalShards: SHARD_COUNT, pendingEmail: true };
+    }
+    console.log('[CRON] Separater Tagesabschluss gestartet:', JSON.stringify({ runDate, scheduledAt: scheduledInstant.toISOString() }));
     const shardRowsResult = await db('SELECT shard, summary_json, errors_json, completed_at FROM restaurant_monitor_shards WHERE run_date=? ORDER BY shard', [arg(runDate)], true);
     const shardRows = shardRowsResult?.results?.[0]?.response?.result?.rows || [];
     const completedShardIds = new Set(shardRows.map(row => Number(cell(row[0]))));
@@ -2740,8 +2744,10 @@ console.log("Tavily usage account:", {
     );
     // Run 80 small, sequential shards between 06:00 and 07:19 Europe/Berlin.
     // The scheduled UTC windows are disjoint; map both CET and CEST to the same local slots.
-    const shardIndex = getMonitorShardIndex(scheduledInstant);
-    if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= 80) {
+    let shardIndex = getMonitorShardIndex(scheduledInstant);
+    const finalizerRun = isMonitorFinalizerTime(scheduledInstant);
+    if (finalizerRun) shardIndex = 80;
+    if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex > 80) {
       console.log("[CRON] Übersprungener UTC-Ausgleichslauf:", JSON.stringify({
         cron: controller?.cron || "",
         berlinTime: berlinClock.hour + ":" + berlinClock.minute,
@@ -2755,6 +2761,7 @@ console.log("Tavily usage account:", {
       berlinTime: berlinClock.hour + ":" + berlinClock.minute,
       shard: shardIndex + 1,
       totalShards: 80,
+      finalizer: finalizerRun,
       startedAt
     }));
     try {
