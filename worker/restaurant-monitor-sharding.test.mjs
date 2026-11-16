@@ -30,3 +30,12 @@ test("finalizer recovery slots do not overlap the 80 shard assignments", () => {
     assert.equal(isMonitorFinalizerTime(instant), true);
   }
 });
+
+
+test("a full initial shard pass completes baseline despite unreachable configured websites", async () => {
+  const { isBaselinePassComplete } = await import("./restaurant-monitor-sharding.mjs");
+  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "", baselineOnly: true, shardsCompleted: 80, shardCount: 80 }), true);
+  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "", baselineOnly: true, shardsCompleted: 79, shardCount: 80 }), false);
+  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "", baselineOnly: false, shardsCompleted: 80, shardCount: 80 }), false);
+  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "2026-11-16T08:00:00Z", baselineOnly: false, shardsCompleted: 0, shardCount: 80 }), true);
+});
