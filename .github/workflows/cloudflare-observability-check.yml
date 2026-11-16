@@ -13,6 +13,8 @@ on:
   schedule:
     # Verify the completed shard/finalizer window after both seasonal UTC schedules.
     - cron: "5 8 * * *"
+    # Second verification window in case GitHub delays or misses the first scheduled run.
+    - cron: "35 8 * * *"
 
 jobs:
   check-observability:
@@ -240,7 +242,7 @@ jobs:
           echo "A transient invocation exception is not treated as a final daily failure by itself. The checks below require a complete 80-shard summary and Brevo acceptance; those are the authoritative success criteria."
       - name: Inspect the latest scheduled website-monitor summary
         id: website_summary
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
