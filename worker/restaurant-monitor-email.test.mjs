@@ -212,11 +212,11 @@ const isolatedManualAndScheduledOptions = {
 };
 const scheduledSameDay=await sendRestaurantWebsiteDigest({
   ...isolatedManualAndScheduledOptions,
-  summary:{runDate:"2026-12-02"}
+  summary:{totalRestaurantEntries:40,restaurantsWithoutWebsiteSource:0,runDate:"2026-12-02"}
 });
 const manualSameDay=await sendRestaurantWebsiteDigest({
   ...isolatedManualAndScheduledOptions,
-  summary:{runDate:"manual-550e8400-e29b-41d4-a716-446655440000"}
+  summary:{totalRestaurantEntries:40,restaurantsWithoutWebsiteSource:0,runDate:"manual-550e8400-e29b-41d4-a716-446655440000"}
 });
 assert.equal(scheduledSameDay.sent,true);
 assert.equal(manualSameDay.sent,true);
