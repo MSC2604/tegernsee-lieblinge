@@ -40,6 +40,12 @@ const db = async (sql, args = [], wantRows = false) => {
     const status = emailRunStates.get(args[0]?.value) || "";
     return { results: [{ response: { result: { rows: status ? [[{ value: status }]] : [] } } }] };
   }
+  if (sql.startsWith("UPDATE restaurant_monitor_email_runs SET status='sending'")) {
+    const runDate = args[1]?.value;
+    if (emailRunStates.get(runDate) !== "retryable") return { results: [{ response: { result: { rows: [] } } }] };
+    emailRunStates.set(runDate, "sending");
+    return { results: [{ response: { result: { rows: [[{ value: runDate }]] } } }] };
+  }
   if (sql.startsWith("UPDATE restaurant_monitor_email_runs SET status='sent'")) {
     if (failNextSentMark) {
       failNextSentMark = false;
@@ -48,8 +54,8 @@ const db = async (sql, args = [], wantRows = false) => {
     emailRunStates.set(args[1]?.value, "sent");
     return { results: [] };
   }
-  if (sql.startsWith("UPDATE restaurant_monitor_email_runs SET status='unknown'")) {
-    emailRunStates.set(args[1]?.value, "unknown");
+  if (sql.startsWith("UPDATE restaurant_monitor_email_runs SET status=?")) {
+    emailRunStates.set(args[2]?.value, args[0]?.value);
     return { results: [] };
   }
   if (sql.startsWith("SELECT p.id")) {
@@ -139,6 +145,22 @@ await assert.rejects(() => sendRestaurantWebsiteDigest({
   }
 }), /HTTP 429/);
 assert.equal(rateLimitCalls,3, "An explicit HTTP 429 rejection may be retried up to three times.");
+
+let rateLimitRecoveryCalls=0;
+const rateLimitRecoveryOptions = {
+  db,
+  env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  summary: { runDate:"2026-12-01" },
+  fetchImpl: async () => {
+    rateLimitRecoveryCalls++;
+    if (rateLimitRecoveryCalls <= 3) return new Response("rate limited", {status:429});
+    return new Response(JSON.stringify({messageId:"recovered-message"}), {status:201,headers:{"Content-Type":"application/json"}});
+  }
+};
+await assert.rejects(() => sendRestaurantWebsiteDigest(rateLimitRecoveryOptions), /HTTP 429/);
+const recoveredRateLimitSend = await sendRestaurantWebsiteDigest(rateLimitRecoveryOptions);
+assert.equal(recoveredRateLimitSend.sent,true);
+assert.equal(rateLimitRecoveryCalls,4,"A confirmed 429 rejection may be retried on the next finalizer run.");
 
 // Derselbe Kalendertag darf auch bei einem erneuten Abschlusslauf nur eine Mail auslösen.
 let duplicateDayCalls=0;
