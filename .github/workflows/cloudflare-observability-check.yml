@@ -248,8 +248,7 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
               ],
               needle: {value: "Website-Prüfung:", isRegex: false, matchCase: false}
             }
@@ -274,7 +273,7 @@ jobs:
             | sort_by(.timestamp) | last | .message // ""
           ' "$EVENTS_RESPONSE")
           if [[ -z "$LATEST_MESSAGE" ]]; then
-            echo "No scheduled website-monitor summary found in the last four hours; baseline is not verified yet."
+            echo "No website-monitor log summary found in the last four hours; baseline is not verified yet."
             exit 0
           fi
           SUMMARY_JSON="${LATEST_MESSAGE#*Website-Prüfung: }"
@@ -314,8 +313,7 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
               ],
               needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false}
             }
@@ -340,7 +338,7 @@ jobs:
             | sort_by(.timestamp) | last | .message // ""
           ' "$EMAIL_RESPONSE")
           if [[ -z "$LATEST_EMAIL" ]]; then
-            echo "::error::No scheduled restaurant email-report result found in the last four hours."
+            echo "::error::No restaurant email-report log result found in the last four hours."
             exit 1
           fi
           EMAIL_JSON="${LATEST_EMAIL#*Restaurant-Prüfbericht: }"
