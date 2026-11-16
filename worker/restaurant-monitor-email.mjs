@@ -107,8 +107,9 @@ export async function sendRestaurantWebsiteDigest({
     textContent:textBody,htmlContent:htmlBody
   };
   let response, responseText = "";
-  // Nur eindeutig abgelehnte, vorübergehende HTTP-Fehler erneut versuchen.
-  // Bei Netzwerkabbrüchen wird nicht blind wiederholt, um Doppel-E-Mails zu vermeiden.
+  // Nur HTTP 429 ist eine eindeutige Rate-Limit-Ablehnung und wird erneut versucht.
+  // HTTP 408 und 5xx können trotz Fehlerantwort bereits verarbeitet worden sein:
+  // keine automatische Wiederholung, um doppelte Tagesberichte zu vermeiden.
   for (let attempt = 1; attempt <= 3; attempt++) {
     response = await fetchImpl("https://api.brevo.com/v3/smtp/email", {
       method:"POST",
@@ -117,7 +118,7 @@ export async function sendRestaurantWebsiteDigest({
     });
     if (response.ok) break;
     responseText = (await response.text()).slice(0,300);
-    const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+    const retryable = response.status === 429;
     if (!retryable || attempt === 3) {
       throw new Error("Brevo hat den E-Mail-Versand abgelehnt (HTTP "+response.status+"): "+responseText);
     }
