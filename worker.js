@@ -233,11 +233,32 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
     await db('INSERT INTO restaurant_monitor_shards (run_date, shard, summary_json, errors_json, completed_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(run_date, shard) DO UPDATE SET summary_json=excluded.summary_json, errors_json=excluded.errors_json, completed_at=excluded.completed_at', [arg(runDate), arg(shardIndex), arg(JSON.stringify(shardSummary)), arg(JSON.stringify(dailyErrors)), arg(monitorFinishedAt)]);
     console.log('[CRON] Restaurant-Prüfabschnitt gespeichert:', JSON.stringify({ runDate, shard: shardIndex + 1, totalShards: SHARD_COUNT, restaurants: shardSummary.restaurantsChecked, externalEntries: shardSummary.externalEntriesChecked, pages: shardSummary.pagesChecked, cards: shardSummary.cardsChecked, errors: shardSummary.errors }));
     if (shardIndex !== SHARD_COUNT - 1) return { completed: true, shard: shardIndex + 1, totalShards: SHARD_COUNT, pendingEmail: true };
-    const shardRowsResult = await db('SELECT shard, summary_json, errors_json FROM restaurant_monitor_shards WHERE run_date=? ORDER BY shard', [arg(runDate)], true);
+    const shardRowsResult = await db('SELECT shard, summary_json, errors_json, completed_at FROM restaurant_monitor_shards WHERE run_date=? ORDER BY shard', [arg(runDate)], true);
     const shardRows = shardRowsResult?.results?.[0]?.response?.result?.rows || [];
-    if (shardRows.length !== SHARD_COUNT) throw new Error('Tägliche Prüfung unvollständig: ' + shardRows.length + ' von ' + SHARD_COUNT + ' Abschnitten gespeichert; E-Mail wird nicht versendet.');
-    const summaries = shardRows.map(row => { try { return JSON.parse(String(cell(row[1]) || '{}')); } catch { return {}; } });
-    const allErrors = shardRows.flatMap(row => { try { const value = JSON.parse(String(cell(row[2]) || '[]')); return Array.isArray(value) ? value : []; } catch { return []; } });
+    const completedShardIds = new Set(shardRows.map(row => Number(cell(row[0]))));
+    const missingShardIds = Array.from({ length: SHARD_COUNT }, (_, index) => index).filter(index => !completedShardIds.has(index));
+    if (shardRows.length !== SHARD_COUNT || missingShardIds.length) {
+      throw new Error('Tägliche Prüfung unvollständig: ' + (SHARD_COUNT - missingShardIds.length) + ' von ' + SHARD_COUNT + ' unterschiedlichen Abschnitten gespeichert; fehlend: ' + missingShardIds.map(index => index + 1).join(', ') + '. E-Mail wird nicht versendet.');
+    }
+    const summaries = shardRows.map((row, index) => {
+      let value;
+      try { value = JSON.parse(String(cell(row[1]) || '')); } catch { throw new Error('Prüfabschnitt ' + (Number(cell(row[0])) + 1) + ' enthält eine ungültige Zusammenfassung.'); }
+      if (!value || typeof value !== 'object' || !String(cell(row[3]) || '').trim()) {
+        throw new Error('Prüfabschnitt ' + (Number(cell(row[0])) + 1) + ' ist nicht vollständig gespeichert.');
+      }
+      for (const key of ['restaurantsChecked', 'externalEntriesChecked', 'pagesChecked', 'cardsChecked', 'changes', 'errors', 'officialHomepageSnapshots']) {
+        if (!Number.isFinite(Number(value[key])) || Number(value[key]) < 0) {
+          throw new Error('Prüfabschnitt ' + (Number(cell(row[0])) + 1) + ' enthält einen ungültigen Zähler (' + key + ').');
+        }
+      }
+      return value;
+    });
+    const allErrors = shardRows.flatMap(row => {
+      let value;
+      try { value = JSON.parse(String(cell(row[2]) || '')); } catch { throw new Error('Ein Prüfabschnitt enthält eine ungültige Fehlerliste.'); }
+      if (!Array.isArray(value)) throw new Error('Ein Prüfabschnitt enthält keine gültige Fehlerliste.');
+      return value;
+    });
     const sum = key => summaries.reduce((total, item) => total + (Number(item[key]) || 0), 0);
     const officialHomepageSnapshotsTotal = sum('officialHomepageSnapshots');
     const baselineComplete = !!baselineCompleteAt || officialHomepageSnapshotsTotal >= officialWebsiteCount;
