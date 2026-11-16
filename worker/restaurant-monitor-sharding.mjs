@@ -34,5 +34,8 @@ export function isMonitorFinalizerTime(scheduledInstant) {
   }).formatToParts(date).map(part => [part.type, part.value]));
   const hour = Number(parts.hour);
   const minute = Number(parts.minute);
-  return hour === 7 && minute >= 30 && minute <= 59;
+  // 07:30–07:59 starts recovery after the normal shard window.
+  // Continue through all of local 08:00–08:59 so up to 80 missing
+  // shards can be retried one per minute in both CET and CEST.
+  return (hour === 7 && minute >= 30 && minute <= 59) || hour === 8;
 }
