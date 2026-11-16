@@ -249,11 +249,11 @@ jobs:
             }
           }')
           EMAIL_RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --output "$EMAIL_RESPONSE" --write-out "%{http_code}" \\
-            --request POST \\
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \\
-            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \\
-            --header "Content-Type: application/json" \\
+          STATUS=$(curl --silent --show-error --output "$EMAIL_RESPONSE" --write-out "%{http_code}" \
+            --request POST \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
             --data "$EMAIL_BODY")
           echo "Scheduled email-report telemetry API HTTP status: $STATUS"
           if [[ "$STATUS" != "200" ]]; then
