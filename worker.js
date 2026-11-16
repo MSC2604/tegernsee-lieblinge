@@ -2049,22 +2049,11 @@ console.log("Tavily usage account:", {
           return json({ success: true, verified: true });
         }
 
+        // Compatibility alias for older clients: this action starts the same
+        // safe, resumable manual website check as the current UI. It must not
+        // call the scheduled single-shard runner without a shard index.
         if (body.action === "runRestaurantMonitoringFullTest") {
-          // Keep the HTTP request open until the complete run and email attempt finish.
-          // A detached waitUntil task would be cancelled after 30 seconds for HTTP requests.
-          const result = await runScheduledRestaurantMonitoring(env, ctx);
-          if (!result?.completed) {
-            return json({ success: false, completed: false, error: "Der Prüflauf wurde nicht vollständig ausgeführt." }, 500);
-          }
-          const emailSent = result.email?.sent === true;
-          return json({
-            success: emailSent,
-            completed: true,
-            emailSent,
-            recipient: result.email?.recipient || "msc4021@arcor.de",
-            emailReason: emailSent ? "" : (result.email?.reason || "Der E-Mail-Versand wurde nicht bestätigt."),
-            summary: result.summary
-          }, emailSent ? 200 : 502);
+          body.action = "startRestaurantWebsiteMonitor";
         }
 
         if (body.action === "sendRestaurantWebsiteTestEmail") {
