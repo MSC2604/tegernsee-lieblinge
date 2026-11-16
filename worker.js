@@ -2725,13 +2725,16 @@ console.log("Tavily usage account:", {
   },
   async scheduled(controller, env, ctx) {
     const startedAt = new Date().toISOString();
+    const scheduledInstant = Number.isFinite(Number(controller?.scheduledTime))
+      ? new Date(Number(controller.scheduledTime))
+      : new Date();
     const berlinClock = Object.fromEntries(
       new Intl.DateTimeFormat("en-GB", {
         timeZone: "Europe/Berlin",
         hour: "2-digit",
         minute: "2-digit",
         hourCycle: "h23"
-      }).formatToParts(new Date()).map(part => [part.type, part.value])
+      }).formatToParts(scheduledInstant).map(part => [part.type, part.value])
     );
     // Cloudflare Cron is UTC-based. Two UTC triggers plus this local-time
     // guard ensure exactly one run at 06:00 in Germany in both CET and CEST.
