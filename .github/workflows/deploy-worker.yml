@@ -9,7 +9,6 @@ on:
       - "worker/**"
       - "wrangler.toml"
       - ".github/workflows/deploy-worker.yml"
-      - ".github/workflows/cloudflare-observability-check.yml"
   workflow_dispatch:
 
 jobs:
