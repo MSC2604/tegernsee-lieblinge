@@ -25,7 +25,28 @@ let cardRows = [[
   { value: "https://restaurant.example/karte.pdf" }, { value: "2026-11-11T05:00:00Z" }
 ]];
 let proposalUpdated = 0, cardUpdated = 0, sentPayloads = [];
+const emailRunStates = new Map();
+let sendRunIndex = 10;
 const db = async (sql, args = [], wantRows = false) => {
+  if (sql.startsWith("CREATE TABLE IF NOT EXISTS restaurant_monitor_email_runs")) return { results: [] };
+  if (sql.startsWith("INSERT INTO restaurant_monitor_email_runs")) {
+    const runDate = args[0]?.value;
+    if (emailRunStates.has(runDate)) return { results: [{ response: { result: { rows: [] } } }] };
+    emailRunStates.set(runDate, "sending");
+    return { results: [{ response: { result: { rows: [[{ value: runDate }]] } }] }] };
+  }
+  if (sql.startsWith("SELECT status FROM restaurant_monitor_email_runs")) {
+    const status = emailRunStates.get(args[0]?.value) || "";
+    return { results: [{ response: { result: { rows: status ? [[{ value: status }]] : [] } } }] };
+  }
+  if (sql.startsWith("UPDATE restaurant_monitor_email_runs SET status='sent'")) {
+    emailRunStates.set(args[1]?.value, "sent");
+    return { results: [] };
+  }
+  if (sql.startsWith("UPDATE restaurant_monitor_email_runs SET status='unknown'")) {
+    emailRunStates.set(args[1]?.value, "unknown");
+    return { results: [] };
+  }
   if (sql.startsWith("SELECT p.id")) {
     assert.match(sql, /p\.field_name IN/);
     const allowed = new Set(["telefon","email","website","adresse","oeffnungszeiten","ruhetag","betriebsferien","dokumente","externe_links"]);
@@ -43,7 +64,7 @@ assert.equal(cardUpdated, 0);
 const send = async () => sendRestaurantWebsiteDigest({
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
-  summary: { restaurantsChecked:41, pagesChecked:90, cardsChecked:null, errors:[] },
+  summary: { restaurantsChecked:41, pagesChecked:90, cardsChecked:null, errors:[], runDate:"2026-11-" + String(++sendRunIndex).padStart(2,"0") },
   fetchImpl: async (url, options) => {
     assert.equal(url, "https://api.brevo.com/v3/smtp/email");
     sentPayloads.push(JSON.parse(options.body));
@@ -82,6 +103,7 @@ let ambiguousServerErrorCalls=0;
 await assert.rejects(() => sendRestaurantWebsiteDigest({
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  summary: { runDate:"2026-11-26" },
   fetchImpl: async () => {
     ambiguousServerErrorCalls++;
     return new Response("gateway error", {status:500});
@@ -93,6 +115,7 @@ let timeoutCalls=0;
 await assert.rejects(() => sendRestaurantWebsiteDigest({
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  summary: { runDate:"2026-11-27" },
   fetchImpl: async () => {
     timeoutCalls++;
     return new Response("request timeout", {status:408});
@@ -104,10 +127,29 @@ let rateLimitCalls=0;
 await assert.rejects(() => sendRestaurantWebsiteDigest({
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  summary: { runDate:"2026-11-28" },
   fetchImpl: async () => {
     rateLimitCalls++;
     return new Response("rate limited", {status:429});
   }
 }), /HTTP 429/);
 assert.equal(rateLimitCalls,3, "An explicit HTTP 429 rejection may be retried up to three times.");
-console.log("Täglicher Restaurant-Prüfbericht: Änderungen, Nulländerungen und sichere Brevo-Wiederholungen getestet.");
+
+// Derselbe Kalendertag darf auch bei einem erneuten Abschlusslauf nur eine Mail auslösen.
+let duplicateDayCalls=0;
+const duplicateDayOptions = {
+  db,
+  env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  summary: { runDate:"2026-11-29" },
+  fetchImpl: async () => {
+    duplicateDayCalls++;
+    return new Response(JSON.stringify({messageId:"test-message"}), {status:201,headers:{"Content-Type":"application/json"}});
+  }
+};
+const firstDailySend=await sendRestaurantWebsiteDigest(duplicateDayOptions);
+const secondDailySend=await sendRestaurantWebsiteDigest(duplicateDayOptions);
+assert.equal(firstDailySend.sent,true);
+assert.equal(secondDailySend.sent,true);
+assert.equal(secondDailySend.duplicateSuppressed,true);
+assert.equal(duplicateDayCalls,1,"A duplicate finalizer must not send a second daily report.");
+console.log("Täglicher Restaurant-Prüfbericht: Änderungen, sichere Wiederholungen und Tages-Doppelversandsperre getestet.");
