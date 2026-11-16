@@ -75,7 +75,7 @@ assert.equal(cardUpdated, 0);
 const send = async () => sendRestaurantWebsiteDigest({
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
-  summary: { restaurantsChecked:41, pagesChecked:90, cardsChecked:null, errors:[], runDate:"2026-11-" + String(++sendRunIndex).padStart(2,"0") },
+  summary: { totalRestaurantEntries:41, restaurantsWithoutWebsiteSource:3, restaurantsChecked:41, pagesChecked:90, cardsChecked:null, errors:[], runDate:"2026-11-" + String(++sendRunIndex).padStart(2,"0") },
   fetchImpl: async (url, options) => {
     assert.equal(url, "https://api.brevo.com/v3/smtp/email");
     sentPayloads.push(JSON.parse(options.body));
@@ -92,6 +92,10 @@ assert.equal(changed.cardChangeCount,1);
 assert.equal(proposalUpdated,1, "Only the meaningful proposal is marked as notified");
 assert.equal(cardUpdated,1);
 assert.equal(sentPayloads[0].to[0].email,"recipient@example.org");
+assert.match(sentPayloads[0].textContent,/Restaurants insgesamt im Datenbestand: 41/);
+assert.match(sentPayloads[0].textContent,/Ohne hinterlegte Website \/ externen Eintrag: 3/);
+assert.match(sentPayloads[0].htmlContent,/Restaurants insgesamt im Datenbestand: 41/);
+assert.match(sentPayloads[0].htmlContent,/Ohne hinterlegte Website \/ externen Eintrag: 3/);
 assert.match(sentPayloads[0].htmlContent,/Gasthof &lt;See&gt;/);
 assert.match(sentPayloads[0].textContent,/08022 222222/);
 assert.doesNotMatch(sentPayloads[0].textContent,/Schwarzentenn-Alm/);
