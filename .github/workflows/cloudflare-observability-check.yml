@@ -56,13 +56,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SECRET_LIST=$(mktemp)
-          npx --yes wrangler@3.90.0 secret list --config ./wrangler.toml > "$SECRET_LIST"
-          if ! grep -Eq '"name"[[:space:]]*:[[:space:]]*"BREVO_API_KEY"' "$SECRET_LIST"; then
+          RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/tegernsee-restaurants-api/secrets" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          echo "Cloudflare Worker secrets API HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]] || ! jq -e '.success == true' "$RESPONSE" >/dev/null; then
+            jq -r '.errors[]?.message // "Cloudflare did not return a successful secret-list response."' "$RESPONSE" || true
+            exit 1
+          fi
+          if ! jq -e 'any(.result[]?; .name == "BREVO_API_KEY")' "$RESPONSE" >/dev/null; then
             echo "::error::BREVO_API_KEY is not present as a production Worker secret."
             exit 1
           fi
-          echo "Verified: BREVO_API_KEY exists in the production Worker (value remains hidden)."
+          echo "Verified: BREVO_API_KEY exists in the production Worker; its value is never read or displayed."
       - name: Create a harmless Worker request to test log ingestion
         shell: bash
         run: |
