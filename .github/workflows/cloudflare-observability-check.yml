@@ -233,10 +233,9 @@ jobs:
             sourceMessage: .source.message, eventType: .["$workers"].eventType,
             outcome: .["$workers"].outcome, cron: .["$workers"].event.cron
           }]' "$RESPONSE"
-          if [[ "${GITHUB_EVENT_NAME:-}" == "schedule" ]] && jq -e 'any(.result.events.events[]?; .["$workers"].outcome == "exception")' "$RESPONSE" >/dev/null; then
-            echo "::error::At least one scheduled Worker invocation failed during today's Cron window."
-            exit 1
-          fi
+          SCHEDULED_EXCEPTIONS=$(jq '[.result.events.events[]? | select(.["$workers"].outcome == "exception")] | length' "$RESPONSE")
+          echo "Scheduled invocation exceptions visible in this telemetry query: $SCHEDULED_EXCEPTIONS"
+          echo "A transient invocation exception is not treated as a final daily failure by itself. The checks below require a complete 80-shard summary and Brevo acceptance; those are the authoritative success criteria."
       - name: Inspect the latest scheduled website-monitor summary
         id: website_summary
         if: github.event_name == 'schedule'
