@@ -27,13 +27,13 @@ export async function sendRestaurantWebsiteDigest({
   const totalRestaurantEntries = Number(summary.totalRestaurantEntries);
   const restaurantsWithoutWebsiteSource = Number(summary.restaurantsWithoutWebsiteSource);
   if (summary.totalRestaurantEntries == null || summary.restaurantsWithoutWebsiteSource == null ||
-      !Number.isSafeInteger(totalRestaurantEntries) || totalRestaurantEntries < 0 ||
+      !Number.isSafeInteger(totalRestaurantEntries) || totalRestaurantEntries < 41 ||
       !Number.isSafeInteger(restaurantsWithoutWebsiteSource) || restaurantsWithoutWebsiteSource < 0 ||
       restaurantsWithoutWebsiteSource > totalRestaurantEntries) {
     return {
       sent:false,
       acceptedByProvider:false,
-      reason:"Tagesbericht blockiert: Restaurant-Gesamtzahl oder Anzahl ohne Website/externen Eintrag fehlt oder ist ungültig. Es wurde keine E-Mail versendet."
+      reason:"Tagesbericht blockiert: Restaurant-Gesamtzahl (mindestens 41) oder Anzahl ohne Website/externen Eintrag fehlt oder ist ungültig. Es wurde keine E-Mail versendet."
     };
   }
   const proposalResult = await db(
