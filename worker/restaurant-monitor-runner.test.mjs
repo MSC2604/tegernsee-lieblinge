@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { runRestaurantWebsiteMonitor } from "./restaurant-monitor-runner.mjs";
 import { findRestaurantChanges } from "./restaurant-monitor.mjs";
-import { selectMonitorShard } from "./restaurant-monitor-sharding.mjs";
+import { selectMonitorShard, getMonitorShardIndex } from "./restaurant-monitor-sharding.mjs";
 
 // Growth regression: every source is assigned exactly once as the directory expands.
 for (const total of [0, 1, 41, 100, 150, 500, 1000, 5000]) {
@@ -15,6 +15,28 @@ for (const total of [0, 1, 41, 100, 150, 500, 1000, 5000]) {
 }
 assert.throws(() => selectMonitorShard([], -1, 80), /Ungültige/);
 assert.throws(() => selectMonitorShard([], 0, 0), /Ungültige/);
+
+
+// Daylight-saving regression: exactly 80 unique local slots in CET and CEST.
+for (const [date, utcStart] of [
+  ["2026-11-17", "05:00:00Z"], // CET (UTC+1)
+  ["2027-07-17", "04:00:00Z"]  // CEST (UTC+2)
+]) {
+  const slots = Array.from({ length: 80 }, (_, minute) => {
+    const instant = new Date(date + "T" + utcStart);
+    instant.setUTCMinutes(instant.getUTCMinutes() + minute);
+    return getMonitorShardIndex(instant);
+  });
+  assert.deepEqual(slots, Array.from({ length: 80 }, (_, index) => index),
+    date + " must map to all 80 local shard slots exactly once");
+  const before = new Date(date + "T" + utcStart);
+  before.setUTCMinutes(before.getUTCMinutes() - 1);
+  const after = new Date(date + "T" + utcStart);
+  after.setUTCMinutes(after.getUTCMinutes() + 80);
+  assert.equal(getMonitorShardIndex(before), -1);
+  assert.equal(getMonitorShardIndex(after), -1);
+}
+assert.equal(getMonitorShardIndex(new Date("invalid")), -1);
 
 function makeDb() {
   const snapshots = new Map();
