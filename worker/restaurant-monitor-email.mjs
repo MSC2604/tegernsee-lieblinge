@@ -97,6 +97,33 @@ export async function sendRestaurantWebsiteDigest({
     ${cardChanges.length?`<h3>Änderungen an Speise- und Getränkekarten${summary.cardsChecked == null ? " (separate Kartenprüfung)" : ""}</h3><ul>${cardChanges.map(item=>`<li><strong>${escapeHtml(item.name)}</strong> – ${escapeHtml(cardName(item.kind))}: <a href="${escapeHtml(item.url)}">Quelle öffnen</a></li>`).join("")}</ul>`:""}
     ${errors.length?`<h3>Prüfprobleme</h3><ul>${errors.map(item=>`<li><strong>${escapeHtml(item.name||"Restaurant")}</strong>: ${escapeHtml(item.detail||"Prüfung nicht möglich.")} ${item.url?`<a href="${escapeHtml(item.url)}">Quelle</a>`:""}</li>`).join("")}</ul>`:""}
     <p>Öffne die App und gehe im Menü zu „Änderungen auf Restaurant-Webseiten“.</p>`;
+  // Ein Bericht pro Berliner Kalendertag: Die INSERT-RETURNING-Operation ist atomar.
+  // Ein bestehender Status "sending"/"unknown" wird bewusst nicht erneut versendet,
+  // weil Brevo die erste Nachricht trotz Verbindungsfehler angenommen haben könnte.
+  const runDate = String(summary.runDate || new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit"
+  }).format(new Date(now())));
+  await db(`CREATE TABLE IF NOT EXISTS restaurant_monitor_email_runs (
+    run_date TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    claimed_at TEXT NOT NULL DEFAULT '',
+    sent_at TEXT NOT NULL DEFAULT '',
+    detail TEXT NOT NULL DEFAULT ''
+  )`);
+  const claim = await db(
+    "INSERT INTO restaurant_monitor_email_runs (run_date, status, claimed_at) VALUES (?, 'sending', ?) ON CONFLICT(run_date) DO NOTHING RETURNING run_date",
+    [arg(runDate), arg(now())], true
+  );
+  const claimedRows = claim?.results?.[0]?.response?.result?.rows || [];
+  if (!claimedRows.length) {
+    const state = await db("SELECT status FROM restaurant_monitor_email_runs WHERE run_date=?", [arg(runDate)], true);
+    const existingStatus = String(cell(state?.results?.[0]?.response?.result?.rows?.[0]?.[0]) || "unknown");
+    if (existingStatus === "sent") {
+      return {sent:true,acceptedByProvider:true,duplicateSuppressed:true,runDate,count:totalChanges};
+    }
+    return {sent:false,acceptedByProvider:false,duplicateSuppressed:true,runDate,reason:"Für heute existiert bereits ein Versandversuch mit Status '" + existingStatus + "'. Zur Vermeidung doppelter E-Mails wird nicht erneut gesendet."};
+  }
+
   const payload = {
     sender:{email:env.BREVO_FROM_EMAIL,name:env.BREVO_FROM_NAME||"Meine Lieblings-Restaurants am Tegernsee"},
     to:[{email:notificationEmail}],
@@ -110,24 +137,39 @@ export async function sendRestaurantWebsiteDigest({
   // Nur HTTP 429 ist eine eindeutige Rate-Limit-Ablehnung und wird erneut versucht.
   // HTTP 408 und 5xx können trotz Fehlerantwort bereits verarbeitet worden sein:
   // keine automatische Wiederholung, um doppelte Tagesberichte zu vermeiden.
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    response = await fetchImpl("https://api.brevo.com/v3/smtp/email", {
-      method:"POST",
-      headers:{"api-key":env.BREVO_API_KEY,"Content-Type":"application/json","Accept":"application/json"},
-      body:JSON.stringify(payload)
-    });
-    if (response.ok) break;
-    responseText = (await response.text()).slice(0,300);
-    const retryable = response.status === 429;
-    if (!retryable || attempt === 3) {
-      throw new Error("Brevo hat den E-Mail-Versand abgelehnt (HTTP "+response.status+"): "+responseText);
+  try {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      response = await fetchImpl("https://api.brevo.com/v3/smtp/email", {
+        method:"POST",
+        headers:{"api-key":env.BREVO_API_KEY,"Content-Type":"application/json","Accept":"application/json"},
+        body:JSON.stringify(payload)
+      });
+      if (response.ok) break;
+      responseText = (await response.text()).slice(0,300);
+      const retryable = response.status === 429;
+      if (!retryable || attempt === 3) {
+        throw new Error("Brevo hat den E-Mail-Versand abgelehnt (HTTP "+response.status+"): "+responseText);
+      }
+      await new Promise(resolve => setTimeout(resolve, attempt * 750));
     }
-    await new Promise(resolve => setTimeout(resolve, attempt * 750));
-  }
-  if (!response?.ok) {
-    throw new Error("Brevo hat den E-Mail-Versand nach drei Versuchen nicht bestätigt: "+responseText);
+    if (!response?.ok) {
+      throw new Error("Brevo hat den E-Mail-Versand nach drei Versuchen nicht bestätigt: "+responseText);
+    }
+  } catch (error) {
+    await db(
+      "UPDATE restaurant_monitor_email_runs SET status='unknown', detail=? WHERE run_date=? AND status='sending'",
+      [arg(String(error?.message || error).slice(0, 500)), arg(runDate)]
+    );
+    throw error;
   }
   const stamp=now();
+  // Erst die angenommene Nachricht dauerhaft als versendet markieren, danach
+  // Benachrichtigungskennzeichen aktualisieren. So kann ein DB-Fehler danach
+  // beim nächsten Lauf keine zweite Tagesmail auslösen.
+  await db(
+    "UPDATE restaurant_monitor_email_runs SET status='sent', sent_at=?, detail='' WHERE run_date=? AND status='sending'",
+    [arg(stamp), arg(runDate)]
+  );
   const notificationUpdates = [
     ...meaningfulProposals.map(item => ({ sql: "UPDATE restaurant_change_proposals SET notified_at=? WHERE id=? AND notified_at=''", args: [arg(stamp), arg(item.id)] })),
     ...cardChanges.map(item => ({ sql: "UPDATE restaurant_card_checks SET notified_at=? WHERE restaurant_id=? AND kind=? AND notified_at=''", args: [arg(stamp), arg(item.restaurantId), arg(item.kind)] }))
@@ -137,7 +179,7 @@ export async function sendRestaurantWebsiteDigest({
   } else {
     for (const item of notificationUpdates) await db(item.sql, item.args);
   }
-  return {sent:true,acceptedByProvider:true,recipient:notificationEmail,count:totalChanges,proposalCount:meaningfulProposals.length,cardChangeCount:cardChanges.length,ignoredTechnicalProposalCount:proposals.length-meaningfulProposals.length,errorCount:errors.length};
+  return {sent:true,acceptedByProvider:true,recipient:notificationEmail,runDate,count:totalChanges,proposalCount:meaningfulProposals.length,cardChangeCount:cardChanges.length,ignoredTechnicalProposalCount:proposals.length-meaningfulProposals.length,errorCount:errors.length};
 }
 
 /**
