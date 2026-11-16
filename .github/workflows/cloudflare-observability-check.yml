@@ -300,11 +300,11 @@ jobs:
           if ! jq -e '
             (.totalRestaurantEntries | type == "number") and
             (.restaurantsWithoutWebsiteSource | type == "number") and
-            (.totalRestaurantEntries >= 40) and
+            (.totalRestaurantEntries >= 41) and
             (.restaurantsWithoutWebsiteSource >= 0) and
             (.restaurantsWithoutWebsiteSource <= .totalRestaurantEntries)
           ' <<< "$SUMMARY_JSON" >/dev/null; then
-            echo "::error::The daily summary has missing/invalid restaurant inventory counts or reports fewer than the 40 protected entries."
+            echo "::error::The daily summary has missing/invalid restaurant inventory counts or reports fewer than the 41 protected entries."
             exit 1
           fi
           echo "Verified: $(jq -r '.totalRestaurantEntries' <<< "$SUMMARY_JSON") restaurant entries; $(jq -r '.restaurantsWithoutWebsiteSource' <<< "$SUMMARY_JSON") without website/external source."
