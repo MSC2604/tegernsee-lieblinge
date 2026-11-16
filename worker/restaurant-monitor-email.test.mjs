@@ -87,6 +87,21 @@ assert.equal(invalidCounts.sent, false);
 assert.equal(invalidCounts.acceptedByProvider, false);
 assert.match(invalidCounts.reason, /Restaurant-Gesamtzahl/);
 assert.equal(invalidCountSendCalls, 0, "A report with missing counts must never be sent.");
+
+let belowProtectedInventorySendCalls = 0;
+const belowProtectedInventory = await sendRestaurantWebsiteDigest({
+  db,
+  env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  summary: { totalRestaurantEntries:40, restaurantsWithoutWebsiteSource:0, runDate:"2026-11-24" },
+  fetchImpl: async () => {
+    belowProtectedInventorySendCalls++;
+    return new Response(JSON.stringify({messageId:"must-not-send"}), {status:201});
+  }
+});
+assert.equal(belowProtectedInventory.sent, false);
+assert.equal(belowProtectedInventory.acceptedByProvider, false);
+assert.match(belowProtectedInventory.reason, /mindestens 41/);
+assert.equal(belowProtectedInventorySendCalls, 0, "A report below the protected 41-entry inventory must never be sent.");
 const send = async () => sendRestaurantWebsiteDigest({
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
@@ -133,7 +148,7 @@ let ambiguousServerErrorCalls=0;
 await assert.rejects(() => sendRestaurantWebsiteDigest({
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
-  summary: { totalRestaurantEntries:40, restaurantsWithoutWebsiteSource:0, runDate:"2026-11-26" },
+  summary: { totalRestaurantEntries:41, restaurantsWithoutWebsiteSource:0, runDate:"2026-11-26" },
   fetchImpl: async () => {
     ambiguousServerErrorCalls++;
     return new Response("gateway error", {status:500});
@@ -145,7 +160,7 @@ let timeoutCalls=0;
 await assert.rejects(() => sendRestaurantWebsiteDigest({
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
-  summary: { totalRestaurantEntries:40, restaurantsWithoutWebsiteSource:0, runDate:"2026-11-27" },
+  summary: { totalRestaurantEntries:41, restaurantsWithoutWebsiteSource:0, runDate:"2026-11-27" },
   fetchImpl: async () => {
     timeoutCalls++;
     return new Response("request timeout", {status:408});
@@ -157,7 +172,7 @@ let rateLimitCalls=0;
 await assert.rejects(() => sendRestaurantWebsiteDigest({
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
-  summary: { totalRestaurantEntries:40, restaurantsWithoutWebsiteSource:0, runDate:"2026-11-28" },
+  summary: { totalRestaurantEntries:41, restaurantsWithoutWebsiteSource:0, runDate:"2026-11-28" },
   fetchImpl: async () => {
     rateLimitCalls++;
     return new Response("rate limited", {status:429});
@@ -169,7 +184,7 @@ let rateLimitRecoveryCalls=0;
 const rateLimitRecoveryOptions = {
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
-  summary: { totalRestaurantEntries:40, restaurantsWithoutWebsiteSource:0, runDate:"2026-12-01" },
+  summary: { totalRestaurantEntries:41, restaurantsWithoutWebsiteSource:0, runDate:"2026-12-01" },
   fetchImpl: async () => {
     rateLimitRecoveryCalls++;
     if (rateLimitRecoveryCalls <= 3) return new Response("rate limited", {status:429});
@@ -186,7 +201,7 @@ let duplicateDayCalls=0;
 const duplicateDayOptions = {
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
-  summary: { totalRestaurantEntries:40, restaurantsWithoutWebsiteSource:0, runDate:"2026-11-29" },
+  summary: { totalRestaurantEntries:41, restaurantsWithoutWebsiteSource:0, runDate:"2026-11-29" },
   fetchImpl: async () => {
     duplicateDayCalls++;
     return new Response(JSON.stringify({messageId:"test-message"}), {status:201,headers:{"Content-Type":"application/json"}});
@@ -212,11 +227,11 @@ const isolatedManualAndScheduledOptions = {
 };
 const scheduledSameDay=await sendRestaurantWebsiteDigest({
   ...isolatedManualAndScheduledOptions,
-  summary:{totalRestaurantEntries:40,restaurantsWithoutWebsiteSource:0,runDate:"2026-12-02"}
+  summary:{totalRestaurantEntries:41,restaurantsWithoutWebsiteSource:0,runDate:"2026-12-02"}
 });
 const manualSameDay=await sendRestaurantWebsiteDigest({
   ...isolatedManualAndScheduledOptions,
-  summary:{totalRestaurantEntries:40,restaurantsWithoutWebsiteSource:0,runDate:"manual-550e8400-e29b-41d4-a716-446655440000"}
+  summary:{totalRestaurantEntries:41,restaurantsWithoutWebsiteSource:0,runDate:"manual-550e8400-e29b-41d4-a716-446655440000"}
 });
 assert.equal(scheduledSameDay.sent,true);
 assert.equal(manualSameDay.sent,true);
@@ -228,7 +243,7 @@ let postAcceptanceCalls=0;
 const postAcceptanceOptions = {
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
-  summary: { totalRestaurantEntries:40, restaurantsWithoutWebsiteSource:0, runDate:"2026-11-30" },
+  summary: { totalRestaurantEntries:41, restaurantsWithoutWebsiteSource:0, runDate:"2026-11-30" },
   fetchImpl: async () => {
     postAcceptanceCalls++;
     return new Response(JSON.stringify({messageId:"test-message"}), {status:201,headers:{"Content-Type":"application/json"}});
