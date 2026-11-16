@@ -1,6 +1,10 @@
 # Tägliche Restaurant-Prüfung
 
-Die tägliche Prüfung läuft im produktiven Cloudflare Worker mit den UTC-Cron-Auslösern `0 4 * * *` und `0 5 * * *`. Der Worker prüft die lokale Uhrzeit in `Europe/Berlin` und startet die Prüfung ausschließlich um 06:00 Uhr. Damit wird die Sommer- und Winterzeit berücksichtigt und es gibt pro Tag nur einen vollständigen Prüflauf.
+## Zeitplan und Ablauf
+
+Der produktive Cloudflare Worker verwendet UTC-Cron-Auslöser. Die fünf konfigurierten Zeitfenster in `wrangler.toml` decken die 80 Prüfabschnitte von **06:00 bis 07:19 Uhr Europe/Berlin** sowie den separaten Tagesabschluss und die Wiederherstellung fehlender Abschnitte von **07:30 bis 07:59 Uhr Europe/Berlin** ab. Die UTC-Zeitfenster sind so überlappend angelegt, dass sowohl CET (Winterzeit) als auch CEST (Sommerzeit) dieselben lokalen Zeitfenster treffen. Der Worker ordnet jeden Aufruf anhand von `Europe/Berlin` entweder genau einem Prüfabschnitt oder dem Tagesabschluss zu; überzählige UTC-Ausgleichsaufrufe werden protokolliert und übersprungen.
+
+Der Tagesabschluss prüft, ob alle 80 Abschnitte gespeichert wurden. Fehlt ein Abschnitt, wird er kontrolliert nachgeholt. Erst bei vollständiger Prüfung wird der Tagesbericht erstellt und der Versand über Brevo versucht. Die automatische GitHub-Prüfung kontrolliert nach dem Zeitfenster die tatsächlich hinterlegten Cloudflare-Cron-Zeitfenster, die Worker-Telemetrie, die vollständige Zusammenfassung mit 80 Abschnitten und die Bestätigung der Brevo-Annahme.
 
 ## Zusammengefasste Prüfung
 
@@ -26,6 +30,7 @@ Der Versand funktioniert erst, wenn Brevo den API-Schlüssel und die Absenderadr
 
 - Erkannte Änderungen werden als Vorschläge in der App gesammelt.
 - Restaurantdaten werden niemals automatisch überschrieben.
+- Manuelle Prüfberichte verwenden einen eigenen Versand-Schlüssel und blockieren dadurch nicht den automatischen Tagesbericht desselben Tages.
 - Die E-Mail informiert täglich über Änderungen oder ausdrücklich darüber, dass keine Änderungen festgestellt wurden.
 - Nicht erreichbare Seiten werden als Prüfprobleme gemeldet und nicht als Datenänderung ausgegeben.
 - Änderungen werden nach erfolgreicher Annahme durch Brevo als benachrichtigt markiert; fehlgeschlagene E-Mail-Versuche lassen offene Hinweise bestehen.
@@ -35,6 +40,6 @@ Der Versand funktioniert erst, wenn Brevo den API-Schlüssel und die Absenderadr
 - Es werden nur HTTP(S)-Seiten der gespeicherten offiziellen Website aufgerufen; lokale und reservierte IP-Adressen werden blockiert.
 - Weiterleitungen auf andere Domains werden blockiert.
 - Pro Seite gelten Zeit- und Größenlimits.
-- Die Prüfung crawlt die Startseite und höchstens fünf priorisierte Unterseiten je Restaurant.
+- Die Prüfung crawlt die Startseite und höchstens zwei priorisierte Unterseiten je Restaurant.
 - Reine Design-, CSS-, Bild- oder Layoutänderungen sowie nicht verlinkte Unterseiten werden nicht zuverlässig erkannt.
 - PDF-Links auf der offiziellen Domain sowie wichtige externe Reservierungs- und Kontaktlinks werden erkannt; externe Seiten und PDF-Dateien selbst werden nicht erneut heruntergeladen.
