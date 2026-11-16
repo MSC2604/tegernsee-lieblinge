@@ -49,6 +49,20 @@ jobs:
             exit 1
           fi
           echo "Verified: both UTC triggers for exactly one 06:00 Europe/Berlin run are configured."
+      - name: Verify that the Brevo API secret exists in the production Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SECRET_LIST=$(mktemp)
+          npx --yes wrangler@3.90.0 secret list --config ./wrangler.toml > "$SECRET_LIST"
+          if ! grep -Eq '"name"[[:space:]]*:[[:space:]]*"BREVO_API_KEY"' "$SECRET_LIST"; then
+            echo "::error::BREVO_API_KEY is not present as a production Worker secret."
+            exit 1
+          fi
+          echo "Verified: BREVO_API_KEY exists in the production Worker (value remains hidden)."
       - name: Create a harmless Worker request to test log ingestion
         shell: bash
         run: |
