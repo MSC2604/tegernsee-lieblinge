@@ -1,5 +1,11 @@
 name: Deploy Cloudflare Worker
 
+# Production deployments must not race each other. Keep one active deployment
+# and let the newest queued commit deploy after it.
+concurrency:
+  group: cloudflare-worker-production
+  cancel-in-progress: false
+
 on:
   push:
     branches:
