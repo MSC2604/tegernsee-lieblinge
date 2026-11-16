@@ -127,8 +127,15 @@ export async function sendRestaurantWebsiteDigest({
     throw new Error("Brevo hat den E-Mail-Versand nach drei Versuchen nicht bestätigt: "+responseText);
   }
   const stamp=now();
-  for(const item of meaningfulProposals) await db("UPDATE restaurant_change_proposals SET notified_at=? WHERE id=? AND notified_at=''",[arg(stamp),arg(item.id)]);
-  for(const item of cardChanges) await db("UPDATE restaurant_card_checks SET notified_at=? WHERE restaurant_id=? AND kind=? AND notified_at=''",[arg(stamp),arg(item.restaurantId),arg(item.kind)]);
+  const notificationUpdates = [
+    ...meaningfulProposals.map(item => ({ sql: "UPDATE restaurant_change_proposals SET notified_at=? WHERE id=? AND notified_at=''", args: [arg(stamp), arg(item.id)] })),
+    ...cardChanges.map(item => ({ sql: "UPDATE restaurant_card_checks SET notified_at=? WHERE restaurant_id=? AND kind=? AND notified_at=''", args: [arg(stamp), arg(item.restaurantId), arg(item.kind)] }))
+  ];
+  if (notificationUpdates.length && typeof db.batch === "function") {
+    await db.batch(notificationUpdates);
+  } else {
+    for (const item of notificationUpdates) await db(item.sql, item.args);
+  }
   return {sent:true,acceptedByProvider:true,recipient:notificationEmail,count:totalChanges,proposalCount:meaningfulProposals.length,cardChangeCount:cardChanges.length,ignoredTechnicalProposalCount:proposals.length-meaningfulProposals.length,errorCount:errors.length};
 }
 
