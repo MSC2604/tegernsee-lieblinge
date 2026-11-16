@@ -1,6 +1,20 @@
 import assert from "node:assert/strict";
 import { runRestaurantWebsiteMonitor } from "./restaurant-monitor-runner.mjs";
 import { findRestaurantChanges } from "./restaurant-monitor.mjs";
+import { selectMonitorShard } from "./restaurant-monitor-sharding.mjs";
+
+// Growth regression: every source is assigned exactly once as the directory expands.
+for (const total of [0, 1, 41, 100, 150, 500, 1000, 5000]) {
+  const sources = Array.from({ length: total }, (_, id) => ({ id }));
+  const shards = Array.from({ length: 80 }, (_, shard) => selectMonitorShard(sources, shard, 80));
+  const flattened = shards.flat().map(item => item.id);
+  assert.equal(flattened.length, total, `all ${total} sources must be assigned`);
+  assert.equal(new Set(flattened).size, total, `no source may be assigned twice for ${total} sources`);
+  assert.deepEqual([...flattened].sort((a,b) => a-b), sources.map(item => item.id));
+  assert.ok(Math.max(0, ...shards.map(items => items.length)) <= Math.ceil(total / 80));
+}
+assert.throws(() => selectMonitorShard([], -1, 80), /Ungültige/);
+assert.throws(() => selectMonitorShard([], 0, 0), /Ungültige/);
 
 function makeDb() {
   const snapshots = new Map();
