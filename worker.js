@@ -1,6 +1,6 @@
 import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./worker/restaurant-monitor-email.mjs";
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
-import { selectMonitorShard } from "./worker/restaurant-monitor-sharding.mjs";
+import { selectMonitorShard, getMonitorShardIndex } from "./worker/restaurant-monitor-sharding.mjs";
 
 async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
     const missingMailSettings = [];
@@ -2740,9 +2740,7 @@ console.log("Tavily usage account:", {
     );
     // Run 80 small, sequential shards between 06:00 and 07:19 Europe/Berlin.
     // The scheduled UTC windows are disjoint; map both CET and CEST to the same local slots.
-    const localHour = Number(berlinClock.hour);
-    const localMinute = Number(berlinClock.minute);
-    const shardIndex = localHour === 6 ? localMinute : localHour === 7 ? 60 + localMinute : -1;
+    const shardIndex = getMonitorShardIndex(scheduledInstant);
     if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= 80) {
       console.log("[CRON] Übersprungener UTC-Ausgleichslauf:", JSON.stringify({
         cron: controller?.cron || "",
