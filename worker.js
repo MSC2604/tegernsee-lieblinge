@@ -2293,6 +2293,9 @@ console.log("Tavily usage account:", {
                   db: turso,
                   env,
                   summary: {
+                    // Manuelle Prüfberichte dürfen den automatischen Tagesbericht
+                    // desselben Berliner Kalendertags nicht blockieren.
+                    runDate: "manual-" + runId,
                     totalRestaurantEntries: cumulative.totalRestaurantEntries,
                     restaurantsWithoutWebsiteSource: cumulative.restaurantsWithoutWebsiteSource,
                     restaurantsChecked: cumulative.restaurants,
