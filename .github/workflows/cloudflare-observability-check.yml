@@ -325,13 +325,13 @@ jobs:
             exit 1
           fi
           if [[ "$BASELINE_ONLY" == "true" && "$BASELINE_COMPLETE" == "true" ]]; then
-            echo "Initial baseline verified: all configured official websites have homepage snapshots and zero proposals were created."
+            echo "Initial baseline pass verified: all 80 shards completed and zero proposals were created. Unreachable sources will establish their own baseline on the next successful fetch."
           elif [[ "$BASELINE_ONLY" == "true" ]]; then
-            echo "Initial baseline remains proposal-free but incomplete. Homepage snapshots: $(jq -r '.officialHomepageSnapshots // 0' <<< "$SUMMARY_JSON") / $(jq -r '.officialWebsiteCount // 0' <<< "$SUMMARY_JSON")."
+            echo "Initial baseline pass remains incomplete. Completed shards: $(jq -r '.shardsCompleted // 0' <<< "$SUMMARY_JSON") / 80. Homepage snapshots are diagnostic only and do not block the baseline."
           elif [[ "$BASELINE_COMPLETE" == "true" ]]; then
-            echo "All configured official websites already have homepage snapshots; this run was not in baseline-only mode."
+            echo "The initial baseline phase was completed in an earlier full 80-shard pass. Any source that was unreachable then can establish its own baseline on a later successful fetch."
           else
-            echo "Baseline coverage is not yet complete."
+            echo "The initial baseline pass is not yet complete."
           fi
 
       - name: Verify that the daily report was accepted by Brevo
