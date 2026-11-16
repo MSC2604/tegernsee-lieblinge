@@ -155,6 +155,7 @@ jobs:
             queryId: "restaurant-worker-observability-count-v1",
             timeframe: {from: $from, to: $to},
             dry: false,
+            view: "calculations",
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [{
@@ -163,7 +164,6 @@ jobs:
                 type: "string",
                 value: "tegernsee-restaurants-api"
               }],
-              view: "calculations",
               calculations: [{operator: "count", alias: "events_total"}],
               groupBys: [{type: "string", value: "$workers.eventType"}]
             }
@@ -200,14 +200,14 @@ jobs:
             queryId: "restaurant-worker-scheduled-diagnostic-v1",
             timeframe: {from: $from, to: $to},
             dry: false,
+            view: "events",
+            limit: 100,
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
                 {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
-              ],
-              view: "events",
-              limit: 100
+              ]
             }
           }')
           RESPONSE=$(mktemp)
@@ -243,15 +243,15 @@ jobs:
             queryId: "restaurant-website-monitor-scheduled-events-v1",
             timeframe: {from: $from, to: $to},
             dry: false,
+            view: "events",
+            limit: 100,
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
                 {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
               ],
-              needle: {value: "Website-Prüfung:", isRegex: false, matchCase: false},
-              view: "events",
-              limit: 100
+              needle: {value: "Website-Prüfung:", isRegex: false, matchCase: false}
             }
           }')
           EVENTS_RESPONSE=$(mktemp)
@@ -274,7 +274,7 @@ jobs:
             | sort_by(.timestamp) | last | .message // ""
           ' "$EVENTS_RESPONSE")
           if [[ -z "$LATEST_MESSAGE" ]]; then
-            echo "No scheduled website-monitor summary found in the last 90 minutes; baseline is not verified yet."
+            echo "No scheduled website-monitor summary found in the last four hours; baseline is not verified yet."
             exit 0
           fi
           SUMMARY_JSON="${LATEST_MESSAGE#*Website-Prüfung: }"
@@ -309,15 +309,15 @@ jobs:
             queryId: "restaurant-website-monitor-email-v1",
             timeframe: {from: $from, to: $to},
             dry: false,
+            view: "events",
+            limit: 100,
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
                 {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
               ],
-              needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false},
-              view: "events",
-              limit: 100
+              needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false}
             }
           }')
           EMAIL_RESPONSE=$(mktemp)
