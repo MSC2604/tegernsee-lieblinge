@@ -218,82 +218,45 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
       ...allSources.filter(item => item.externer_eintrag).map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
     ];
     const websiteSources = allWebsiteSources.filter((item, index) => index % SHARD_COUNT === shardIndex);
-    const officialWebsiteCount = allSources.filter(item => String(item.website || "").trim()).length;
+    const officialWebsiteCount = allSources.filter(item => String(item.website || '').trim()).length;
     const monitorStartedAt = new Date().toISOString();
     const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources, baselineOnly });
     const monitorFinishedAt = new Date().toISOString();
-    const runCoverageSql = `SELECT COUNT(DISTINCT r.id) FROM restaurants r
-      INNER JOIN restaurant_site_snapshots s
-        ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT)
-        AND s.page_url=TRIM(r.website) AND s.checked_at >= ? AND s.checked_at <= ?
-      WHERE TRIM(COALESCE(r.website, '')) <> ''`;
+    const runCoverageSql = 'SELECT COUNT(DISTINCT r.id) FROM restaurants r INNER JOIN restaurant_site_snapshots s ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT) AND s.page_url=TRIM(r.website) AND s.checked_at >= ? AND s.checked_at <= ? WHERE TRIM(COALESCE(r.website, char(0))) <> char(0)';
     const coverageAfter = await db(runCoverageSql, [arg(monitorStartedAt), arg(monitorFinishedAt)], true);
     const officialHomepageSnapshots = Number(cell(coverageAfter?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
-    const baselineComplete = !!baselineCompleteAt || officialHomepageSnapshots >= officialWebsiteCount;
-    if (baselineOnly && baselineComplete) {
-      await db(`UPDATE restaurant_website_monitor_state
-        SET baseline_complete_at=?, baseline_started_at=?, baseline_finished_at=?
-        WHERE id=1 AND baseline_complete_at=''`,
-        [arg(monitorFinishedAt), arg(monitorStartedAt), arg(monitorFinishedAt)]);
-    }
-    console.log("Website-Prüfung:", JSON.stringify({
-      restaurants:monitorReport.restaurants, externalEntries:monitorReport.externalEntries,
-      pages:monitorReport.pages, baselines:monitorReport.baselines,
-      proposals:monitorReport.proposals, errors:monitorReport.errors.length,
-      baselineOnly, officialWebsiteCount, officialHomepageSnapshots, baselineComplete,
-      startedAt:monitorStartedAt, finishedAt:monitorFinishedAt
-    }));
-    for (const issue of monitorReport.errors.slice(0, 30)) {
-      console.warn("Website-Prüfung nicht möglich:", JSON.stringify(issue));
-    }
     const dailyErrors = [
-      ...monitorReport.errors.map(issue => ({ name: issue.name || "Restaurant", url: issue.url || "", detail: issue.error || "Website-Prüfung fehlgeschlagen." })),
-      ...cardIssues.map(issue => ({
-        name: issue.name, url: issue.url,
-        detail: (issue.kind === "speisekarte" ? "Speisekarte" : "Getränkekarte") + ": " + issue.detail
-      }))
+      ...monitorReport.errors.map(issue => ({ name: issue.name || 'Restaurant', url: issue.url || '', detail: issue.error || 'Website-Prüfung fehlgeschlagen.' })),
+      ...cardIssues.map(issue => ({ name: issue.name, url: issue.url, detail: (issue.kind === 'speisekarte' ? 'Speisekarte' : 'Getränkekarte') + ': ' + issue.detail }))
     ];
-    let emailReport;
-    try {
-      emailReport = await sendRestaurantWebsiteDigest({
-        db, env,
-        summary: {
-          totalRestaurantEntries,
-          restaurantsWithoutWebsiteSource: Math.max(0, totalRestaurantEntries - allSources.length),
-          restaurantsChecked: monitorReport.restaurants,
-          externalEntriesChecked: monitorReport.externalEntries,
-          pagesChecked: monitorReport.pages,
-          cardsChecked: entries.length,
-          errors: dailyErrors
-        }
-      });
-      console.log("Restaurant-Prüfbericht:", JSON.stringify(emailReport));
-    } catch (error) {
-      emailReport = { sent: false, reason: String(error?.message || error).slice(0, 500) };
-      console.error("Restaurant-Prüfbericht fehlgeschlagen:", emailReport.reason);
+    const shardSummary = { restaurantsChecked: monitorReport.restaurants, externalEntriesChecked: monitorReport.externalEntries, pagesChecked: monitorReport.pages, cardsChecked: entries.length, changes: monitorReport.proposals, errors: dailyErrors.length, officialHomepageSnapshots, monitorStartedAt, monitorFinishedAt };
+    await db('INSERT INTO restaurant_monitor_shards (run_date, shard, summary_json, errors_json, completed_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(run_date, shard) DO UPDATE SET summary_json=excluded.summary_json, errors_json=excluded.errors_json, completed_at=excluded.completed_at', [arg(runDate), arg(shardIndex), arg(JSON.stringify(shardSummary)), arg(JSON.stringify(dailyErrors)), arg(monitorFinishedAt)]);
+    console.log('[CRON] Restaurant-Prüfabschnitt gespeichert:', JSON.stringify({ runDate, shard: shardIndex + 1, totalShards: SHARD_COUNT, restaurants: shardSummary.restaurantsChecked, externalEntries: shardSummary.externalEntriesChecked, pages: shardSummary.pagesChecked, cards: shardSummary.cardsChecked, errors: shardSummary.errors }));
+    if (shardIndex !== SHARD_COUNT - 1) return { completed: true, shard: shardIndex + 1, totalShards: SHARD_COUNT, pendingEmail: true };
+    const shardRowsResult = await db('SELECT shard, summary_json, errors_json FROM restaurant_monitor_shards WHERE run_date=? ORDER BY shard', [arg(runDate)], true);
+    const shardRows = shardRowsResult?.results?.[0]?.response?.result?.rows || [];
+    if (shardRows.length !== SHARD_COUNT) throw new Error('Tägliche Prüfung unvollständig: ' + shardRows.length + ' von ' + SHARD_COUNT + ' Abschnitten gespeichert; E-Mail wird nicht versendet.');
+    const summaries = shardRows.map(row => { try { return JSON.parse(String(cell(row[1]) || '{}')); } catch { return {}; } });
+    const allErrors = shardRows.flatMap(row => { try { const value = JSON.parse(String(cell(row[2]) || '[]')); return Array.isArray(value) ? value : []; } catch { return []; } });
+    const sum = key => summaries.reduce((total, item) => total + (Number(item[key]) || 0), 0);
+    const officialHomepageSnapshotsTotal = sum('officialHomepageSnapshots');
+    const baselineComplete = !!baselineCompleteAt || officialHomepageSnapshotsTotal >= officialWebsiteCount;
+    if (baselineOnly && baselineComplete) {
+      const finished = new Date().toISOString();
+      await db('UPDATE restaurant_website_monitor_state SET baseline_complete_at=?, baseline_started_at=?, baseline_finished_at=? WHERE id=1 AND baseline_complete_at=char(0)', [arg(finished), arg(summaries[0]?.monitorStartedAt || ''), arg(finished)]);
     }
-    const scanSummary = {
-      totalRestaurantEntries,
-      restaurantsWithoutWebsiteSource: Math.max(0, totalRestaurantEntries - allSources.length),
-      restaurantsChecked: monitorReport.restaurants,
-      externalEntriesChecked: monitorReport.externalEntries,
-      pagesChecked: monitorReport.pages,
-      cardsChecked: entries.length,
-      changes: monitorReport.proposals,
-      errors: dailyErrors.length,
-      baselineOnly, officialWebsiteCount, officialHomepageSnapshots, baselineComplete,
-      monitorStartedAt, monitorFinishedAt
-    };
-    if (emailReport?.sent !== true) {
-      const reason = String(emailReport?.reason || "Brevo hat den täglichen Prüfbericht nicht bestätigt.").slice(0, 500);
-      console.error("[CRON] Prüfung ausgeführt, aber E-Mail nicht versendet:", reason);
+    const totalRestaurantEntries = Number(cell(totalRestaurantResult?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
+    const scanSummary = { totalRestaurantEntries, restaurantsWithoutWebsiteSource: Math.max(0, totalRestaurantEntries - allSources.length), restaurantsChecked: sum('restaurantsChecked'), externalEntriesChecked: sum('externalEntriesChecked'), pagesChecked: sum('pagesChecked'), cardsChecked: sum('cardsChecked'), changes: sum('changes'), errors: allErrors.length, baselineOnly, officialWebsiteCount, officialHomepageSnapshots: officialHomepageSnapshotsTotal, baselineComplete, runDate, shardsCompleted: shardRows.length };
+    console.log('Website-Prüfung:', JSON.stringify(scanSummary));
+    let emailReport;
+    try { emailReport = await sendRestaurantWebsiteDigest({ db, env, summary: { ...scanSummary, errors: allErrors } }); console.log('Restaurant-Prüfbericht:', JSON.stringify(emailReport)); }
+    catch (error) { emailReport = { sent: false, reason: String(error?.message || error).slice(0, 500) }; console.error('Restaurant-Prüfbericht fehlgeschlagen:', emailReport.reason); }
+    if (emailReport?.sent !== true || emailReport?.acceptedByProvider !== true) {
+      const reason = String(emailReport?.reason || 'Brevo hat den täglichen Prüfbericht nicht bestätigt.').slice(0, 500);
+      console.error('[CRON] Prüfung ausgeführt, aber E-Mail nicht versendet:', reason);
       return { completed: false, scanCompleted: true, summary: scanSummary, email: emailReport, error: reason };
     }
-    return {
-      completed: true,
-      summary: scanSummary,
-      email: emailReport
-    };
+    return { completed: true, summary: scanSummary, email: emailReport };
   }
 
 export default {
