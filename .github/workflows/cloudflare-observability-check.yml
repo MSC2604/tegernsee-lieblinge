@@ -222,10 +222,14 @@ jobs:
             jq -r '.errors[]?.message // "No API error details returned."' "$RESPONSE" || true
             exit 1
           fi
-          jq -r '(.result.events.events // [])[:30][] |
-            "time=" + ((.timestamp // .["$metadata"].endTime // 0) | tostring) +
-            " eventType=" + (.["$workers.eventType"] // "unknown" | tostring) +
-            " message=" + (.["$metadata"].message // .source.message // .message // "(no message field)" | tostring)' "$RESPONSE"
+          echo "Cloudflare telemetry result structure:"
+          jq -c '.result | {
+            keys: (keys // []),
+            events_type: (.events | type),
+            events_keys: (if (.events | type) == "object" then (.events | keys) else [] end),
+            events_count: (if (.events | type) == "array" then (.events | length) elif ((.events.events // null) | type) == "array" then (.events.events | length) else 0 end),
+            first_event: (if (.events | type) == "array" then .events[0] elif ((.events.events // null) | type) == "array" then .events.events[0] else null end)
+          }' "$RESPONSE"
       - name: Inspect the latest scheduled website-monitor summary
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
