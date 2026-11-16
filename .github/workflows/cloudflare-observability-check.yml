@@ -199,7 +199,7 @@ jobs:
           BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
             queryId: "restaurant-worker-scheduled-diagnostic-v1",
             timeframe: {from: $from, to: $to},
-            dry: true,
+            dry: false,
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
@@ -242,7 +242,7 @@ jobs:
           EVENTS_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
             queryId: "restaurant-website-monitor-scheduled-events-v1",
             timeframe: {from: $from, to: $to},
-            dry: true,
+            dry: false,
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
@@ -308,7 +308,7 @@ jobs:
           EMAIL_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
             queryId: "restaurant-website-monitor-email-v1",
             timeframe: {from: $from, to: $to},
-            dry: true,
+            dry: false,
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
