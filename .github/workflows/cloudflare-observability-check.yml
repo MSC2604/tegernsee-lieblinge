@@ -187,6 +187,45 @@ jobs:
 
           echo "Cloudflare Observability API access confirmed."
 
+      - name: Diagnose scheduled Worker invocation messages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOW_MS=$(date +%s000)
+          FROM_MS=$((NOW_MS - 21600000))
+          BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
+            queryId: "restaurant-worker-scheduled-diagnostic-v1",
+            timeframe: {from: $from, to: $to},
+            dry: true,
+            parameters: {
+              datasets: ["cloudflare-workers"],
+              filters: [
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
+                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
+              ],
+              view: "events",
+              limit: 100
+            }
+          }')
+          RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" \
+            --request POST \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "$BODY")
+          echo "Scheduled invocation diagnostic API HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]]; then
+            jq -r '.errors[]?.message // "No API error details returned."' "$RESPONSE" || true
+            exit 1
+          fi
+          jq -r '(.result.events.events // [])[:30][] |
+            "time=" + ((.timestamp // .["$metadata"].endTime // 0) | tostring) +
+            " eventType=" + (.["$workers.eventType"] // "unknown" | tostring) +
+            " message=" + (.["$metadata"].message // .source.message // .message // "(no message field)" | tostring)' "$RESPONSE"
       - name: Inspect the latest scheduled website-monitor summary
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
