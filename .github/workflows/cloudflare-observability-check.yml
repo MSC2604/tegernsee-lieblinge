@@ -285,7 +285,7 @@ jobs:
           LATEST_MESSAGE=$(jq -r '.message // ""' <<< "$LATEST_EVENT")
           SUMMARY_TIMESTAMP=$(jq -r '.timestamp // 0' <<< "$LATEST_EVENT")
           if [[ -z "$LATEST_MESSAGE" ]]; then
-            echo "::error::No website-monitor summary found after the scheduled 40-shard window."
+            echo "::error::No website-monitor summary found after the scheduled 80-shard window."
             exit 1
           fi
           SUMMARY_JSON="${LATEST_MESSAGE#*Website-Prüfung: }"
