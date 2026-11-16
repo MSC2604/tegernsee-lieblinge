@@ -75,4 +75,17 @@ assert.match(sentPayloads[1].subject,/keine Änderungen/);
 assert.match(sentPayloads[1].textContent,/Keine Änderungen festgestellt/);
 assert.equal(proposalUpdated,1);
 assert.equal(cardUpdated,1);
+
+// Ein 5xx-Fehler ist kein sicherer Beleg, dass Brevo die Nachricht nicht angenommen hat.
+// Deshalb darf derselbe Bericht nicht automatisch erneut gesendet werden.
+let ambiguousServerErrorCalls=0;
+await assert.rejects(() => sendRestaurantWebsiteDigest({
+  db,
+  env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  fetchImpl: async () => {
+    ambiguousServerErrorCalls++;
+    return new Response("gateway error", {status:500});
+  }
+}), /HTTP 500/);
+assert.equal(ambiguousServerErrorCalls,1, "Ambiguous 5xx responses must not trigger duplicate email retries.");
 console.log("Täglicher Restaurant-Prüfbericht: Änderungen, Kartenänderungen und Nulländerungsbericht getestet.");
