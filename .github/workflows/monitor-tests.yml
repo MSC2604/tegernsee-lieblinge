@@ -45,5 +45,7 @@ jobs:
         run: node --check worker/restaurant-monitor-email.mjs
       - name: Test daily monitoring runner
         run: node worker/restaurant-monitor-runner.test.mjs
+      - name: Test monitoring shard time windows
+        run: node worker/restaurant-monitor-sharding.test.mjs
       - name: Test email digest
         run: node worker/restaurant-monitor-email.test.mjs
