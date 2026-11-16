@@ -2713,9 +2713,28 @@ console.log("Tavily usage account:", {
   },
   async scheduled(controller, env, ctx) {
     const startedAt = new Date().toISOString();
+    const berlinClock = Object.fromEntries(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/Berlin",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23"
+      }).formatToParts(new Date()).map(part => [part.type, part.value])
+    );
+    // Cloudflare Cron is UTC-based. Two UTC triggers plus this local-time
+    // guard ensure exactly one run at 06:00 in Germany in both CET and CEST.
+    if (berlinClock.hour !== "06" || berlinClock.minute !== "00") {
+      console.log("[CRON] Übersprungener UTC-Ausgleichslauf:", JSON.stringify({
+        cron: controller?.cron || "",
+        berlinTime: berlinClock.hour + ":" + berlinClock.minute,
+        startedAt
+      }));
+      return { skipped: true, reason: "not_06:00_Europe/Berlin" };
+    }
     console.log("[CRON] Restaurant-Monitor gestartet:", JSON.stringify({
       cron: controller?.cron || "",
       scheduledTime: controller?.scheduledTime || null,
+      berlinTime: berlinClock.hour + ":" + berlinClock.minute,
       startedAt
     }));
     try {
