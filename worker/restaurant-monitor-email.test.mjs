@@ -180,6 +180,29 @@ assert.equal(secondDailySend.sent,true);
 assert.equal(secondDailySend.duplicateSuppressed,true);
 assert.equal(duplicateDayCalls,1,"A duplicate finalizer must not send a second daily report.");
 
+// Ein manueller Prüflauf darf den automatischen Tagesbericht desselben Tages
+// nicht durch denselben Idempotenz-Schlüssel blockieren.
+let isolatedManualAndScheduledCalls=0;
+const isolatedManualAndScheduledOptions = {
+  db,
+  env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  fetchImpl: async () => {
+    isolatedManualAndScheduledCalls++;
+    return new Response(JSON.stringify({messageId:"isolated-message"}), {status:201,headers:{"Content-Type":"application/json"}});
+  }
+};
+const scheduledSameDay=await sendRestaurantWebsiteDigest({
+  ...isolatedManualAndScheduledOptions,
+  summary:{runDate:"2026-12-02"}
+});
+const manualSameDay=await sendRestaurantWebsiteDigest({
+  ...isolatedManualAndScheduledOptions,
+  summary:{runDate:"manual-550e8400-e29b-41d4-a716-446655440000"}
+});
+assert.equal(scheduledSameDay.sent,true);
+assert.equal(manualSameDay.sent,true);
+assert.equal(isolatedManualAndScheduledCalls,2,"Manual and scheduled reports on the same day must use separate send locks.");
+
 // Auch wenn Brevo die Mail annimmt, aber das Speichern des Versandstatus fehlschlägt,
 // bleibt der Tages-Lock bestehen und verhindert einen zweiten Versand.
 let postAcceptanceCalls=0;
