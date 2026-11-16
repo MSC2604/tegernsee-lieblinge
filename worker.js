@@ -1,7 +1,7 @@
 import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./worker/restaurant-monitor-email.mjs";
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
 
-async function runScheduledRestaurantMonitoring(env, ctx) {
+async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
     const missingMailSettings = [];
     if (!String(env.BREVO_API_KEY || "").trim()) missingMailSettings.push("BREVO_API_KEY");
     if (!String(env.BREVO_FROM_EMAIL || "").trim()) missingMailSettings.push("BREVO_FROM_EMAIL");
