@@ -64,7 +64,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
       await db("ALTER TABLE restaurant_card_checks ADD COLUMN notified_at TEXT NOT NULL DEFAULT ''");
     }
     const query = await db(
-      "SELECT restaurant_id, kind, url FROM restaurant_cards WHERE url <> '' AND kind IN ('speisekarte','getraenkekarte')",
+      "SELECT restaurant_id, kind, url FROM restaurant_cards WHERE url <> '' AND kind IN ('speisekarte','getraenkekarte') ORDER BY restaurant_id, kind",
       [], true
     );
     const rows = query?.results?.[0]?.response?.result?.rows || [];
@@ -205,7 +205,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
     const totalRestaurantResult = await db("SELECT COUNT(*) FROM restaurants", [], true);
     const totalRestaurantEntries = Number(cell(totalRestaurantResult?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
     const restaurantResult = await db(
-      "SELECT id, name, website, externer_eintrag FROM restaurants WHERE (website IS NOT NULL AND TRIM(website) <> '') OR (externer_eintrag IS NOT NULL AND TRIM(externer_eintrag) <> '')",
+      "SELECT id, name, website, externer_eintrag FROM restaurants WHERE (website IS NOT NULL AND TRIM(website) <> '') OR (externer_eintrag IS NOT NULL AND TRIM(externer_eintrag) <> '') ORDER BY id",
       [], true
     );
     const restaurantRows = restaurantResult?.results?.[0]?.response?.result?.rows || [];
