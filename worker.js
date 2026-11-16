@@ -1,6 +1,6 @@
 import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./worker/restaurant-monitor-email.mjs";
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
-import { selectMonitorShard, getMonitorShardIndex, isMonitorFinalizerTime } from "./worker/restaurant-monitor-sharding.mjs";
+import { selectMonitorShard, getMonitorShardIndex, isMonitorFinalizerTime, isBaselinePassComplete } from "./worker/restaurant-monitor-sharding.mjs";
 
 async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledInstant = new Date()) {
     const missingMailSettings = [];
@@ -324,7 +324,11 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
     });
     const sum = key => summaries.reduce((total, item) => total + (Number(item[key]) || 0), 0);
     const officialHomepageSnapshotsTotal = sum('officialHomepageSnapshots');
-    const baselineComplete = !!baselineCompleteAt || officialHomepageSnapshotsTotal >= officialWebsiteCount;
+    // Ein vollständiger 80-Shard-Durchlauf beendet die Baseline-Phase auch dann,
+    // wenn einzelne Websites nicht erreichbar waren. Diese Quellen erhalten beim
+    // ersten späteren erfolgreichen Abruf ihren eigenen Ausgangswert; sie dürfen
+    // nicht die Änderungsvergleiche aller anderen Restaurants dauerhaft blockieren.
+    const baselineComplete = isBaselinePassComplete({ baselineCompleteAt, baselineOnly, shardsCompleted: shardRows.length, shardCount: SHARD_COUNT });
     if (baselineOnly && baselineComplete) {
       const finished = new Date().toISOString();
       await db("UPDATE restaurant_website_monitor_state SET baseline_complete_at=?, baseline_started_at=?, baseline_finished_at=? WHERE id=1 AND baseline_complete_at=''", [arg(finished), arg(summaries[0]?.monitorStartedAt || ""), arg(finished)]);
