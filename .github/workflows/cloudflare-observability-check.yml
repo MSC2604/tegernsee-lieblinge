@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
   schedule:
     # Verify the 06:00 Europe/Berlin run after either UTC trigger.
-    - cron: "45 6 * * *"
+    - cron: "45 5 * * *"
 
 jobs:
   check-observability:
