@@ -3075,7 +3075,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     <p style="margin:0;color:#63736a;font-size:13px">Hier siehst du nur inhaltliche Änderungen. Technische Unterschiede werden ausgeblendet. Deine Restaurant-Einträge werden niemals automatisch geändert.</p>
     <button type="button" id="startWebsiteMonitor" onclick="startRestaurantWebsiteMonitor()" style="margin:14px 0;padding:11px 16px;border:0;border-radius:10px;background:#2d6a56;color:#fff;font-weight:700;cursor:pointer">Jetzt Webseiten prüfen</button>
     <button type="button" id="testWebsiteMonitorEmail" onclick="sendWebsiteMonitorTestEmail()" style="margin:0 0 14px 8px;padding:11px 16px;border:1px solid #cbded5;border-radius:10px;background:#f4f8f5;color:#2d6a56;font-weight:700;cursor:pointer">Test-E-Mail senden</button>
-    <button type="button" id="runFullWebsiteMonitorTest" onclick="runFullRestaurantMonitoringTest()" style="margin:0 0 14px 8px;padding:11px 16px;border:0;border-radius:10px;background:#294d3e;color:#fff;font-weight:700;cursor:pointer">Gesamten Prüflauf jetzt testen</button>
+    <button type="button" id="runFullWebsiteMonitorTest" onclick="runFullRestaurantMonitoringTest()" style="margin:0 0 14px 8px;padding:11px 16px;border:0;border-radius:10px;background:#294d3e;color:#fff;font-weight:700;cursor:pointer">Manuellen Webseiten-Prüflauf mit Bericht starten</button>
     <div id="websiteMonitorRunStatus" role="status" aria-live="polite" style="margin:0 0 8px;color:#63736a;font-size:13px"></div>
     <div id="websiteMonitorProgress" style="display:none;margin:0 0 14px;padding:12px;border:1px solid #dce7e0;border-radius:12px;background:#f7faf8">
       <div style="display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:700;color:#294d3e"><span id="websiteMonitorProgressLabel">Prüfung läuft …</span><span id="websiteMonitorProgressPercent">0 %</span></div>
@@ -3088,7 +3088,7 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{
     <div id="websiteChangesContext" style="display:none;margin:0 0 12px;padding:11px 13px;border:1px solid #dce7e0;border-radius:11px;background:#f4f8f5;color:#365447;font-size:13px;line-height:1.45" role="status" aria-live="polite"></div>
     <div id="websiteChangesList" aria-live="polite"><div class="website-changes-empty">Änderungen werden geladen …</div></div>
     <details class="website-review-details">
-      <summary>Website-Prüfliste – 41 Restaurants</summary>
+      <summary>Website-Prüfliste</summary>
       <p class="website-review-intro">Separate Rechercheübersicht mit gefundenen eigenen Websites, Betreiberseiten und externen Einträgen. Diese Liste wird nicht mit deinen gespeicherten Restaurantdaten synchronisiert und übernimmt oder ändert nichts. Bitte prüfe jeden Vorschlag selbst.</p>
       <div id="websiteReviewList" class="website-review-list"></div>
     </details>
