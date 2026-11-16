@@ -39,3 +39,13 @@ export function isMonitorFinalizerTime(scheduledInstant) {
   // shards can be retried one per minute in both CET and CEST.
   return (hour === 7 && minute >= 30 && minute <= 59) || hour === 8;
 }
+
+
+// A complete initial pass is defined by all scheduled shards finishing,
+// not by every external website being reachable during that one pass.
+// Unreachable sources can establish their own baseline on a later successful run.
+export function isBaselinePassComplete({ baselineCompleteAt, baselineOnly, shardsCompleted, shardCount }) {
+  if (String(baselineCompleteAt || "").trim()) return true;
+  return baselineOnly === true && Number.isInteger(shardCount) && shardCount > 0 &&
+    Number.isInteger(shardsCompleted) && shardsCompleted === shardCount;
+}
