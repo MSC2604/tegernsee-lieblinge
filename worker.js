@@ -1,5 +1,6 @@
 import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./worker/restaurant-monitor-email.mjs";
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
+import { selectMonitorShard } from "./worker/restaurant-monitor-sharding.mjs";
 
 async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
     const missingMailSettings = [];
@@ -31,7 +32,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
     }
     const arg = value => ({ type: "text", value: value == null ? "" : String(value) });
     const cell = value => value == null ? "" : (typeof value === "object" && "value" in value ? value.value : value);
-    const SHARD_COUNT = 40;
+    const SHARD_COUNT = 80;
     if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= SHARD_COUNT) throw new Error('Ungültiger Prüfabschnitt: ' + shardIndex);
     db.batch = async statements => {
       if (!Array.isArray(statements) || !statements.length) return null;
@@ -70,7 +71,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
     const rows = query?.results?.[0]?.response?.result?.rows || [];
     const allCardEntries = rows.map(row => ({ restaurantId: String(cell(row[0]) || ""), kind: String(cell(row[1]) || ""), url: String(cell(row[2]) || "") }))
       .filter(x => x.restaurantId && x.url);
-    const entries = allCardEntries.filter((item, index) => index % SHARD_COUNT === shardIndex);
+    const entries = selectMonitorShard(allCardEntries, shardIndex, SHARD_COUNT);
 
     function safeUrl(raw) {
       let u;
@@ -217,7 +218,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
       ...allSources.filter(item => item.website).map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
       ...allSources.filter(item => item.externer_eintrag).map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
     ];
-    const websiteSources = allWebsiteSources.filter((item, index) => index % SHARD_COUNT === shardIndex);
+    const websiteSources = selectMonitorShard(allWebsiteSources, shardIndex, SHARD_COUNT);
     const officialWebsiteCount = allSources.filter(item => String(item.website || '').trim()).length;
     const monitorStartedAt = new Date().toISOString();
     const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources, baselineOnly });
@@ -2737,10 +2738,12 @@ console.log("Tavily usage account:", {
         hourCycle: "h23"
       }).formatToParts(scheduledInstant).map(part => [part.type, part.value])
     );
-    // Cloudflare Free allows 50 external subrequests per invocation.
-    // Run 40 small, sequential shards between 06:00 and 06:39 local time.
-    const shardIndex = Number(berlinClock.minute);
-    if (berlinClock.hour !== "06" || !Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= 40) {
+    // Run 80 small, sequential shards between 06:00 and 07:19 Europe/Berlin.
+    // The scheduled UTC windows are disjoint; map both CET and CEST to the same local slots.
+    const localHour = Number(berlinClock.hour);
+    const localMinute = Number(berlinClock.minute);
+    const shardIndex = localHour === 6 ? localMinute : localHour === 7 ? 60 + localMinute : -1;
+    if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= 80) {
       console.log("[CRON] Übersprungener UTC-Ausgleichslauf:", JSON.stringify({
         cron: controller?.cron || "",
         berlinTime: berlinClock.hour + ":" + berlinClock.minute,
@@ -2753,7 +2756,7 @@ console.log("Tavily usage account:", {
       scheduledTime: controller?.scheduledTime || null,
       berlinTime: berlinClock.hour + ":" + berlinClock.minute,
       shard: shardIndex + 1,
-      totalShards: 40,
+      totalShards: 80,
       startedAt
     }));
     try {
