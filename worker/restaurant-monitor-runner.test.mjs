@@ -38,12 +38,12 @@ for (const [date, utcStart] of [
 }
 assert.equal(getMonitorShardIndex(new Date("invalid")), -1);
 
-// The separate finalizer window is 07:30-07:59 local time in both CET and CEST.
+// The finalizer/recovery window is 07:30-08:59 local time in both CET and CEST.
 for (const [date, utcStart] of [
   ["2026-11-17", "06:30:00Z"], // 07:30 CET
   ["2027-07-17", "05:30:00Z"]  // 07:30 CEST
 ]) {
-  for (let minute = 0; minute < 30; minute++) {
+  for (let minute = 0; minute < 90; minute++) {
     const instant = new Date(date + "T" + utcStart);
     instant.setUTCMinutes(instant.getUTCMinutes() + minute);
     assert.equal(isMonitorFinalizerTime(instant), true, "finalizer minute " + minute + " must be active");
@@ -51,7 +51,7 @@ for (const [date, utcStart] of [
   const before = new Date(date + "T" + utcStart);
   before.setUTCMinutes(before.getUTCMinutes() - 1);
   const after = new Date(date + "T" + utcStart);
-  after.setUTCMinutes(after.getUTCMinutes() + 30);
+  after.setUTCMinutes(after.getUTCMinutes() + 90);
   assert.equal(isMonitorFinalizerTime(before), false);
   assert.equal(isMonitorFinalizerTime(after), false);
 }
