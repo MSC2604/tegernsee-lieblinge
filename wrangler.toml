@@ -6,11 +6,10 @@ compatibility_date = "2026-10-16"
 BREVO_FROM_EMAIL = "msc4021@arcor.de"
 MONITOR_NOTIFICATION_EMAIL = "msc4021@arcor.de"
 
-# Cloudflare Cron is UTC-based. Trigger every minute from 04:00-04:39 and 05:00-05:39 UTC;
-# worker.js runs only when the Europe/Berlin local clock is 06:00-06:39.
-# This preserves 06:00 across CET and CEST without duplicate checks.
+# Cloudflare Cron is UTC-based. Four disjoint windows cover 06:00-07:19 Europe/Berlin
+# in both CET and CEST. The Worker maps the local clock to 80 unique shard slots.
 [triggers]
-crons = ["0-39 4 * * *", "0-39 5 * * *"]
+crons = ["0-59 4 * * *", "0-19 5 * * *", "20-59 5 * * *", "0-19 6 * * *"]
 
 # Cloudflare Workers Observability: persist logs and invocation events.
 [observability]
