@@ -242,8 +242,39 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
     const shardRows = shardRowsResult?.results?.[0]?.response?.result?.rows || [];
     const completedShardIds = new Set(shardRows.map(row => Number(cell(row[0]))));
     const missingShardIds = Array.from({ length: SHARD_COUNT }, (_, index) => index).filter(index => !completedShardIds.has(index));
-    if (shardRows.length !== SHARD_COUNT || missingShardIds.length) {
-      throw new Error('Tägliche Prüfung unvollständig: ' + (SHARD_COUNT - missingShardIds.length) + ' von ' + SHARD_COUNT + ' unterschiedlichen Abschnitten gespeichert; fehlend: ' + missingShardIds.map(index => index + 1).join(', ') + '. E-Mail wird nicht versendet.');
+    if (missingShardIds.length) {
+      await db(`CREATE TABLE IF NOT EXISTS restaurant_monitor_shard_recovery_claims (
+        run_date TEXT NOT NULL, shard INTEGER NOT NULL, claimed_at TEXT NOT NULL,
+        PRIMARY KEY (run_date, shard)
+      )`);
+      const missingShard = missingShardIds[0];
+      const claimTime = new Date().toISOString();
+      const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const claimResult = await db(
+        "INSERT INTO restaurant_monitor_shard_recovery_claims (run_date, shard, claimed_at) VALUES (?, ?, ?) ON CONFLICT(run_date, shard) DO UPDATE SET claimed_at=excluded.claimed_at WHERE restaurant_monitor_shard_recovery_claims.claimed_at < ? RETURNING shard",
+        [arg(runDate), arg(missingShard), arg(claimTime), arg(staleBefore)], true
+      );
+      const claimed = claimResult?.results?.[0]?.response?.result?.rows || [];
+      if (!claimed.length) {
+        console.log('[CRON] Nachholung läuft bereits; nächster Abschlussversuch folgt:', JSON.stringify({ runDate, shard: missingShard + 1 }));
+        return { completed: true, finalizer: true, pendingRecovery: true, waitingForShard: missingShard + 1 };
+      }
+      try {
+        console.log('[CRON] Fehlenden Prüfabschnitt automatisch nachholen:', JSON.stringify({ runDate, shard: missingShard + 1, remaining: missingShardIds.length }));
+        const recovered = await runScheduledRestaurantMonitoring(env, ctx, missingShard, scheduledInstant);
+        if (recovered?.completed !== true) {
+          throw new Error(recovered?.error || 'Nachholung des fehlenden Prüfabschnitts wurde nicht bestätigt.');
+        }
+      } finally {
+        await db(
+          "DELETE FROM restaurant_monitor_shard_recovery_claims WHERE run_date=? AND shard=?",
+          [arg(runDate), arg(missingShard)]
+        );
+      }
+      return { completed: true, finalizer: true, pendingRecovery: true, recoveredShard: missingShard + 1, remainingBeforeRecovery: missingShardIds.length };
+    }
+    if (shardRows.length !== SHARD_COUNT) {
+      throw new Error('Tägliche Prüfung unvollständig: ' + shardRows.length + ' statt ' + SHARD_COUNT + ' gespeicherte Abschnitte. E-Mail wird nicht versendet.');
     }
     const summaries = shardRows.map((row, index) => {
       let value;
