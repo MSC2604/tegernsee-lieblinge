@@ -31,6 +31,21 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
     }
     const arg = value => ({ type: "text", value: value == null ? "" : String(value) });
     const cell = value => value == null ? "" : (typeof value === "object" && "value" in value ? value.value : value);
+    const SHARD_COUNT = 30;
+    if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= SHARD_COUNT) throw new Error('Ungültiger Prüfabschnitt: ' + shardIndex);
+    db.batch = async statements => {
+      if (!Array.isArray(statements) || !statements.length) return null;
+      const requests = statements.map(item => ({ type: 'execute', stmt: { sql: item.sql, args: item.args || [], want_rows: false } }));
+      requests.push({ type: 'close' });
+      const response = await fetch(dbUrl, { method: 'POST', headers: { Authorization: 'Bearer ' + env.TURSO_AUTH_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ baton: null, requests }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error('Turso-Batch HTTP ' + response.status);
+      const failed = (data?.results || []).find(result => result?.type === 'error' || result?.error || result?.response?.error);
+      if (failed) throw new Error(failed.error?.message || failed.response?.error?.message || 'Turso-Batch fehlgeschlagen');
+      return data;
+    };
+    const runDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    await db('CREATE TABLE IF NOT EXISTS restaurant_monitor_shards (run_date TEXT NOT NULL, shard INTEGER NOT NULL, summary_json TEXT NOT NULL, errors_json TEXT NOT NULL, completed_at TEXT NOT NULL, PRIMARY KEY (run_date, shard))');
     await db(`CREATE TABLE IF NOT EXISTS restaurant_card_checks (
       restaurant_id TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL,
       checked_at TEXT NOT NULL DEFAULT '', changed_at TEXT NOT NULL DEFAULT '',
