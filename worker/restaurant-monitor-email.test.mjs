@@ -26,6 +26,7 @@ let cardRows = [[
 ]];
 let proposalUpdated = 0, cardUpdated = 0, sentPayloads = [];
 const emailRunStates = new Map();
+let failNextSentMark = false;
 let sendRunIndex = 10;
 const db = async (sql, args = [], wantRows = false) => {
   if (sql.startsWith("CREATE TABLE IF NOT EXISTS restaurant_monitor_email_runs")) return { results: [] };
@@ -40,6 +41,10 @@ const db = async (sql, args = [], wantRows = false) => {
     return { results: [{ response: { result: { rows: status ? [[{ value: status }]] : [] } } }] };
   }
   if (sql.startsWith("UPDATE restaurant_monitor_email_runs SET status='sent'")) {
+    if (failNextSentMark) {
+      failNextSentMark = false;
+      throw new Error("simulierter Datenbankfehler nach Brevo-Annahme");
+    }
     emailRunStates.set(args[1]?.value, "sent");
     return { results: [] };
   }
@@ -152,4 +157,23 @@ assert.equal(firstDailySend.sent,true);
 assert.equal(secondDailySend.sent,true);
 assert.equal(secondDailySend.duplicateSuppressed,true);
 assert.equal(duplicateDayCalls,1,"A duplicate finalizer must not send a second daily report.");
-console.log("Täglicher Restaurant-Prüfbericht: Änderungen, sichere Wiederholungen und Tages-Doppelversandsperre getestet.");
+
+// Auch wenn Brevo die Mail annimmt, aber das Speichern des Versandstatus fehlschlägt,
+// bleibt der Tages-Lock bestehen und verhindert einen zweiten Versand.
+let postAcceptanceCalls=0;
+const postAcceptanceOptions = {
+  db,
+  env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  summary: { runDate:"2026-11-30" },
+  fetchImpl: async () => {
+    postAcceptanceCalls++;
+    return new Response(JSON.stringify({messageId:"test-message"}), {status:201,headers:{"Content-Type":"application/json"}});
+  }
+};
+failNextSentMark=true;
+await assert.rejects(() => sendRestaurantWebsiteDigest(postAcceptanceOptions), /Datenbankfehler nach Brevo-Annahme/);
+const postAcceptanceRetry=await sendRestaurantWebsiteDigest(postAcceptanceOptions);
+assert.equal(postAcceptanceRetry.sent,false);
+assert.equal(postAcceptanceRetry.duplicateSuppressed,true);
+assert.equal(postAcceptanceCalls,1,"A DB error after provider acceptance must not cause a second email.");
+console.log("Täglicher Restaurant-Prüfbericht: Tages-Doppelversandsperre und Fehler nach Brevo-Annahme getestet.");
