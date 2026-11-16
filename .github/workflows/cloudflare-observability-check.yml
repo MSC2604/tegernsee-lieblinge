@@ -9,8 +9,8 @@ on:
       - "wrangler.toml"
   workflow_dispatch:
   schedule:
-    # Verify the daily Worker Cron after its 05:00 UTC execution window.
-    - cron: "30 5 * * *"
+    # Verify the 06:00 Europe/Berlin run after either UTC trigger.
+    - cron: "30 6 * * *"
 
 jobs:
   check-observability:
@@ -36,11 +36,11 @@ jobs:
           fi
           echo "Cron schedule(s) actually stored in Cloudflare:"
           jq -r '.result.schedules[]?.cron // empty' "$RESPONSE"
-          if ! jq -e '.result.schedules | length == 1 and .[0].cron == "0 5 * * *"' "$RESPONSE" >/dev/null; then
-            echo "::error::Cloudflare Cron schedule differs from the desired daily schedule 0 5 * * *."
+          if ! jq -e '.result.schedules | length == 2 and (map(.cron) | sort) == (["0 4 * * *", "0 5 * * *"] | sort)' "$RESPONSE" >/dev/null; then
+            echo "::error::Cloudflare Cron must contain exactly the two UTC triggers used by the Europe/Berlin 06:00 guard."
             exit 1
           fi
-          echo "Verified: exactly one daily Cron trigger is configured."
+          echo "Verified: both UTC triggers for exactly one 06:00 Europe/Berlin run are configured."
       - name: Create a harmless Worker request to test log ingestion
         shell: bash
         run: |
@@ -166,7 +166,7 @@ jobs:
         run: |
           set -euo pipefail
           NOW_MS=$(date +%s000)
-          FROM_MS=$((NOW_MS - 5400000))
+          FROM_MS=$((NOW_MS - 14400000))
           EVENTS_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
             queryId: "restaurant-website-monitor-scheduled-events-v1",
             timeframe: {from: $from, to: $to},
@@ -223,3 +223,58 @@ jobs:
           else
             echo "Baseline coverage is not yet complete."
           fi
+
+      - name: Verify that the daily report was accepted by Brevo
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOW_MS=$(date +%s000)
+          FROM_MS=$((NOW_MS - 14400000))
+          EMAIL_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
+            queryId: "restaurant-website-monitor-email-v1",
+            timeframe: {from: $from, to: $to},
+            dry: true,
+            parameters: {
+              datasets: ["cloudflare-workers"],
+              filters: [
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
+                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
+              ],
+              needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false},
+              view: "events",
+              limit: 100
+            }
+          }')
+          EMAIL_RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error --output "$EMAIL_RESPONSE" --write-out "%{http_code}" \\
+            --request POST \\
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \\
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \\
+            --header "Content-Type: application/json" \\
+            --data "$EMAIL_BODY")
+          echo "Scheduled email-report telemetry API HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]]; then
+            jq -r '.errors[]?.message // "No API error details returned."' "$EMAIL_RESPONSE" || true
+            exit 1
+          fi
+          LATEST_EMAIL=$(jq -r '
+            [.result.events.events[]?
+             | {timestamp: (.timestamp // .["$metadata"].endTime // 0),
+                message: (.["$metadata"].message // .source.message // .message // "")}
+             | select(.message | contains("Restaurant-Prüfbericht:"))]
+            | sort_by(.timestamp) | last | .message // ""
+          ' "$EMAIL_RESPONSE")
+          if [[ -z "$LATEST_EMAIL" ]]; then
+            echo "::error::No scheduled restaurant email-report result found in the last four hours."
+            exit 1
+          fi
+          EMAIL_JSON="${LATEST_EMAIL#*Restaurant-Prüfbericht: }"
+          echo "Latest scheduled email result: $EMAIL_JSON"
+          if ! jq -e '.sent == true and .acceptedByProvider == true' <<< "$EMAIL_JSON" >/dev/null; then
+            echo "::error::The scheduled restaurant report was not confirmed as accepted by Brevo."
+            exit 1
+          fi
+          echo "Verified: Brevo accepted the scheduled daily restaurant report."
