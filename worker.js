@@ -2725,8 +2725,9 @@ console.log("Tavily usage account:", {
   },
   async scheduled(controller, env, ctx) {
     const startedAt = new Date().toISOString();
-    const scheduledInstant = Number.isFinite(Number(controller?.scheduledTime))
-      ? new Date(Number(controller.scheduledTime))
+    const scheduledMillis = controller?.scheduledTime;
+    const scheduledInstant = scheduledMillis != null && Number.isFinite(Number(scheduledMillis))
+      ? new Date(Number(scheduledMillis))
       : new Date();
     const berlinClock = Object.fromEntries(
       new Intl.DateTimeFormat("en-GB", {
