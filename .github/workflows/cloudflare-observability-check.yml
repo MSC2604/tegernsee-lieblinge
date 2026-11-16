@@ -52,7 +52,7 @@ jobs:
             echo "::error::Cloudflare Cron must contain exactly the two UTC windows used by the Europe/Berlin 06:00-06:39 shard guard."
             exit 1
           fi
-          echo "Verified: both UTC windows for the 30-shard 06:00-06:29 Europe/Berlin run are configured."
+          echo "Verified: both UTC windows for all 40 shards (06:00-06:39 Europe/Berlin) are configured."
       - name: Verify that the Brevo API secret exists in the production Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -234,6 +234,7 @@ jobs:
             outcome: .["$workers"].outcome, cron: .["$workers"].event.cron
           }]' "$RESPONSE"
       - name: Inspect the latest scheduled website-monitor summary
+        if: github.event_name == 'schedule'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -277,11 +278,17 @@ jobs:
             | sort_by(.timestamp) | last | .message // ""
           ' "$EVENTS_RESPONSE")
           if [[ -z "$LATEST_MESSAGE" ]]; then
-            echo "No website-monitor log summary found in the last four hours; baseline is not verified yet."
-            exit 0
+            echo "::error::No website-monitor summary found after the scheduled 40-shard window."
+            exit 1
           fi
           SUMMARY_JSON="${LATEST_MESSAGE#*Website-Prüfung: }"
           echo "Latest scheduled website-monitor summary: $SUMMARY_JSON"
+          SHARDS_COMPLETED=$(jq -r '.shardsCompleted // 0' <<< "$SUMMARY_JSON")
+          if [[ "$SHARDS_COMPLETED" != "40" ]]; then
+            echo "::error::The daily summary confirms only $SHARDS_COMPLETED of 40 shards."
+            exit 1
+          fi
+          echo "Verified: all 40 monitoring shards are included in the daily summary."
           BASELINE_ONLY=$(jq -r '.baselineOnly // false' <<< "$SUMMARY_JSON")
           BASELINE_COMPLETE=$(jq -r '.baselineComplete // false' <<< "$SUMMARY_JSON")
           PROPOSALS=$(jq -r '.proposals // -1' <<< "$SUMMARY_JSON")
@@ -300,6 +307,7 @@ jobs:
           fi
 
       - name: Verify that the daily report was accepted by Brevo
+        if: github.event_name == 'schedule'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
