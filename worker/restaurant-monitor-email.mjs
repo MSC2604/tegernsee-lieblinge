@@ -114,14 +114,25 @@ export async function sendRestaurantWebsiteDigest({
     "INSERT INTO restaurant_monitor_email_runs (run_date, status, claimed_at) VALUES (?, 'sending', ?) ON CONFLICT(run_date) DO NOTHING RETURNING run_date",
     [arg(runDate), arg(now())], true
   );
-  const claimedRows = claim?.results?.[0]?.response?.result?.rows || [];
+  let claimedRows = claim?.results?.[0]?.response?.result?.rows || [];
   if (!claimedRows.length) {
     const state = await db("SELECT status FROM restaurant_monitor_email_runs WHERE run_date=?", [arg(runDate)], true);
     const existingStatus = String(cell(state?.results?.[0]?.response?.result?.rows?.[0]?.[0]) || "unknown");
     if (existingStatus === "sent") {
       return {sent:true,acceptedByProvider:true,duplicateSuppressed:true,runDate,count:totalChanges};
     }
-    return {sent:false,acceptedByProvider:false,duplicateSuppressed:true,runDate,reason:"Für heute existiert bereits ein Versandversuch mit Status '" + existingStatus + "'. Zur Vermeidung doppelter E-Mails wird nicht erneut gesendet."};
+    // Ein explizites HTTP 429 ist eine eindeutige Ablehnung. Ein späterer
+    // Finalizer darf genau einen neuen, atomar beanspruchten Versuch starten.
+    if (existingStatus === "retryable") {
+      const retryClaim = await db(
+        "UPDATE restaurant_monitor_email_runs SET status='sending', claimed_at=?, detail='' WHERE run_date=? AND status='retryable' RETURNING run_date",
+        [arg(now()), arg(runDate)], true
+      );
+      claimedRows = retryClaim?.results?.[0]?.response?.result?.rows || [];
+    }
+    if (!claimedRows.length) {
+      return {sent:false,acceptedByProvider:false,duplicateSuppressed:true,runDate,reason:"Für heute existiert bereits ein Versandversuch mit Status '" + existingStatus + "'. Zur Vermeidung doppelter E-Mails wird nicht erneut gesendet."};
+    }
   }
 
   const payload = {
@@ -156,9 +167,13 @@ export async function sendRestaurantWebsiteDigest({
       throw new Error("Brevo hat den E-Mail-Versand nach drei Versuchen nicht bestätigt: "+responseText);
     }
   } catch (error) {
+    const message = String(error?.message || error).slice(0, 500);
+    // Nur ein explizites HTTP 429 ist sicher abgelehnt und darf beim nächsten
+    // Finalizer erneut versucht werden. Netzwerkfehler/408/5xx bleiben unknown.
+    const nextStatus = /HTTP 429\b/.test(message) ? "retryable" : "unknown";
     await db(
-      "UPDATE restaurant_monitor_email_runs SET status='unknown', detail=? WHERE run_date=? AND status='sending'",
-      [arg(String(error?.message || error).slice(0, 500)), arg(runDate)]
+      "UPDATE restaurant_monitor_email_runs SET status=?, detail=? WHERE run_date=? AND status='sending'",
+      [arg(nextStatus), arg(message), arg(runDate)]
     );
     throw error;
   }
