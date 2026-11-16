@@ -305,7 +305,7 @@ jobs:
           echo "Verified: all 40 monitoring shards are included in the daily summary."
           BASELINE_ONLY=$(jq -r '.baselineOnly // false' <<< "$SUMMARY_JSON")
           BASELINE_COMPLETE=$(jq -r '.baselineComplete // false' <<< "$SUMMARY_JSON")
-          PROPOSALS=$(jq -r '.proposals // -1' <<< "$SUMMARY_JSON")
+          PROPOSALS=$(jq -r '.changes // -1' <<< "$SUMMARY_JSON")
           if [[ "$BASELINE_ONLY" == "true" && "$PROPOSALS" != "0" ]]; then
             echo "::error::Proposal-free baseline guarantee was violated."
             exit 1
