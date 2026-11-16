@@ -335,7 +335,7 @@ jobs:
           fi
 
       - name: Verify that the daily report was accepted by Brevo
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
           SUMMARY_TIMESTAMP: ${{ steps.website_summary.outputs.timestamp }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
