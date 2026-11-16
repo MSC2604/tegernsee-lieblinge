@@ -209,8 +209,7 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
               ]
             }
           }')
@@ -227,13 +226,12 @@ jobs:
             exit 1
           fi
           echo "Cloudflare telemetry result structure:"
-          jq -c '.result | {
-            keys: (keys // []),
-            events_type: (.events | type),
-            events_keys: (if (.events | type) == "object" then (.events | keys) else [] end),
-            events_count: (if (.events | type) == "array" then (.events | length) elif ((.events.events // null) | type) == "array" then (.events.events | length) else 0 end),
-            first_event: (if (.events | type) == "array" then .events[0] elif ((.events.events // null) | type) == "array" then .events.events[0] else null end)
-          }' "$RESPONSE"
+          jq -c '[.result.events.events[]? | {
+            timestamp, type: .["$metadata"].type, level: .["$metadata"].level,
+            message: .["$metadata"].message, error: .["$metadata"].error,
+            sourceMessage: .source.message, eventType: .["$workers"].eventType,
+            outcome: .["$workers"].outcome, cron: .["$workers"].event.cron
+          }]' "$RESPONSE"
       - name: Inspect the latest scheduled website-monitor summary
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -252,8 +250,7 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker-log"}
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
               ],
               needle: {value: "Website-Prüfung:", isRegex: false, matchCase: false}
             }
@@ -318,8 +315,7 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker-log"}
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
               ],
               needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false}
             }
