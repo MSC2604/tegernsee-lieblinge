@@ -88,4 +88,26 @@ await assert.rejects(() => sendRestaurantWebsiteDigest({
   }
 }), /HTTP 500/);
 assert.equal(ambiguousServerErrorCalls,1, "Ambiguous 5xx responses must not trigger duplicate email retries.");
-console.log("Täglicher Restaurant-Prüfbericht: Änderungen, Kartenänderungen und Nulländerungsbericht getestet.");
+
+let timeoutCalls=0;
+await assert.rejects(() => sendRestaurantWebsiteDigest({
+  db,
+  env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  fetchImpl: async () => {
+    timeoutCalls++;
+    return new Response("request timeout", {status:408});
+  }
+}), /HTTP 408/);
+assert.equal(timeoutCalls,1, "HTTP 408 must not be retried because provider acceptance can be ambiguous.");
+
+let rateLimitCalls=0;
+await assert.rejects(() => sendRestaurantWebsiteDigest({
+  db,
+  env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
+  fetchImpl: async () => {
+    rateLimitCalls++;
+    return new Response("rate limited", {status:429});
+  }
+}), /HTTP 429/);
+assert.equal(rateLimitCalls,3, "An explicit HTTP 429 rejection may be retried up to three times.");
+console.log("Täglicher Restaurant-Prüfbericht: Änderungen, Nulländerungen und sichere Brevo-Wiederholungen getestet.");
