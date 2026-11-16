@@ -1,5 +1,5 @@
-// Isolierter Lauf für eigene Websites und getrennte externe Portalquellen.
-// Wird erst nach ausdrücklicher Freigabe in den Live-Worker eingebunden.
+// Produktiver Lauf für offizielle Restaurant-Websites und getrennte externe Portalquellen.
+// Wird vom täglichen Cloudflare-Worker und von der manuellen Prüffunktion verwendet.
 import {
   extractOfficialPageLinks,
   extractOfficialDocumentLinks,
