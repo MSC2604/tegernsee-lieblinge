@@ -65,14 +65,23 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
     if (!cardCheckColumnNames.has("notified_at")) {
       await db("ALTER TABLE restaurant_card_checks ADD COLUMN notified_at TEXT NOT NULL DEFAULT ''");
     }
+    // Nur Kartenlinks zu aktuell vorhandenen Restaurants prüfen. Verwaiste
+    // Metadatensätze (z. B. aus alten, längst entfernten IDs) dürfen keine
+    // unnötigen Abrufe verursachen und das Worker-Subrequest-Limit sprengen.
     const query = await db(
-      "SELECT restaurant_id, kind, url FROM restaurant_cards WHERE url <> '' AND kind IN ('speisekarte','getraenkekarte') ORDER BY restaurant_id, kind",
+      "SELECT c.restaurant_id, c.kind, c.url FROM restaurant_cards c INNER JOIN restaurants r ON CAST(r.id AS TEXT)=CAST(c.restaurant_id AS TEXT) WHERE TRIM(COALESCE(c.url, '')) <> '' AND c.kind IN ('speisekarte','getraenkekarte') ORDER BY c.restaurant_id, c.kind",
       [], true
     );
     const rows = query?.results?.[0]?.response?.result?.rows || [];
     const allCardEntries = rows.map(row => ({ restaurantId: String(cell(row[0]) || ""), kind: String(cell(row[1]) || ""), url: String(cell(row[2]) || "") }))
       .filter(x => x.restaurantId && x.url);
     const entries = isFinalizer ? [] : selectMonitorShard(allCardEntries, shardIndex, SHARD_COUNT);
+    console.log('[CRON] Kartenlinks für vorhandene Restaurants:', JSON.stringify({
+      total: allCardEntries.length,
+      assignedToShard: entries.length,
+      shard: isFinalizer ? 'finalizer' : shardIndex + 1,
+      shardCount: SHARD_COUNT
+    }));
 
     function safeUrl(raw) {
       let u;
