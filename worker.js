@@ -68,8 +68,9 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
       [], true
     );
     const rows = query?.results?.[0]?.response?.result?.rows || [];
-    const entries = rows.map(row => ({ restaurantId: String(cell(row[0]) || ""), kind: String(cell(row[1]) || ""), url: String(cell(row[2]) || "") }))
+    const allCardEntries = rows.map(row => ({ restaurantId: String(cell(row[0]) || ""), kind: String(cell(row[1]) || ""), url: String(cell(row[2]) || "") }))
       .filter(x => x.restaurantId && x.url);
+    const entries = allCardEntries.filter((item, index) => index % SHARD_COUNT === shardIndex);
 
     function safeUrl(raw) {
       let u;
@@ -212,10 +213,11 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
       id:String(cell(row[0]) || ""), name:String(cell(row[1]) || ""),
       website:String(cell(row[2]) || ""), externer_eintrag:String(cell(row[3]) || "")
     })).filter(item => item.id);
-    const websiteSources = [
+    const allWebsiteSources = [
       ...allSources.filter(item => item.website).map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
       ...allSources.filter(item => item.externer_eintrag).map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
     ];
+    const websiteSources = allWebsiteSources.filter((item, index) => index % SHARD_COUNT === shardIndex);
     const officialWebsiteCount = allSources.filter(item => String(item.website || "").trim()).length;
     const monitorStartedAt = new Date().toISOString();
     const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources, baselineOnly });
