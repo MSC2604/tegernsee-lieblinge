@@ -222,7 +222,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
     const monitorStartedAt = new Date().toISOString();
     const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources, baselineOnly });
     const monitorFinishedAt = new Date().toISOString();
-    const runCoverageSql = 'SELECT COUNT(DISTINCT r.id) FROM restaurants r INNER JOIN restaurant_site_snapshots s ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT) AND s.page_url=TRIM(r.website) AND s.checked_at >= ? AND s.checked_at <= ? WHERE TRIM(COALESCE(r.website, char(0))) <> char(0)';
+    const runCoverageSql = "SELECT COUNT(DISTINCT r.id) FROM restaurants r INNER JOIN restaurant_site_snapshots s ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT) AND s.page_url=TRIM(r.website) AND s.checked_at >= ? AND s.checked_at <= ? WHERE TRIM(COALESCE(r.website, '')) <> ''";
     const coverageAfter = await db(runCoverageSql, [arg(monitorStartedAt), arg(monitorFinishedAt)], true);
     const officialHomepageSnapshots = Number(cell(coverageAfter?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
     const dailyErrors = [
@@ -243,7 +243,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
     const baselineComplete = !!baselineCompleteAt || officialHomepageSnapshotsTotal >= officialWebsiteCount;
     if (baselineOnly && baselineComplete) {
       const finished = new Date().toISOString();
-      await db('UPDATE restaurant_website_monitor_state SET baseline_complete_at=?, baseline_started_at=?, baseline_finished_at=? WHERE id=1 AND baseline_complete_at=char(0)', [arg(finished), arg(summaries[0]?.monitorStartedAt || ''), arg(finished)]);
+      await db("UPDATE restaurant_website_monitor_state SET baseline_complete_at=?, baseline_started_at=?, baseline_finished_at=? WHERE id=1 AND baseline_complete_at=''", [arg(finished), arg(summaries[0]?.monitorStartedAt || ""), arg(finished)]);
     }
     const totalRestaurantEntries = Number(cell(totalRestaurantResult?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
     const scanSummary = { totalRestaurantEntries, restaurantsWithoutWebsiteSource: Math.max(0, totalRestaurantEntries - allSources.length), restaurantsChecked: sum('restaurantsChecked'), externalEntriesChecked: sum('externalEntriesChecked'), pagesChecked: sum('pagesChecked'), cardsChecked: sum('cardsChecked'), changes: sum('changes'), errors: allErrors.length, baselineOnly, officialWebsiteCount, officialHomepageSnapshots: officialHomepageSnapshotsTotal, baselineComplete, runDate, shardsCompleted: shardRows.length };
@@ -2717,9 +2717,10 @@ console.log("Tavily usage account:", {
         hourCycle: "h23"
       }).formatToParts(scheduledInstant).map(part => [part.type, part.value])
     );
-    // Cloudflare Cron is UTC-based. Two UTC triggers plus this local-time
-    // guard ensure exactly one run at 06:00 in Germany in both CET and CEST.
-    if (berlinClock.hour !== "06" || berlinClock.minute !== "00") {
+    // Cloudflare Free allows 50 external subrequests per invocation.
+    // Run 30 small, sequential shards between 06:00 and 06:29 local time.
+    const shardIndex = Number(berlinClock.minute);
+    if (berlinClock.hour !== "06" || !Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= 30) {
       console.log("[CRON] Übersprungener UTC-Ausgleichslauf:", JSON.stringify({
         cron: controller?.cron || "",
         berlinTime: berlinClock.hour + ":" + berlinClock.minute,
@@ -2731,10 +2732,12 @@ console.log("Tavily usage account:", {
       cron: controller?.cron || "",
       scheduledTime: controller?.scheduledTime || null,
       berlinTime: berlinClock.hour + ":" + berlinClock.minute,
+      shard: shardIndex + 1,
+      totalShards: 30,
       startedAt
     }));
     try {
-      const result = await runScheduledRestaurantMonitoring(env, ctx);
+      const result = await runScheduledRestaurantMonitoring(env, ctx, shardIndex);
       if (result?.completed !== true) {
         throw new Error(result?.error || "Restaurant-Prüfung oder E-Mail-Versand wurde nicht vollständig bestätigt.");
       }
