@@ -48,11 +48,11 @@ jobs:
           fi
           echo "Cron schedule(s) actually stored in Cloudflare:"
           jq -r '.result.schedules[]?.cron // empty' "$RESPONSE"
-          if ! jq -e '.result.schedules | length == 2 and (map(.cron) | sort) == (["0 4 * * *", "0 5 * * *"] | sort)' "$RESPONSE" >/dev/null; then
-            echo "::error::Cloudflare Cron must contain exactly the two UTC triggers used by the Europe/Berlin 06:00 guard."
+          if ! jq -e '.result.schedules | length == 2 and (map(.cron) | sort) == (["0-29 4 * * *", "0-29 5 * * *"] | sort)' "$RESPONSE" >/dev/null; then
+            echo "::error::Cloudflare Cron must contain exactly the two UTC windows used by the Europe/Berlin 06:00-06:29 shard guard."
             exit 1
           fi
-          echo "Verified: both UTC triggers for exactly one 06:00 Europe/Berlin run are configured."
+          echo "Verified: both UTC windows for the 30-shard 06:00-06:29 Europe/Berlin run are configured."
       - name: Verify that the Brevo API secret exists in the production Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -250,7 +250,8 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
+                {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker"}
               ],
               needle: {value: "Website-Prüfung:", isRegex: false, matchCase: false}
             }
@@ -315,7 +316,8 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
+                {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker"}
               ],
               needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false}
             }
