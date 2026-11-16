@@ -34,7 +34,7 @@ const db = async (sql, args = [], wantRows = false) => {
     const runDate = args[0]?.value;
     if (emailRunStates.has(runDate)) return { results: [{ response: { result: { rows: [] } } }] };
     emailRunStates.set(runDate, "sending");
-    return { results: [{ response: { result: { rows: [[{ value: runDate }]] } }] }] };
+    return { results: [{ response: { result: { rows: [[{ value: runDate }]] } } }] };
   }
   if (sql.startsWith("SELECT status FROM restaurant_monitor_email_runs")) {
     const status = emailRunStates.get(args[0]?.value) || "";
