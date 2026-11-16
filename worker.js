@@ -2144,6 +2144,7 @@ console.log("Tavily usage account:", {
           const restaurants = allRestaurants.filter(item => item.website);
           const externalEntries = allRestaurants.filter(item => item.externer_eintrag);
           const withoutWebsite = allRestaurants.filter(item => !item.website).map(item => item.name);
+          const restaurantsWithoutWebsiteSource = allRestaurants.filter(item => !item.website && !item.externer_eintrag).length;
           const monitorQueue = [
             ...restaurants.map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
             ...externalEntries.map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
@@ -2151,6 +2152,7 @@ console.log("Tavily usage account:", {
           const initialReport = {
             phase: "running", startedAt, completed: 0, total: monitorQueue.length, activeRestaurants: [],
             restaurants: 0, externalEntries: 0, withoutWebsite, pages: 0, baselines: 0,
+            totalRestaurantEntries: allRestaurants.length, restaurantsWithoutWebsiteSource,
             homepageSnapshots: 0, baselineOnly, baselineComplete: !!baselineCompleteAt,
             officialWebsiteCount: restaurants.length, proposals: 0, errors: []
           };
@@ -2233,6 +2235,8 @@ console.log("Tavily usage account:", {
             restaurants: Number(cumulative.restaurants) || 0,
             externalEntries: Number(cumulative.externalEntries) || 0,
             pages: Number(cumulative.pages) || 0,
+            totalRestaurantEntries: Number(cumulative.totalRestaurantEntries) || 0,
+            restaurantsWithoutWebsiteSource: Number(cumulative.restaurantsWithoutWebsiteSource) || 0,
             baselines: Number(cumulative.baselines) || 0,
             homepageSnapshots: Number(cumulative.homepageSnapshots) || 0,
             baselineOnly: cumulative.baselineOnly === true,
@@ -2289,6 +2293,8 @@ console.log("Tavily usage account:", {
                   db: turso,
                   env,
                   summary: {
+                    totalRestaurantEntries: cumulative.totalRestaurantEntries,
+                    restaurantsWithoutWebsiteSource: cumulative.restaurantsWithoutWebsiteSource,
                     restaurantsChecked: cumulative.restaurants,
                     externalEntriesChecked: cumulative.externalEntries,
                     pagesChecked: cumulative.pages,
