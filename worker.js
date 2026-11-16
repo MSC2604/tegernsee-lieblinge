@@ -2,6 +2,12 @@ import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./w
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
 
 async function runScheduledRestaurantMonitoring(env, ctx) {
+    const missingMailSettings = [];
+    if (!String(env.BREVO_API_KEY || "").trim()) missingMailSettings.push("BREVO_API_KEY");
+    if (!String(env.BREVO_FROM_EMAIL || "").trim()) missingMailSettings.push("BREVO_FROM_EMAIL");
+    if (missingMailSettings.length) {
+      throw new Error("Restaurant-Prüfung nicht gestartet: E-Mail-Konfiguration in Cloudflare fehlt (" + missingMailSettings.join(", ") + ").");
+    }
     if (!env.TURSO_DATABASE_URL || !env.TURSO_AUTH_TOKEN) {
       throw new Error("Turso-Konfiguration fehlt; der Restaurant-Prüflauf konnte nicht ausgeführt werden.");
     }
@@ -180,6 +186,8 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
     const baselineStateResult = await db("SELECT baseline_complete_at FROM restaurant_website_monitor_state WHERE id=1", [], true);
     const baselineCompleteAt = String(cell(baselineStateResult?.results?.[0]?.response?.result?.rows?.[0]?.[0]) || "");
     const baselineOnly = !baselineCompleteAt;
+    const totalRestaurantResult = await db("SELECT COUNT(*) FROM restaurants", [], true);
+    const totalRestaurantEntries = Number(cell(totalRestaurantResult?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
     const restaurantResult = await db(
       "SELECT id, name, website, externer_eintrag FROM restaurants WHERE (website IS NOT NULL AND TRIM(website) <> '') OR (externer_eintrag IS NOT NULL AND TRIM(externer_eintrag) <> '')",
       [], true
@@ -233,6 +241,8 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
       emailReport = await sendRestaurantWebsiteDigest({
         db, env,
         summary: {
+          totalRestaurantEntries,
+          restaurantsWithoutWebsiteSource: Math.max(0, totalRestaurantEntries - allSources.length),
           restaurantsChecked: monitorReport.restaurants,
           externalEntriesChecked: monitorReport.externalEntries,
           pagesChecked: monitorReport.pages,
@@ -246,6 +256,8 @@ async function runScheduledRestaurantMonitoring(env, ctx) {
       console.error("Restaurant-Prüfbericht fehlgeschlagen:", emailReport.reason);
     }
     const scanSummary = {
+      totalRestaurantEntries,
+      restaurantsWithoutWebsiteSource: Math.max(0, totalRestaurantEntries - allSources.length),
       restaurantsChecked: monitorReport.restaurants,
       externalEntriesChecked: monitorReport.externalEntries,
       pagesChecked: monitorReport.pages,
