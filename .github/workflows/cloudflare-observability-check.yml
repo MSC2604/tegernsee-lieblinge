@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
   schedule:
     # Verify the 06:00 Europe/Berlin run after either UTC trigger.
-    - cron: "30 6 * * *"
+    - cron: "45 6 * * *"
 
 jobs:
   check-observability:
@@ -48,8 +48,8 @@ jobs:
           fi
           echo "Cron schedule(s) actually stored in Cloudflare:"
           jq -r '.result.schedules[]?.cron // empty' "$RESPONSE"
-          if ! jq -e '.result.schedules | length == 2 and (map(.cron) | sort) == (["0-29 4 * * *", "0-29 5 * * *"] | sort)' "$RESPONSE" >/dev/null; then
-            echo "::error::Cloudflare Cron must contain exactly the two UTC windows used by the Europe/Berlin 06:00-06:29 shard guard."
+          if ! jq -e '.result.schedules | length == 2 and (map(.cron) | sort) == (["0-39 4 * * *", "0-39 5 * * *"] | sort)' "$RESPONSE" >/dev/null; then
+            echo "::error::Cloudflare Cron must contain exactly the two UTC windows used by the Europe/Berlin 06:00-06:39 shard guard."
             exit 1
           fi
           echo "Verified: both UTC windows for the 30-shard 06:00-06:29 Europe/Berlin run are configured."
