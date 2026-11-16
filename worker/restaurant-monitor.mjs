@@ -1,5 +1,5 @@
-// Isolierter Helfer für die spätere tägliche Restaurant-Datenprüfung.
-// Wird nur vom isolierten Entwicklungszweig-Worker verwendet; main bleibt unverändert.
+// Gemeinsame Extraktions- und Vergleichsfunktionen für die produktive Restaurant-Webseitenprüfung.
+// Die Funktionen erstellen nur Prüfvorschläge; sie überschreiben keine Restaurant-Stammdaten.
 function clean(value) {
   return typeof value === 'string' || typeof value === 'number' ? String(value).replace(/\s+/g, ' ').trim() : '';
 }
