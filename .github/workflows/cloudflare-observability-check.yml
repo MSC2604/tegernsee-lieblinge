@@ -233,7 +233,12 @@ jobs:
             sourceMessage: .source.message, eventType: .["$workers"].eventType,
             outcome: .["$workers"].outcome, cron: .["$workers"].event.cron
           }]' "$RESPONSE"
+          if [[ "${GITHUB_EVENT_NAME:-}" == "schedule" ]] && jq -e 'any(.result.events.events[]?; .["$workers"].outcome == "exception")' "$RESPONSE" >/dev/null; then
+            echo "::error::At least one scheduled Worker invocation failed during today's Cron window."
+            exit 1
+          fi
       - name: Inspect the latest scheduled website-monitor summary
+        id: website_summary
         if: github.event_name == 'schedule'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -270,19 +275,28 @@ jobs:
             jq -r '.errors[]?.message // "No API error details returned."' "$EVENTS_RESPONSE" || true
             exit 1
           fi
-          LATEST_MESSAGE=$(jq -r '
+          LATEST_EVENT=$(jq -c '
             [.result.events.events[]?
              | {timestamp: (.timestamp // .["$metadata"].endTime // 0),
                 message: (.["$metadata"].message // .source.message // .message // "")}
              | select(.message | contains("Website-Prüfung:"))]
-            | sort_by(.timestamp) | last | .message // ""
+            | sort_by(.timestamp) | last // {}
           ' "$EVENTS_RESPONSE")
+          LATEST_MESSAGE=$(jq -r '.message // ""' <<< "$LATEST_EVENT")
+          SUMMARY_TIMESTAMP=$(jq -r '.timestamp // 0' <<< "$LATEST_EVENT")
           if [[ -z "$LATEST_MESSAGE" ]]; then
             echo "::error::No website-monitor summary found after the scheduled 40-shard window."
             exit 1
           fi
           SUMMARY_JSON="${LATEST_MESSAGE#*Website-Prüfung: }"
           echo "Latest scheduled website-monitor summary: $SUMMARY_JSON"
+          EXPECTED_RUN_DATE=$(TZ=Europe/Berlin date +%F)
+          ACTUAL_RUN_DATE=$(jq -r '.runDate // ""' <<< "$SUMMARY_JSON")
+          if [[ "$ACTUAL_RUN_DATE" != "$EXPECTED_RUN_DATE" ]]; then
+            echo "::error::The monitor summary is for $ACTUAL_RUN_DATE, not today's local date $EXPECTED_RUN_DATE."
+            exit 1
+          fi
+          echo "timestamp=$SUMMARY_TIMESTAMP" >> "$GITHUB_OUTPUT"
           SHARDS_COMPLETED=$(jq -r '.shardsCompleted // 0' <<< "$SUMMARY_JSON")
           if [[ "$SHARDS_COMPLETED" != "40" ]]; then
             echo "::error::The daily summary confirms only $SHARDS_COMPLETED of 40 shards."
@@ -308,6 +322,8 @@ jobs:
 
       - name: Verify that the daily report was accepted by Brevo
         if: github.event_name == 'schedule'
+        env:
+          SUMMARY_TIMESTAMP: ${{ steps.website_summary.outputs.timestamp }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -343,15 +359,21 @@ jobs:
             jq -r '.errors[]?.message // "No API error details returned."' "$EMAIL_RESPONSE" || true
             exit 1
           fi
-          LATEST_EMAIL=$(jq -r '
+          LATEST_EMAIL_EVENT=$(jq -c '
             [.result.events.events[]?
              | {timestamp: (.timestamp // .["$metadata"].endTime // 0),
                 message: (.["$metadata"].message // .source.message // .message // "")}
              | select(.message | contains("Restaurant-Prüfbericht:"))]
-            | sort_by(.timestamp) | last | .message // ""
+            | sort_by(.timestamp) | last // {}
           ' "$EMAIL_RESPONSE")
+          LATEST_EMAIL=$(jq -r '.message // ""' <<< "$LATEST_EMAIL_EVENT")
+          EMAIL_TIMESTAMP=$(jq -r '.timestamp // 0' <<< "$LATEST_EMAIL_EVENT")
           if [[ -z "$LATEST_EMAIL" ]]; then
             echo "::error::No restaurant email-report log result found in the last four hours."
+            exit 1
+          fi
+          if [[ -z "${SUMMARY_TIMESTAMP:-}" || "$EMAIL_TIMESTAMP" -le "$SUMMARY_TIMESTAMP" ]]; then
+            echo "::error::The Brevo result is missing or does not belong to the latest completed website-monitor summary."
             exit 1
           fi
           EMAIL_JSON="${LATEST_EMAIL#*Restaurant-Prüfbericht: }"
