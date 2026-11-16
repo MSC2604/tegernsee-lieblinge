@@ -25,6 +25,12 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Run restaurant-monitor regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test worker/*.test.mjs
+
       - name: Verify Brevo sender and recipient configuration
         shell: bash
         run: |
