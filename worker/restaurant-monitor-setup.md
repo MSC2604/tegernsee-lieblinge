@@ -1,6 +1,6 @@
 # Tägliche Restaurant-Prüfung
 
-Die tägliche Prüfung läuft im produktiven Cloudflare Worker über den Cron-Auslöser `0 5 * * *` (UTC; in Deutschland üblicherweise 06:00 Uhr im Winter und 07:00 Uhr im Sommer).
+Die tägliche Prüfung läuft im produktiven Cloudflare Worker mit den UTC-Cron-Auslösern `0 4 * * *` und `0 5 * * *`. Der Worker prüft die lokale Uhrzeit in `Europe/Berlin` und startet die Prüfung ausschließlich um 06:00 Uhr. Damit wird die Sommer- und Winterzeit berücksichtigt und es gibt pro Tag nur einen vollständigen Prüflauf.
 
 ## Zusammengefasste Prüfung
 
@@ -9,7 +9,7 @@ Ein täglicher Lauf verbindet zwei Prüfbereiche:
 - **Speise- und Getränkekarten:** Die in der App hinterlegten Karten-Links werden auf Erreichbarkeit und Inhaltsänderungen geprüft.
 - **Restaurant-Webseiten:** Die offiziellen Webseiten und ausgewählte offizielle Unterseiten werden auf erkennbare Änderungen bei Telefonnummer, E-Mail-Adresse, Website, Adresse, Öffnungszeiten, Ruhetag, Betriebsferien, Dokumenten- und relevanten Kontakt-/Reservierungslinks geprüft.
 
-Die E-Mail enthält täglich einen Bericht – auch dann, wenn keine Änderungen erkannt wurden. Sie nennt außerdem die Zahl der geprüften Restaurants, Seiten und Karten-Links sowie nicht erreichbare Seiten und Prüfprobleme. Erkannte Kartenänderungen und Restaurantdatenänderungen werden gemeinsam gemeldet.
+Vor dem Start werden die erforderlichen Brevo-Versandeinstellungen geprüft. Fehlt der API-Schlüssel oder die verifizierte Absenderadresse, wird der Webseitenlauf gar nicht erst gestartet und der Fehler im Worker-Protokoll erfasst. Die E-Mail enthält täglich einen Bericht – auch dann, wenn keine Änderungen erkannt wurden. Sie nennt außerdem die Gesamtzahl der Restaurant-Einträge, wie viele davon eine hinterlegte Website oder externe Eintragsseite haben, die Zahl der tatsächlich geprüften Restaurants, Seiten und Karten-Links sowie nicht erreichbare Seiten und Prüfprobleme. Erkannte Kartenänderungen und Restaurantdatenänderungen werden gemeinsam gemeldet.
 
 ## E-Mail-Versand
 
