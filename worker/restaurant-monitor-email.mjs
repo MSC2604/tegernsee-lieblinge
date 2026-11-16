@@ -56,6 +56,8 @@ export async function sendRestaurantWebsiteDigest({
   const cardName = kind => kind === "speisekarte" ? "Speisekarte" : "Getränkekarte";
   const summaryLines = [
     "Täglicher Restaurant-Prüfbericht","",
+    "Restaurants insgesamt im Datenbestand: " + (summary.totalRestaurantEntries == null ? "nicht ermittelt" : Number(summary.totalRestaurantEntries)),
+    "Ohne hinterlegte Website / externen Eintrag: " + (summary.restaurantsWithoutWebsiteSource == null ? "nicht ermittelt" : Number(summary.restaurantsWithoutWebsiteSource)),
     "Offizielle Restaurant-Webseiten geprüft: " + (Number(summary.restaurantsChecked)||0),
     "Externe Eintragsseiten geprüft: " + (Number(summary.externalEntriesChecked)||0),
     "Webseiten und Unterseiten geprüft: " + (Number(summary.pagesChecked)||0),
@@ -77,6 +79,8 @@ export async function sendRestaurantWebsiteDigest({
   ].join("\n");
   const htmlBody = `<h2>Täglicher Restaurant-Prüfbericht</h2>
     <ul>
+      <li>Restaurants insgesamt im Datenbestand: ${summary.totalRestaurantEntries == null ? "nicht ermittelt" : Number(summary.totalRestaurantEntries)}</li>
+      <li>Ohne hinterlegte Website / externen Eintrag: ${summary.restaurantsWithoutWebsiteSource == null ? "nicht ermittelt" : Number(summary.restaurantsWithoutWebsiteSource)}</li>
       <li>Offizielle Restaurant-Webseiten geprüft: ${Number(summary.restaurantsChecked)||0}</li>
       <li>Externe Eintragsseiten geprüft: ${Number(summary.externalEntriesChecked)||0}</li>
       <li>Webseiten und Unterseiten geprüft: ${Number(summary.pagesChecked)||0}</li>
