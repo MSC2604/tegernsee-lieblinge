@@ -232,7 +232,8 @@ jobs:
             timestamp, type: .["$metadata"].type, level: .["$metadata"].level,
             message: .["$metadata"].message, error: .["$metadata"].error,
             sourceMessage: .source.message, eventType: .["$workers"].eventType,
-            outcome: .["$workers"].outcome, cron: .["$workers"].event.cron
+            outcome: .["$workers"].outcome, cron: .["$workers"].event.cron,
+            scriptVersion: .["$workers"].scriptVersion.id
           }]' "$RESPONSE"
           SCHEDULED_EXCEPTIONS=$(jq '[.result.events.events[]? | select(.["$workers"].outcome == "exception")] | length' "$RESPONSE")
           echo "Scheduled invocation exceptions visible in this telemetry query: $SCHEDULED_EXCEPTIONS"
