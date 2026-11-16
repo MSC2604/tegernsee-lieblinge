@@ -21,6 +21,21 @@ export async function sendRestaurantWebsiteDigest({
   if (!env?.BREVO_API_KEY || !env?.BREVO_FROM_EMAIL || !notificationEmail) {
     return { sent:false, reason:"Brevo-Versandzugang oder Absenderadresse fehlt." };
   }
+  // Einen Tagesbericht mit fehlenden oder widersprüchlichen Bestandszahlen
+  // niemals versenden. So kann ein alter/falscher Aufrufer nicht erneut
+  // „nicht ermittelt“ melden und trotzdem als erfolgreicher Bericht gelten.
+  const totalRestaurantEntries = Number(summary.totalRestaurantEntries);
+  const restaurantsWithoutWebsiteSource = Number(summary.restaurantsWithoutWebsiteSource);
+  if (summary.totalRestaurantEntries == null || summary.restaurantsWithoutWebsiteSource == null ||
+      !Number.isSafeInteger(totalRestaurantEntries) || totalRestaurantEntries < 0 ||
+      !Number.isSafeInteger(restaurantsWithoutWebsiteSource) || restaurantsWithoutWebsiteSource < 0 ||
+      restaurantsWithoutWebsiteSource > totalRestaurantEntries) {
+    return {
+      sent:false,
+      acceptedByProvider:false,
+      reason:"Tagesbericht blockiert: Restaurant-Gesamtzahl oder Anzahl ohne Website/externen Eintrag fehlt oder ist ungültig. Es wurde keine E-Mail versendet."
+    };
+  }
   const proposalResult = await db(
     "SELECT p.id, r.name, p.field_name, p.old_value, p.new_value, p.source_url, p.detected_at FROM restaurant_change_proposals p LEFT JOIN restaurants r ON CAST(r.id AS TEXT)=p.restaurant_id WHERE p.status='pending' AND p.notified_at='' AND p.field_name IN ('telefon','email','website','adresse','oeffnungszeiten','ruhetag','betriebsferien','dokumente','externe_links') ORDER BY p.detected_at DESC, p.id DESC LIMIT 100",
     [], true
