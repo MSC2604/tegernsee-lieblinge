@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { runRestaurantWebsiteMonitor } from "./restaurant-monitor-runner.mjs";
 import { findRestaurantChanges } from "./restaurant-monitor.mjs";
-import { selectMonitorShard, getMonitorShardIndex } from "./restaurant-monitor-sharding.mjs";
+import { selectMonitorShard, getMonitorShardIndex, isMonitorFinalizerTime } from "./restaurant-monitor-sharding.mjs";
 
 // Growth regression: every source is assigned exactly once as the directory expands.
 for (const total of [0, 1, 41, 100, 150, 500, 1000, 5000]) {
@@ -37,6 +37,25 @@ for (const [date, utcStart] of [
   assert.equal(getMonitorShardIndex(after), -1);
 }
 assert.equal(getMonitorShardIndex(new Date("invalid")), -1);
+
+// The separate finalizer window is 07:30-07:59 local time in both CET and CEST.
+for (const [date, utcStart] of [
+  ["2026-11-17", "06:30:00Z"], // 07:30 CET
+  ["2027-07-17", "05:30:00Z"]  // 07:30 CEST
+]) {
+  for (let minute = 0; minute < 30; minute++) {
+    const instant = new Date(date + "T" + utcStart);
+    instant.setUTCMinutes(instant.getUTCMinutes() + minute);
+    assert.equal(isMonitorFinalizerTime(instant), true, "finalizer minute " + minute + " must be active");
+  }
+  const before = new Date(date + "T" + utcStart);
+  before.setUTCMinutes(before.getUTCMinutes() - 1);
+  const after = new Date(date + "T" + utcStart);
+  after.setUTCMinutes(after.getUTCMinutes() + 30);
+  assert.equal(isMonitorFinalizerTime(before), false);
+  assert.equal(isMonitorFinalizerTime(after), false);
+}
+assert.equal(isMonitorFinalizerTime(new Date("invalid")), false);
 
 function makeDb() {
   const snapshots = new Map();
