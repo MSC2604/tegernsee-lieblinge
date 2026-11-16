@@ -6,10 +6,11 @@ compatibility_date = "2026-10-16"
 BREVO_FROM_EMAIL = "msc4021@arcor.de"
 MONITOR_NOTIFICATION_EMAIL = "msc4021@arcor.de"
 
-# Cloudflare Cron uses UTC: 05:00 UTC = 06:00 German winter time.
-# During German summer time this runs at 07:00 local time.
+# Cloudflare Cron is UTC-based. Trigger at 04:00 and 05:00 UTC;
+# worker.js runs only when the Europe/Berlin local clock is exactly 06:00.
+# This preserves 06:00 across CET and CEST without duplicate checks.
 [triggers]
-crons = ["0 5 * * *"]
+crons = ["0 4 * * *", "0 5 * * *"]
 
 # Cloudflare Workers Observability: persist logs and invocation events.
 [observability]
