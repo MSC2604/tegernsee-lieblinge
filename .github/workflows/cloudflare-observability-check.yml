@@ -1,6 +1,10 @@
 name: Check Cloudflare Worker Observability
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cloudflare-observability-check.yml"
   workflow_run:
     workflows: ["Deploy Cloudflare Worker"]
     types: [completed]
