@@ -245,7 +245,6 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
       const finished = new Date().toISOString();
       await db("UPDATE restaurant_website_monitor_state SET baseline_complete_at=?, baseline_started_at=?, baseline_finished_at=? WHERE id=1 AND baseline_complete_at=''", [arg(finished), arg(summaries[0]?.monitorStartedAt || ""), arg(finished)]);
     }
-    const totalRestaurantEntries = Number(cell(totalRestaurantResult?.results?.[0]?.response?.result?.rows?.[0]?.[0])) || 0;
     const scanSummary = { totalRestaurantEntries, restaurantsWithoutWebsiteSource: Math.max(0, totalRestaurantEntries - allSources.length), restaurantsChecked: sum('restaurantsChecked'), externalEntriesChecked: sum('externalEntriesChecked'), pagesChecked: sum('pagesChecked'), cardsChecked: sum('cardsChecked'), changes: sum('changes'), errors: allErrors.length, baselineOnly, officialWebsiteCount, officialHomepageSnapshots: officialHomepageSnapshotsTotal, baselineComplete, runDate, shardsCompleted: shardRows.length };
     console.log('Website-Prüfung:', JSON.stringify(scanSummary));
     let emailReport;
