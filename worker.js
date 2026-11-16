@@ -2,7 +2,7 @@ import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./w
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
 import { selectMonitorShard, getMonitorShardIndex } from "./worker/restaurant-monitor-sharding.mjs";
 
-async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
+async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledInstant = new Date()) {
     const missingMailSettings = [];
     if (!String(env.BREVO_API_KEY || "").trim()) missingMailSettings.push("BREVO_API_KEY");
     if (!String(env.BREVO_FROM_EMAIL || "").trim()) missingMailSettings.push("BREVO_FROM_EMAIL");
@@ -45,7 +45,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex) {
       if (failed) throw new Error(failed.error?.message || failed.response?.error?.message || 'Turso-Batch fehlgeschlagen');
       return data;
     };
-    const runDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const runDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(scheduledInstant instanceof Date && Number.isFinite(scheduledInstant.getTime()) ? scheduledInstant : new Date());
     await db('CREATE TABLE IF NOT EXISTS restaurant_monitor_shards (run_date TEXT NOT NULL, shard INTEGER NOT NULL, summary_json TEXT NOT NULL, errors_json TEXT NOT NULL, completed_at TEXT NOT NULL, PRIMARY KEY (run_date, shard))');
     await db(`CREATE TABLE IF NOT EXISTS restaurant_card_checks (
       restaurant_id TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL,
@@ -2758,7 +2758,7 @@ console.log("Tavily usage account:", {
       startedAt
     }));
     try {
-      const result = await runScheduledRestaurantMonitoring(env, ctx, shardIndex);
+      const result = await runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledInstant);
       if (result?.completed !== true) {
         throw new Error(result?.error || "Restaurant-Prüfung oder E-Mail-Versand wurde nicht vollständig bestätigt.");
       }
