@@ -8334,55 +8334,87 @@ function websiteReadableValue(field,value){
   }
   return decoded.length>450?decoded.slice(0,447)+"…":decoded;
 }
-function renderWebsiteChanges(items,password){
+function renderWebsiteChanges(items,password,cardChanges=[]){
   const list=document.getElementById("websiteChangesList");
   if(!list)return;
   list.replaceChildren();
   const meaningful=(Array.isArray(items)?items:[]).filter(item=>
     websiteComparable(item.field,item.oldValue)!==websiteComparable(item.field,item.newValue)
   );
-  if(!meaningful.length){
+  const cards=Array.isArray(cardChanges)?cardChanges:[];
+  if(!meaningful.length&&!cards.length){
     const count=document.createElement("div");count.className="website-change-summary";count.textContent="Keine inhaltlichen Änderungen gefunden";list.appendChild(count);
     const empty=document.createElement("div");empty.className="website-changes-empty";
     empty.textContent="Alles ruhig: Die offenen älteren Hinweise enthalten derzeit keine erkennbaren inhaltlichen Änderungen. Technische Unterschiede wie Schreibweise, HTML-Kodierung oder Tracking-Links werden ausgeblendet. Deine Restaurantdaten bleiben unverändert.";
     list.appendChild(empty);return;
   }
-  const groups=new Map();
-  for(const item of meaningful){
-    const key=[item.restaurantName,item.field].map(v=>String(v??"").trim().toLocaleLowerCase("de-DE")).join("\u241f");
-    if(!groups.has(key))groups.set(key,[]);
-    groups.get(key).push(item);
+  if(meaningful.length){
+    const groups=new Map();
+    for(const item of meaningful){
+      const key=[item.restaurantName,item.field].map(v=>String(v??"").trim().toLocaleLowerCase("de-DE")).join("\u241f");
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(item);
+    }
+    const count=document.createElement("div");count.className="website-change-summary";
+    count.textContent=groups.size+" Restaurant"+(groups.size===1?"":"s")+" mit tatsächlichen Änderungen";
+    list.appendChild(count);
+    for(const group of groups.values()){
+      const item=group[group.length-1];
+      const ids=group.map(entry=>entry.id).filter(id=>id!==undefined&&id!==null);
+      const card=document.createElement("article");card.className="website-change-card";
+      const title=document.createElement("h3");title.textContent=(item.restaurantName||"Restaurant")+" · "+websiteChangeFieldLabel(item.field);card.appendChild(title);
+      const meta=document.createElement("div");meta.className="website-change-meta";
+      const dates=group.map(entry=>entry.detectedAt).filter(Boolean).map(v=>new Date(v)).filter(d=>!Number.isNaN(d.getTime())).sort((a,b)=>a-b);
+      meta.textContent=dates.length?"Erkannt am "+dates[dates.length-1].toLocaleString("de-DE"):"Änderung erkannt";
+      card.appendChild(meta);
+      const values=document.createElement("div");values.className="website-change-values";
+      const oldValues=[...new Set(group.map(entry=>websiteReadableValue(item.field,entry.oldValue)))];
+      const newValues=[...new Set(group.map(entry=>websiteReadableValue(item.field,entry.newValue)))];
+      for(const [label,value] of [["Bisher",oldValues.join("\n")],["Neu auf der Website",newValues.join("\n")]]){
+        const cell=document.createElement("div");cell.className="website-change-value";
+        const strong=document.createElement("strong");strong.textContent=label;cell.appendChild(strong);
+        const span=document.createElement("span");span.textContent=value;cell.appendChild(span);values.appendChild(cell);
+      }
+      card.appendChild(values);
+      if(/^https?:\/\//i.test(item.sourceUrl||"")){
+        const source=document.createElement("a");source.className="website-change-source";source.href=item.sourceUrl;source.target="_blank";source.rel="noopener noreferrer";source.textContent="Offizielle Website ansehen";card.appendChild(source);
+      }
+      const actions=document.createElement("div");actions.className="website-change-actions";
+      const seen=document.createElement("button");seen.type="button";seen.textContent="Als geprüft markieren";
+      seen.addEventListener("click",()=>reviewWebsiteChangeGroup(ids,"accepted",password,seen));
+      const ignore=document.createElement("button");ignore.type="button";ignore.className="secondary";ignore.textContent="Nicht relevant";
+      ignore.addEventListener("click",()=>reviewWebsiteChangeGroup(ids,"rejected",password,ignore));
+      actions.append(seen,ignore);card.appendChild(actions);list.appendChild(card);
+    }
+  }else{
+    const count=document.createElement("div");count.className="website-change-summary";
+    count.textContent="Keine offenen Änderungen an Restaurant-Stammdaten";
+    list.appendChild(count);
   }
-  const count=document.createElement("div");count.className="website-change-summary";
-  count.textContent=groups.size+" Restaurant"+(groups.size===1?"":"s")+" mit tatsächlichen Änderungen";
-  list.appendChild(count);
-  for(const group of groups.values()){
-    const item=group[group.length-1];
-    const ids=group.map(entry=>entry.id).filter(id=>id!==undefined&&id!==null);
-    const card=document.createElement("article");card.className="website-change-card";
-    const title=document.createElement("h3");title.textContent=(item.restaurantName||"Restaurant")+" · "+websiteChangeFieldLabel(item.field);card.appendChild(title);
-    const meta=document.createElement("div");meta.className="website-change-meta";
-    const dates=group.map(entry=>entry.detectedAt).filter(Boolean).map(v=>new Date(v)).filter(d=>!Number.isNaN(d.getTime())).sort((a,b)=>a-b);
-    meta.textContent=dates.length?"Erkannt am "+dates[dates.length-1].toLocaleString("de-DE"):"Änderung erkannt";
-    card.appendChild(meta);
-    const values=document.createElement("div");values.className="website-change-values";
-    const oldValues=[...new Set(group.map(entry=>websiteReadableValue(item.field,entry.oldValue)))];
-    const newValues=[...new Set(group.map(entry=>websiteReadableValue(item.field,entry.newValue)))];
-    for(const [label,value] of [["Bisher",oldValues.join("\n")],["Neu auf der Website",newValues.join("\n")]]){
-      const cell=document.createElement("div");cell.className="website-change-value";
-      const strong=document.createElement("strong");strong.textContent=label;cell.appendChild(strong);
-      const span=document.createElement("span");span.textContent=value;cell.appendChild(span);values.appendChild(cell);
-    }
-    card.appendChild(values);
-    if(/^https?:\/\//i.test(item.sourceUrl||"")){
-      const source=document.createElement("a");source.className="website-change-source";source.href=item.sourceUrl;source.target="_blank";source.rel="noopener noreferrer";source.textContent="Offizielle Website ansehen";card.appendChild(source);
-    }
-    const actions=document.createElement("div");actions.className="website-change-actions";
-    const seen=document.createElement("button");seen.type="button";seen.textContent="Als geprüft markieren";
-    seen.addEventListener("click",()=>reviewWebsiteChangeGroup(ids,"accepted",password,seen));
-    const ignore=document.createElement("button");ignore.type="button";ignore.className="secondary";ignore.textContent="Nicht relevant";
-    ignore.addEventListener("click",()=>reviewWebsiteChangeGroup(ids,"rejected",password,ignore));
-    actions.append(seen,ignore);card.appendChild(actions);list.appendChild(card);
+  if(cards.length){
+    const heading=document.createElement("div");heading.className="website-change-summary";
+    heading.textContent=cards.length+" geänderte Speise- und Getränkekarte"+(cards.length===1?"":"n");
+    list.appendChild(heading);
+    cards.forEach(item=>{
+      const card=document.createElement("article");card.className="website-change-card";
+      const kind=item.kind==="speisekarte"?"Speisekarte":"Getränkekarte";
+      const title=document.createElement("h3");title.textContent=(item.restaurantName||"Restaurant")+" · "+kind;card.appendChild(title);
+      const meta=document.createElement("div");meta.className="website-change-meta";
+      const date=String(item.changedAt||item.checkedAt||"");
+      const parsed=date?new Date(date):null;
+      meta.textContent=parsed&&!Number.isNaN(parsed.getTime())?"Änderung erkannt am "+parsed.toLocaleString("de-DE"):"Änderung erkannt";
+      card.appendChild(meta);
+      const note=document.createElement("div");note.className="website-change-values";
+      const text=document.createElement("div");text.className="website-change-value";
+      const strong=document.createElement("strong");strong.textContent="Bitte selbst prüfen";text.appendChild(strong);
+      const description=document.createElement("span");
+      description.textContent="Die Datei unterscheidet sich vom zuletzt gespeicherten Vergleichsstand. Öffne die Originalquelle und prüfe den Inhalt. Deine gespeicherten Restaurantdaten und Kartenlinks werden nicht automatisch verändert.";
+      text.appendChild(description);note.appendChild(text);card.appendChild(note);
+      if(/^https?:\/\//i.test(item.sourceUrl||"")){
+        const source=document.createElement("a");source.className="website-change-source";source.href=item.sourceUrl;source.target="_blank";source.rel="noopener noreferrer";source.textContent=kind+" öffnen";card.appendChild(source);
+      }
+      list.appendChild(card);
+    });
   }
 }
 function renderWebsiteMonitorErrors(errors,withoutWebsite){
@@ -8679,7 +8711,7 @@ async function loadRestaurantWebsiteChanges(password){
   const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"getRestaurantWebsiteChanges"})});
   let data={};try{data=await response.json();}catch(_){}
   if(!response.ok||!data.success)throw new Error(data.error||"Änderungshinweise konnten nicht geladen werden.");
-  renderWebsiteChanges(Array.isArray(data.items)?data.items:[],password);
+  renderWebsiteChanges(Array.isArray(data.items)?data.items:[],password,Array.isArray(data.cardChanges)?data.cardChanges:[]);
 }
 async function showRestaurantWebsiteChanges(){
   closeAppMenu();
