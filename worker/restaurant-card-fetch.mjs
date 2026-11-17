@@ -23,7 +23,8 @@ function retryDelay(response, attempt) {
   const header = response?.headers?.get?.("Retry-After");
   if (header) {
     const seconds = Number(header);
-    const until = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(header) - Date.now();
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 2000);
+    const until = Date.parse(header) - Date.now();
     if (Number.isFinite(until) && until > 0) return Math.min(until, 2000);
   }
   return attempt * 1000;
@@ -104,10 +105,12 @@ export async function fetchRestaurantCardHash(rawUrl, fetchImpl = fetch) {
       if (!response) throw new Error("Keine Antwort von der Quelle.");
     } catch (error) {
       lastError = error;
-      if (attempt < MAX_ATTEMPTS) {
+      const transient = error?.name === "AbortError" || error instanceof TypeError;
+      if (attempt < MAX_ATTEMPTS && transient) {
         await wait(attempt * 500);
         continue;
       }
+      if (!transient) throw error;
     }
   }
   if (lastError?.name === "AbortError" || /timed? ?out|timeout/i.test(String(lastError?.message || lastError))) {
