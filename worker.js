@@ -1,4 +1,5 @@
 import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./worker/restaurant-monitor-email.mjs";
+import { fetchRestaurantCardHash } from "./worker/restaurant-card-fetch.mjs";
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
 import { selectMonitorShard, getMonitorShardIndex, isMonitorFinalizerTime, isBaselinePassComplete } from "./worker/restaurant-monitor-sharding.mjs";
 
@@ -98,69 +99,17 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
       shardCount: SHARD_COUNT
     }));
 
-    function safeUrl(raw) {
-      let u;
-      try { u = new URL(raw); } catch { return null; }
-      if (!["http:", "https:"].includes(u.protocol) || u.username || u.password) return null;
-      const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-      if (!h || h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") ||
-          /^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h) ||
-          /^172\.(1[6-9]|2\d|3[01])\./.test(h) || h === "::1" || h.startsWith("fc") ||
-          h.startsWith("fd") || h.startsWith("fe80:") || h === "169.254.169.254") return null;
-      return u;
-    }
-
     async function check(item) {
-      const now = new Date().toISOString();
+      const checkedAt = new Date().toISOString();
       let status = "ok", detail = "", hash = "";
       try {
-        let current = item.url, response;
-        for (let hop = 0; hop <= 3; hop++) {
-          const parsed = safeUrl(current);
-          if (!parsed) throw new Error("URL aus Sicherheitsgründen nicht geprüft.");
-          const abort = new AbortController();
-          const timer = setTimeout(() => abort.abort(), 8000);
-          try {
-            response = await fetch(parsed.href, {
-              redirect: "manual", signal: abort.signal,
-              headers: { "User-Agent": "TegernseeRestaurantMenuChecker/1.0", "Accept": "text/html,application/pdf,*/*;q=0.5" }
-            });
-          } finally { clearTimeout(timer); }
-          if ([301,302,303,307,308].includes(response.status)) {
-            const loc = response.headers.get("Location");
-            if (!loc || hop === 3) throw new Error("Weiterleitung nicht auflösbar.");
-            current = new URL(loc, parsed.href).href;
-            continue;
-          }
-          break;
-        }
-        if (!response?.ok) {
-          status = "unreachable";
-          detail = response ? `HTTP ${response.status}` : "Keine Antwort";
-        } else {
-          const reader = response.body?.getReader();
-          if (!reader) throw new Error("Antwortinhalt nicht lesbar.");
-          const chunks = []; let total = 0, tooLarge = false;
-          while (true) {
-            const part = await reader.read();
-            if (part.done) break;
-            total += part.value.byteLength;
-            if (total > 1048576) { tooLarge = true; await reader.cancel(); break; }
-            chunks.push(part.value);
-          }
-          if (tooLarge) {
-            status = "too_large"; detail = "Quelle über 1 MB; Inhaltsvergleich übersprungen.";
-          } else {
-            const bytes = new Uint8Array(total); let offset = 0;
-            for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-            const digest = await crypto.subtle.digest("SHA-256", bytes);
-            hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
-            detail = "Quelle erreichbar; Inhalt geprüft.";
-          }
-        }
+        const result = await fetchRestaurantCardHash(item.url);
+        status = result.status;
+        detail = result.detail;
+        hash = result.hash || "";
       } catch (error) {
         status = "error";
-        detail = error?.name === "AbortError" ? "Zeitüberschreitung." : String(error?.message || error).slice(0, 220);
+        detail = String(error?.message || error).slice(0, 220);
       }
 
       const oldResult = await db(
@@ -171,8 +120,8 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
       const oldUrl = old ? String(cell(old[0]) || "") : "";
       const oldHash = old ? String(cell(old[1]) || "") : "";
       const oldChanged = old ? String(cell(old[2]) || "") : "";
-      const changedAt = hash && oldUrl === item.url && oldHash && oldHash !== hash ? now :
-        (oldUrl === item.url ? oldChanged : (hash ? now : ""));
+      const changedAt = hash && oldUrl === item.url && oldHash && oldHash !== hash ? checkedAt :
+        (oldUrl === item.url ? oldChanged : (hash ? checkedAt : ""));
       if (hash && oldUrl === item.url && oldHash && oldHash !== hash) status = "changed";
       if (hash && oldUrl === item.url && oldHash === hash) status = "unchanged";
       if (hash && (!oldHash || oldUrl !== item.url)) status = "baseline";
@@ -186,7 +135,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
           status=CASE WHEN restaurant_card_checks.status='changed' AND restaurant_card_checks.notified_at='' AND excluded.status='unchanged' THEN 'changed' ELSE excluded.status END,
           detail=excluded.detail,
           notified_at=CASE WHEN excluded.status='changed' THEN '' ELSE restaurant_card_checks.notified_at END`,
-        [arg(item.restaurantId), arg(item.kind), arg(item.url), arg(now), arg(changedAt), arg(hash), arg(status), arg(detail)]
+        [arg(item.restaurantId), arg(item.kind), arg(item.url), arg(checkedAt), arg(changedAt), arg(hash), arg(status), arg(detail)]
       );
     }
     const cardRunStartedAt = new Date().toISOString();
