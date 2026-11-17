@@ -2381,8 +2381,20 @@ console.log("Tavily usage account:", {
             status TEXT NOT NULL DEFAULT 'pending'
               CHECK (status IN ('pending', 'accepted', 'rejected')),
             reviewed_at TEXT NOT NULL DEFAULT '',
-    notified_at TEXT NOT NULL DEFAULT '',
+            notified_at TEXT NOT NULL DEFAULT '',
             UNIQUE (restaurant_id, field_name, old_value, new_value)
+          )`);
+          await turso(`CREATE TABLE IF NOT EXISTS restaurant_card_checks (
+            restaurant_id TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            url TEXT NOT NULL DEFAULT '',
+            checked_at TEXT NOT NULL DEFAULT '',
+            changed_at TEXT NOT NULL DEFAULT '',
+            content_hash TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT '',
+            detail TEXT NOT NULL DEFAULT '',
+            notified_at TEXT NOT NULL DEFAULT '',
+            PRIMARY KEY (restaurant_id, kind)
           )`);
           const result = await turso(`SELECT p.id, p.restaurant_id, r.name, p.field_name,
             p.old_value, p.new_value, p.source_url, p.detected_at, p.status
@@ -2394,11 +2406,27 @@ console.log("Tavily usage account:", {
             ORDER BY p.detected_at DESC, p.id DESC
             LIMIT 250`, [], true);
           const rows = result?.results?.[0]?.response?.result?.rows || [];
-          return json({ success: true, items: rows.map(row => ({
-            id: rowValue(row[0]), restaurantId: rowValue(row[1]), restaurantName: rowValue(row[2]),
-            field: rowValue(row[3]), oldValue: rowValue(row[4]), newValue: rowValue(row[5]),
-            sourceUrl: rowValue(row[6]), detectedAt: rowValue(row[7]), status: rowValue(row[8])
-          })) });
+          const cardResult = await turso(`SELECT c.restaurant_id, r.name, c.kind, c.url,
+            c.checked_at, c.changed_at
+            FROM restaurant_card_checks c
+            LEFT JOIN restaurants r ON CAST(r.id AS TEXT) = c.restaurant_id
+            WHERE c.status = 'changed'
+            ORDER BY c.changed_at DESC, r.name, c.kind
+            LIMIT 100`, [], true);
+          const cardRows = cardResult?.results?.[0]?.response?.result?.rows || [];
+          return json({
+            success: true,
+            items: rows.map(row => ({
+              id: rowValue(row[0]), restaurantId: rowValue(row[1]), restaurantName: rowValue(row[2]),
+              field: rowValue(row[3]), oldValue: rowValue(row[4]), newValue: rowValue(row[5]),
+              sourceUrl: rowValue(row[6]), detectedAt: rowValue(row[7]), status: rowValue(row[8])
+            })),
+            cardChanges: cardRows.map(row => ({
+              restaurantId: rowValue(row[0]), restaurantName: rowValue(row[1]),
+              kind: rowValue(row[2]), sourceUrl: rowValue(row[3]),
+              checkedAt: rowValue(row[4]), changedAt: rowValue(row[5])
+            }))
+          });
         }
 
         if (body.action === "reviewRestaurantWebsiteChange") {
