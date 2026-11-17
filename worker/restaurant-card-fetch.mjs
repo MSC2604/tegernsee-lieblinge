@@ -56,12 +56,14 @@ export async function fetchRestaurantCardHash(rawUrl, fetchImpl = fetch) {
             const location = response.headers.get("Location");
             if (!location || hop === 3) throw new Error("Weiterleitung nicht auflösbar.");
             current = new URL(location, parsed.href).href;
+            try { await response.body?.cancel(); } catch { /* redirect body is not needed */ }
             continue;
           }
           if ([408, 425, 429].includes(response.status) || response.status >= 500) {
             if (attempt < MAX_ATTEMPTS) {
               const delay = retryDelay(response, attempt);
               clearTimeout(timer);
+              try { await response.body?.cancel(); } catch { /* retry response body is not needed */ }
               await wait(delay);
               response = null;
               break;
