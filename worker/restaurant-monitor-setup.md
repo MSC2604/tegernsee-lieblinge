@@ -42,4 +42,4 @@ Der Versand funktioniert erst, wenn Brevo den API-Schlüssel und die Absenderadr
 - Pro Seite gelten Zeit- und Größenlimits.
 - Die Prüfung crawlt die Startseite und höchstens zwei priorisierte Unterseiten je Restaurant.
 - Reine Design-, CSS-, Bild- oder Layoutänderungen sowie nicht verlinkte Unterseiten werden nicht zuverlässig erkannt.
-- PDF-Links auf der offiziellen Domain sowie wichtige externe Reservierungs- und Kontaktlinks werden erkannt; externe Seiten und PDF-Dateien selbst werden nicht erneut heruntergeladen.
+- PDF-Links auf der offiziellen Domain sowie wichtige externe Reservierungs- und Kontaktlinks werden erkannt. Die separate Kartenprüfung lädt hinterlegte offizielle Speise- und Getränkekarten bis 5 MB zum Inhaltsvergleich; sonstige externe Seiten und externe PDF-Dateien werden nicht heruntergeladen.
