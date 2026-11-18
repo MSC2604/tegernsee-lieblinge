@@ -344,9 +344,8 @@ jobs:
               datasets: ["cloudflare-workers"],
               filters: [
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker"}
-              ],
-              needle: {value: "totalRestaurantEntries", isRegex: false, matchCase: false}
+                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
+              ]
             }
           }')
           EVENTS_RESPONSE=$(mktemp)
@@ -485,9 +484,8 @@ jobs:
               datasets: ["cloudflare-workers"],
               filters: [
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker"}
-              ],
-              needle: {value: "acceptedByProvider", isRegex: false, matchCase: false}
+                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
+              ]
             }
           }')
           EMAIL_RESPONSE=$(mktemp)
