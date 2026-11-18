@@ -282,7 +282,7 @@ jobs:
           NOW_MS=$(date +%s000)
           FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
-            queryId: "restaurant-monitor-40-shard-log-audit-v1",
+            queryId: "restaurant-monitor-40-shard-log-audit-v2",
             timeframe: {from: $from, to: $to},
             dry: false,
             view: "events",
@@ -335,7 +335,7 @@ jobs:
           NOW_MS=$(date +%s000)
           FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           EVENTS_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
-            queryId: "restaurant-website-monitor-scheduled-events-v1",
+            queryId: "restaurant-website-monitor-scheduled-events-v2",
             timeframe: {from: $from, to: $to},
             dry: false,
             view: "events",
@@ -475,7 +475,7 @@ jobs:
           NOW_MS=$(date +%s000)
           FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           EMAIL_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
-            queryId: "restaurant-website-monitor-email-v1",
+            queryId: "restaurant-website-monitor-email-v2",
             timeframe: {from: $from, to: $to},
             dry: false,
             view: "events",
