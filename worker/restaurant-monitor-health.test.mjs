@@ -19,6 +19,11 @@ const rows = Array.from({ length: 40 }, (_, shard) => ({
   errors: "[]",
   completedAt: "2026-11-18T05:" + String(shard).padStart(2, "0") + ":30.000Z"
 }));
+const baselineRows = rows.map((row, index) => index === 39 ? {
+  ...row,
+  summary: JSON.stringify({ ...makeSummary(index), configuredWebsiteSources: 2 }),
+  errors: JSON.stringify([{ name: "Testquelle", error: "Nicht erreichbar" }])
+} : row);
 const baseline = {
   completeAt: "2026-11-17T05:40:00.000Z",
   startedAt: "2026-11-17T05:00:00.000Z",
@@ -71,7 +76,7 @@ assert.deepEqual(duplicate.today.duplicateShardIds, [1]);
 
 const scheduledBaseline = buildRestaurantMonitorHealth({
   baseline, inventory,
-  baselineShardRows: rows,
+  baselineShardRows: baselineRows,
   shardRows: rows,
   runDate: "2026-11-18"
 });
