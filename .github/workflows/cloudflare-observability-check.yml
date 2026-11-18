@@ -417,10 +417,68 @@ jobs:
             echo "Verified: the initial baseline was completed earlier; regular comparisons are now enabled."
           fi
 
+      - name: Verify the original baseline was complete and proposal-free
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOW_MS=$(date +%s000)
+          FROM_MS=$((NOW_MS - 604800000))
+          BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
+            queryId: "restaurant-monitor-initial-baseline-v1",
+            timeframe: {from: $from, to: $to},
+            dry: false,
+            view: "events",
+            limit: 100,
+            parameters: {
+              datasets: ["cloudflare-workers"],
+              filters: [
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
+                {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker"}
+              ],
+              needle: {value: "\"baselineOnly\":true", isRegex: false, matchCase: false}
+            }
+          }')
+          RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" \
+            --request POST \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "$BODY")
+          echo "Initial-baseline telemetry API HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]]; then
+            jq -r '.errors[]?.message // "No API error details returned."' "$RESPONSE" || true
+            exit 1
+          fi
+          BASELINE_RECORD=$(jq -c '
+            [.result.events.events[]?
+             | {timestamp: (.timestamp // .["$metadata"].endTime // 0),
+                message: (.["$metadata"].message // .source.message // .message // "")}
+             | select(.message | contains("Website-Prüfung:"))
+             | .message as $message
+             | (try ($message | split("Website-Prüfung: ") | last | fromjson) catch null) as $payload
+             | select($payload != null and $payload.baselineOnly == true and $payload.baselineComplete == true and $payload.changes == 0)
+             | {timestamp, summary: $payload}]
+            | sort_by(.timestamp) | last // {}
+          ' "$RESPONSE")
+          if [[ -z "$BASELINE_RECORD" || "$BASELINE_RECORD" == "{}" ]]; then
+            echo "::error::No complete initial baseline-only summary with zero change proposals was found in the available telemetry."
+            exit 1
+          fi
+          BASELINE_SHARDS=$(jq -r '.summary.shardsCompleted // 0' <<< "$BASELINE_RECORD")
+          if [[ "$BASELINE_SHARDS" != "40" && "$BASELINE_SHARDS" != "80" ]]; then
+            echo "::error::The original baseline record does not confirm a complete known shard set."
+            exit 1
+          fi
+          echo "Verified: the original baseline-only pass completed with $BASELINE_SHARDS sections and zero change proposals."
+
       - name: Verify that the daily report was accepted by Brevo
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
-          SUMMARY_TIMESTAMP: ${{ steps.website_summary.outputs.timestamp }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
@@ -455,27 +513,28 @@ jobs:
             jq -r '.errors[]?.message // "No API error details returned."' "$EMAIL_RESPONSE" || true
             exit 1
           fi
-          LATEST_EMAIL_EVENT=$(jq -c '
+          EXPECTED_RUN_DATE=$(TZ=Europe/Berlin date +%F)
+          ACCEPTED_EMAIL_EVENT=$(jq -c --arg runDate "$EXPECTED_RUN_DATE" '
             [.result.events.events[]?
              | {timestamp: (.timestamp // .["$metadata"].endTime // 0),
                 message: (.["$metadata"].message // .source.message // .message // "")}
-             | select(.message | contains("Restaurant-Prüfbericht:"))]
+             | select(.message | contains("Restaurant-Prüfbericht:"))
+             | .message as $message
+             | (try ($message | split("Restaurant-Prüfbericht: ") | last | fromjson) catch null) as $payload
+             | select($payload != null and $payload.runDate == $runDate and $payload.sent == true and $payload.acceptedByProvider == true and ($payload.duplicateSuppressed // false) != true)
+             | {timestamp, result: $payload}]
             | sort_by(.timestamp) | last // {}
           ' "$EMAIL_RESPONSE")
-          LATEST_EMAIL=$(jq -r '.message // ""' <<< "$LATEST_EMAIL_EVENT")
-          EMAIL_TIMESTAMP=$(jq -r '.timestamp // 0' <<< "$LATEST_EMAIL_EVENT")
-          if [[ -z "$LATEST_EMAIL" ]]; then
-            echo "::error::No restaurant email-report log result found in the last four hours."
+          if [[ -z "$ACCEPTED_EMAIL_EVENT" || "$ACCEPTED_EMAIL_EVENT" == "{}" ]]; then
+            echo "::error::No actual Brevo-accepted daily report (sent=true, acceptedByProvider=true, not duplicate-suppressed) was found for today's local date."
             exit 1
           fi
-          if [[ -z "${SUMMARY_TIMESTAMP:-}" || "$EMAIL_TIMESTAMP" -le "$SUMMARY_TIMESTAMP" ]]; then
-            echo "::error::The Brevo result is missing or does not belong to the latest completed website-monitor summary."
-            exit 1
-          fi
-          EMAIL_JSON="${LATEST_EMAIL#*Restaurant-Prüfbericht: }"
-          echo "Latest scheduled email result: $EMAIL_JSON"
-          if ! jq -e '.sent == true and .acceptedByProvider == true' <<< "$EMAIL_JSON" >/dev/null; then
-            echo "::error::The scheduled restaurant report was not confirmed as accepted by Brevo."
+          EMAIL_TIMESTAMP=$(jq -r '.timestamp // 0' <<< "$ACCEPTED_EMAIL_EVENT")
+          EMAIL_JSON=$(jq -c '.result' <<< "$ACCEPTED_EMAIL_EVENT")
+          echo "Actual Brevo-accepted daily email event: $EMAIL_JSON"
+          echo "Provider-accepted event timestamp: $EMAIL_TIMESTAMP"
+          if ! jq -e '.sent == true and .acceptedByProvider == true and ((.duplicateSuppressed // false) != true)' <<< "$EMAIL_JSON" >/dev/null; then
+            echo "::error::The daily report does not contain a confirmed, non-duplicate Brevo acceptance."
             exit 1
           fi
           echo "Verified: Brevo accepted the scheduled daily restaurant report."
