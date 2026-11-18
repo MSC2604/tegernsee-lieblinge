@@ -252,8 +252,22 @@ jobs:
           SCHEDULED_EXCEPTIONS=$(jq '[.result.events.events[]? | select(.["$workers"].outcome == "exception")] | length' "$RESPONSE")
           echo "Scheduled invocation exceptions visible in this telemetry query: $SCHEDULED_EXCEPTIONS"
           echo "A transient invocation exception is not treated as a final daily failure by itself. The checks below require exactly 40 distinct saved sections, a complete baseline summary and Brevo acceptance."
+      - name: Enable daily audit after the 06:00–06:39 Europe/Berlin window
+        id: daily_audit_gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOCAL_HHMM=$(TZ=Europe/Berlin date +%H%M)
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" && "$LOCAL_HHMM" < "0645" ]]; then
+            echo "run_daily_audit=false" >> "$GITHUB_OUTPUT"
+            echo "Daily audit deferred; the local shard window has not finished yet ($LOCAL_HHMM)."
+          else
+            echo "run_daily_audit=true" >> "$GITHUB_OUTPUT"
+            echo "Daily audit enabled for $GITHUB_EVENT_NAME at Europe/Berlin $LOCAL_HHMM."
+          fi
+
       - name: Verify exactly 40 distinct saved section logs for today
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        if: steps.daily_audit_gate.outputs.run_daily_audit == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -262,7 +276,7 @@ jobs:
           set -euo pipefail
           EXPECTED_RUN_DATE=$(TZ=Europe/Berlin date +%F)
           NOW_MS=$(date +%s000)
-          FROM_MS=$((NOW_MS - 14400000))
+          FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
             queryId: "restaurant-monitor-40-shard-log-audit-v1",
             timeframe: {from: $from, to: $to},
@@ -306,15 +320,16 @@ jobs:
 
       - name: Inspect the latest scheduled website-monitor summary
         id: website_summary
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        if: steps.daily_audit_gate.outputs.run_daily_audit == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
           set -euo pipefail
+          EXPECTED_RUN_DATE=$(TZ=Europe/Berlin date +%F)
           NOW_MS=$(date +%s000)
-          FROM_MS=$((NOW_MS - 14400000))
+          FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           EVENTS_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
             queryId: "restaurant-website-monitor-scheduled-events-v1",
             timeframe: {from: $from, to: $to},
@@ -357,7 +372,6 @@ jobs:
           fi
           SUMMARY_JSON="${LATEST_MESSAGE#*Website-Prüfung: }"
           echo "Latest scheduled website-monitor summary: $SUMMARY_JSON"
-          EXPECTED_RUN_DATE=$(TZ=Europe/Berlin date +%F)
           ACTUAL_RUN_DATE=$(jq -r '.runDate // ""' <<< "$SUMMARY_JSON")
           if [[ "$ACTUAL_RUN_DATE" != "$EXPECTED_RUN_DATE" ]]; then
             echo "::error::The monitor summary is for $ACTUAL_RUN_DATE, not today's local date $EXPECTED_RUN_DATE."
@@ -447,15 +461,16 @@ jobs:
           echo "Verified: the initial baseline is complete and proposal-free."
 
       - name: Verify that the daily report was accepted by Brevo
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        if: steps.daily_audit_gate.outputs.run_daily_audit == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
           set -euo pipefail
+          EXPECTED_RUN_DATE=$(TZ=Europe/Berlin date +%F)
           NOW_MS=$(date +%s000)
-          FROM_MS=$((NOW_MS - 14400000))
+          FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           EMAIL_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
             queryId: "restaurant-website-monitor-email-v1",
             timeframe: {from: $from, to: $to},
@@ -483,7 +498,6 @@ jobs:
             jq -r '.errors[]?.message // "No API error details returned."' "$EMAIL_RESPONSE" || true
             exit 1
           fi
-          EXPECTED_RUN_DATE=$(TZ=Europe/Berlin date +%F)
           ACCEPTED_EMAIL_EVENT=$(jq -c --arg runDate "$EXPECTED_RUN_DATE" '
             [.result.events.events[]?
              | {timestamp: (.timestamp // .["$metadata"].endTime // 0),
@@ -510,7 +524,7 @@ jobs:
           echo "Verified: Brevo accepted the scheduled daily restaurant report."
 
       - name: Verify persisted 40 sections and daily email state
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        if: steps.daily_audit_gate.outputs.run_daily_audit == 'true'
         shell: bash
         run: |
           set -euo pipefail
