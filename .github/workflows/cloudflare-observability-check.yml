@@ -346,7 +346,7 @@ jobs:
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
                 {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker"}
               ],
-              needle: {value: "shardsCompleted", isRegex: false, matchCase: false}
+              needle: {value: "totalRestaurantEntries", isRegex: false, matchCase: false}
             }
           }')
           EVENTS_RESPONSE=$(mktemp)
