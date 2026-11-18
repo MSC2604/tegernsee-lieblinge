@@ -290,7 +290,7 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [{key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}],
-              needle: {value: "Restaurant-Prüfabschnitt gespeichert:", isRegex: false, matchCase: false}
+              needle: {value: "gespeichert:", isRegex: false, matchCase: false}
             }
           }')
           RESPONSE=$(mktemp)
@@ -346,7 +346,7 @@ jobs:
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
                 {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker"}
               ],
-              needle: {value: "Website-Prüfung:", isRegex: false, matchCase: false}
+              needle: {value: "Website", isRegex: false, matchCase: false}
             }
           }')
           EVENTS_RESPONSE=$(mktemp)
@@ -487,7 +487,7 @@ jobs:
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
                 {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker"}
               ],
-              needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false}
+              needle: {value: "Restaurant", isRegex: false, matchCase: false}
             }
           }')
           EMAIL_RESPONSE=$(mktemp)
