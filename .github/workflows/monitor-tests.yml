@@ -39,6 +39,8 @@ jobs:
         run: node --check worker/restaurant-monitor-runner.mjs
       - name: Check monitoring sharding module syntax
         run: node --check worker/restaurant-monitor-sharding.mjs
+      - name: Check read-only monitoring health module syntax
+        run: node --check worker/restaurant-monitor-health.mjs
       - name: Test data extraction
         run: node worker/restaurant-monitor.test.mjs
       - name: Check email module syntax
@@ -47,5 +49,7 @@ jobs:
         run: node worker/restaurant-monitor-runner.test.mjs
       - name: Test monitoring shard time windows
         run: node worker/restaurant-monitor-sharding.test.mjs
+      - name: Test read-only monitoring health summary
+        run: node worker/restaurant-monitor-health.test.mjs
       - name: Test email digest
         run: node worker/restaurant-monitor-email.test.mjs

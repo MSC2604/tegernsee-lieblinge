@@ -2,6 +2,7 @@ import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./w
 import { fetchRestaurantCardHash } from "./worker/restaurant-card-fetch.mjs";
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
 import { selectMonitorShard, getMonitorShardIndex, getExpectedMonitorCron, isBaselinePassComplete } from "./worker/restaurant-monitor-sharding.mjs";
+import { buildRestaurantMonitorHealth } from "./worker/restaurant-monitor-health.mjs";
 
 async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledInstant = new Date()) {
     const missingMailSettings = [];
@@ -453,6 +454,106 @@ export default {
         return current;
       }
       return current;
+    }
+
+    // Read-only aggregate endpoint used by GitHub Actions to verify the
+    // persisted initial baseline, today's 40 sections and the daily email state.
+    // It exposes counts and timestamps only; no restaurant values or secrets.
+    if (request.method === "GET" && requestUrl.pathname === "/monitor-health") {
+      try {
+        const baselineResult = await turso(
+          "SELECT baseline_complete_at, baseline_started_at, baseline_finished_at FROM restaurant_website_monitor_state WHERE id=1",
+          [], true
+        );
+        const baselineRow = baselineResult?.results?.[0]?.response?.result?.rows?.[0] || [];
+        const baseline = {
+          completeAt: String(rowValue(baselineRow[0]) || ""),
+          startedAt: String(rowValue(baselineRow[1]) || ""),
+          finishedAt: String(rowValue(baselineRow[2]) || "")
+        };
+        const inventoryResult = await turso(`SELECT
+          (SELECT COUNT(*) FROM restaurants),
+          (SELECT COUNT(*) FROM restaurants WHERE TRIM(COALESCE(website, '')) <> ''),
+          (SELECT COUNT(DISTINCT r.id) FROM restaurants r
+            INNER JOIN restaurant_site_snapshots s
+              ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT)
+              AND s.page_url=TRIM(r.website) AND s.checked_at >= ? AND s.checked_at <= ?
+            WHERE TRIM(COALESCE(r.website, '')) <> ''),
+          (SELECT COUNT(*) FROM restaurants WHERE TRIM(COALESCE(externer_eintrag, '')) <> ''),
+          (SELECT COUNT(DISTINCT r.id) FROM restaurants r
+            INNER JOIN restaurant_site_snapshots s
+              ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT)
+              AND s.page_url=TRIM(r.externer_eintrag) AND s.checked_at >= ? AND s.checked_at <= ?
+            WHERE TRIM(COALESCE(r.externer_eintrag, '')) <> ''),
+          (SELECT COUNT(*) FROM restaurants
+            WHERE TRIM(COALESCE(website, '')) <> '' OR TRIM(COALESCE(externer_eintrag, '')) <> ''),
+          (SELECT COUNT(*) FROM restaurant_change_proposals WHERE detected_at >= ? AND detected_at <= ?)`,
+          [
+            textArg(baseline.startedAt), textArg(baseline.finishedAt),
+            textArg(baseline.startedAt), textArg(baseline.finishedAt),
+            textArg(baseline.startedAt), textArg(baseline.finishedAt)
+          ], true
+        );
+        const inventoryRow = inventoryResult?.results?.[0]?.response?.result?.rows?.[0] || [];
+        const inventory = {
+          totalRestaurantEntries: Number(rowValue(inventoryRow[0])) || 0,
+          officialSources: Number(rowValue(inventoryRow[1])) || 0,
+          officialSnapshots: Number(rowValue(inventoryRow[2])) || 0,
+          externalSources: Number(rowValue(inventoryRow[3])) || 0,
+          externalSnapshots: Number(rowValue(inventoryRow[4])) || 0,
+          sourceRows: Number(rowValue(inventoryRow[5])) || 0,
+          baselineProposalCount: Number(rowValue(inventoryRow[6])) || 0
+        };
+        const berlinDate = value => {
+          const date = new Date(value);
+          if (!Number.isFinite(date.getTime())) return "";
+          return new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit"
+          }).format(date);
+        };
+        const baselineRunDate = berlinDate(baseline.startedAt);
+        const runDate = berlinDate(new Date().toISOString());
+        const readShardRows = async date => {
+          if (!date) return [];
+          try {
+            const result = await turso(
+              "SELECT shard, summary_json, errors_json, completed_at FROM restaurant_monitor_shards WHERE run_date=? ORDER BY shard",
+              [textArg(date)], true
+            );
+            return (result?.results?.[0]?.response?.result?.rows || []).map(row => ({
+              shard: Number(rowValue(row[0])),
+              summary: String(rowValue(row[1]) || ""),
+              errors: String(rowValue(row[2]) || "[]"),
+              completedAt: String(rowValue(row[3]) || "")
+            }));
+          } catch {
+            return [];
+          }
+        };
+        const baselineShardRows = await readShardRows(baselineRunDate);
+        const todayShardRows = await readShardRows(runDate);
+        let email = null;
+        try {
+          const emailResult = await turso(
+            "SELECT status, sent_at FROM restaurant_monitor_email_runs WHERE run_date=?",
+            [textArg(runDate)], true
+          );
+          const emailRow = emailResult?.results?.[0]?.response?.result?.rows?.[0];
+          if (emailRow) email = {
+            status: String(rowValue(emailRow[0]) || ""),
+            sentAt: String(rowValue(emailRow[1]) || "")
+          };
+        } catch {
+          email = null;
+        }
+        const health = buildRestaurantMonitorHealth({
+          baseline, inventory, baselineShardRows, shardRows: todayShardRows, email, runDate
+        });
+        return json({ ok: true, service: "tegernsee-restaurants-api", database: "ok", ...health });
+      } catch (error) {
+        console.error("Read-only monitor health failed:", String(error?.message || error).slice(0, 300));
+        return json({ ok: false, service: "tegernsee-restaurants-api", database: "unavailable", error: "monitoring_status_unavailable" }, 503);
+      }
     }
 
     function isAdmin(req) {

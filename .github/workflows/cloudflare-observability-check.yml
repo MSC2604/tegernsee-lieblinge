@@ -1,10 +1,6 @@
 name: Check Cloudflare Worker Observability
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/cloudflare-observability-check.yml"
   workflow_run:
     workflows: ["Deploy Cloudflare Worker"]
     types: [completed]
@@ -417,66 +413,36 @@ jobs:
             echo "Verified: the initial baseline was completed earlier; regular comparisons are now enabled."
           fi
 
-      - name: Verify the original baseline was complete and proposal-free
-        if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Verify the original baseline from read-only database state
+        if: github.event_name == 'workflow_run' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           set -euo pipefail
-          NOW_MS=$(date +%s000)
-          FROM_MS=$((NOW_MS - 2592000000))
-          BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
-            queryId: "restaurant-monitor-initial-baseline-v1",
-            timeframe: {from: $from, to: $to},
-            dry: false,
-            view: "events",
-            limit: 100,
-            parameters: {
-              datasets: ["cloudflare-workers"],
-              filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker"}
-              ],
-              needle: {value: "baselineOnly", isRegex: false, matchCase: false}
-            }
-          }')
           RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" \
-            --request POST \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
-            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            --header "Content-Type: application/json" \
-            --data "$BODY")
-          echo "Initial-baseline telemetry API HTTP status: $STATUS"
-          if [[ "$STATUS" != "200" ]]; then
-            jq -r '.errors[]?.message // "No API error details returned."' "$RESPONSE" || true
+          STATUS=$(curl --silent --show-error --retry 3 --retry-delay 2 --output "$RESPONSE" --write-out "%{http_code}" \
+            "https://tegernsee-restaurants-api.msc4021.workers.dev/monitor-health")
+          echo "Read-only monitoring status HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]] || ! jq -e '.ok == true and .database == "ok"' "$RESPONSE" >/dev/null; then
+            jq -c . "$RESPONSE" || true
+            echo "::error::The read-only monitoring status endpoint is unavailable."
             exit 1
           fi
-          BASELINE_MATCHES=$(jq -c '
-            [.result.events.events[]?
-             | {timestamp: (.timestamp // .["$metadata"].endTime // 0),
-                message: (.["$metadata"].message // .source.message // .message // "")}
-             | select(.message | contains("Website-Prüfung:"))
-             | .message as $message
-             | (try ($message | split("Website-Prüfung: ") | last | fromjson) catch null) as $payload
-             | select($payload != null and $payload.baselineOnly == true)
-             | {timestamp, summary: $payload}]
-            | sort_by(.timestamp)
-          ' "$RESPONSE")
-          echo "Initial baseline-only events found: $(jq 'length' <<< "$BASELINE_MATCHES")"
-          BASELINE_RECORD=$(jq -c '[.[] | select(.summary.baselineComplete == true and .summary.changes == 0)] | last // {}' <<< "$BASELINE_MATCHES")
-          if [[ -z "$BASELINE_RECORD" || "$BASELINE_RECORD" == "{}" ]]; then
-            echo "::error::No complete initial baseline-only summary with zero change proposals was found in the available telemetry."
+          if ! jq -e '
+            .baseline.complete == true and
+            .baseline.proposalFree == true and
+            .baseline.proposalCountDuringPass == 0 and
+            (.baseline.totalConfiguredSources | type == "number" and . >= 0) and
+            (.baseline.totalSnapshots | type == "number" and . >= 0) and
+            (.baseline.coveragePercent | type == "number" and . >= 0 and . <= 100) and
+            (.baseline.officialMissing | type == "number" and . >= 0) and
+            (.baseline.externalMissing | type == "number" and . >= 0)
+          ' "$RESPONSE" >/dev/null; then
+            jq -c '.baseline' "$RESPONSE" || true
+            echo "::error::The original baseline is incomplete or change proposals were created during its baseline interval."
             exit 1
           fi
-          BASELINE_SHARDS=$(jq -r '.summary.shardsCompleted // 0' <<< "$BASELINE_RECORD")
-          if [[ "$BASELINE_SHARDS" != "40" && "$BASELINE_SHARDS" != "80" ]]; then
-            echo "::error::The original baseline record does not confirm a complete known shard set."
-            exit 1
-          fi
-          echo "Verified: the original baseline-only pass completed with $BASELINE_SHARDS sections and zero change proposals."
+          jq -r '"Verified: initial baseline completed at " + .baseline.completeAt + "; zero proposals during baseline; homepage snapshots " + (.baseline.totalSnapshots|tostring) + "/" + (.baseline.totalConfiguredSources|tostring) + " (" + (.baseline.coveragePercent|tostring) + "%); missing official sources " + (.baseline.officialMissing|tostring) + "; missing external sources " + (.baseline.externalMissing|tostring) + "; baseline check errors " + (.baseline.errorsCount|tostring)' "$RESPONSE"
+          echo "Verified: the initial baseline is complete and proposal-free."
 
       - name: Verify that the daily report was accepted by Brevo
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -540,3 +506,36 @@ jobs:
             exit 1
           fi
           echo "Verified: Brevo accepted the scheduled daily restaurant report."
+
+      - name: Verify persisted 40 sections and daily email state
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error --retry 3 --retry-delay 2 --output "$RESPONSE" --write-out "%{http_code}" \
+            "https://tegernsee-restaurants-api.msc4021.workers.dev/monitor-health")
+          echo "Read-only daily monitoring status HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]] || ! jq -e '.ok == true and .database == "ok"' "$RESPONSE" >/dev/null; then
+            jq -c . "$RESPONSE" || true
+            echo "::error::The read-only daily monitoring status endpoint is unavailable."
+            exit 1
+          fi
+          if ! jq -e '
+            .today.shardsComplete == true and
+            .today.shardsStored == 40 and
+            .today.distinctShards == 40 and
+            .today.shardIds == [range(1; 41)] and
+            .today.missingShardIds == [] and
+            .today.duplicateShardIds == [] and
+            .today.unexpectedShardIds == [] and
+            .today.email.recordedAsSent == true and
+            (.today.email.sentAt | type == "string" and length > 0)
+          ' "$RESPONSE" >/dev/null; then
+            jq -c '.today' "$RESPONSE" || true
+            echo "::error::The database does not confirm exactly 40 distinct daily sections and a persisted successful Brevo send state."
+            exit 1
+          fi
+          jq -r '"Verified: " + (.today.shardsStored|tostring) + " distinct sections for " + .today.runDate + "; " + (.today.summary.totalRestaurantEntries|tostring) + " restaurant entries; " + (.today.summary.restaurantsChecked|tostring) + " official websites; " + (.today.summary.externalEntriesChecked|tostring) + " external entries; " + (.today.summary.pagesChecked|tostring) + " pages; " + (.today.summary.subpagesChecked|tostring) + " subpages; " + (.today.summary.cardsChecked|tostring) + " card links; " + (.today.summary.changes|tostring) + " changes; " + (.today.summary.errors|tostring) + " problems; email state " + .today.email.status + " at " + .today.email.sentAt' "$RESPONSE"
+          echo "Verified: the database has all 40 unique daily sections and the Brevo-accepted report is recorded as sent."
+
