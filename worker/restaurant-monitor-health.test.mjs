@@ -96,7 +96,7 @@ const legacyManualBaseline = buildRestaurantMonitorHealth({
     startedAt: "2026-11-15T15:16:06.594Z",
     finishedAt: "2026-11-15T15:19:49.071Z"
   },
-  inventory, baselineShardRows: [], shardRows: rows, runDate: "2026-11-18"
+  inventory: { ...inventory, officialSnapshots: 37 }, baselineShardRows: [], shardRows: rows, runDate: "2026-11-18"
 });
 assert.equal(legacyManualBaseline.baseline.source, "legacy-manual-state");
 assert.equal(legacyManualBaseline.baseline.scope, "official-websites");
