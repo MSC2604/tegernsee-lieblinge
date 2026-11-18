@@ -1,61 +1,44 @@
 import assert from "node:assert/strict";
 import { runRestaurantWebsiteMonitor } from "./restaurant-monitor-runner.mjs";
 import { findRestaurantChanges } from "./restaurant-monitor.mjs";
-import { selectMonitorShard, getMonitorShardIndex, isMonitorFinalizerTime } from "./restaurant-monitor-sharding.mjs";
+import { selectMonitorShard, getMonitorShardIndex, getExpectedMonitorCron } from "./restaurant-monitor-sharding.mjs";
 
-// Growth regression: every source is assigned exactly once as the directory expands.
+// Every source is assigned exactly once across 40 shards.
 for (const total of [0, 1, 41, 100, 150, 500, 1000, 5000]) {
   const sources = Array.from({ length: total }, (_, id) => ({ id }));
-  const shards = Array.from({ length: 80 }, (_, shard) => selectMonitorShard(sources, shard, 80));
+  const shards = Array.from({ length: 40 }, (_, shard) => selectMonitorShard(sources, shard, 40));
   const flattened = shards.flat().map(item => item.id);
   assert.equal(flattened.length, total, `all ${total} sources must be assigned`);
   assert.equal(new Set(flattened).size, total, `no source may be assigned twice for ${total} sources`);
   assert.deepEqual([...flattened].sort((a,b) => a-b), sources.map(item => item.id));
-  assert.ok(Math.max(0, ...shards.map(items => items.length)) <= Math.ceil(total / 80));
+  assert.ok(Math.max(0, ...shards.map(items => items.length)) <= Math.ceil(total / 40));
 }
-assert.throws(() => selectMonitorShard([], -1, 80), /Ungültige/);
+assert.throws(() => selectMonitorShard([], -1, 40), /Ungültige/);
 assert.throws(() => selectMonitorShard([], 0, 0), /Ungültige/);
 
-
-// Daylight-saving regression: exactly 80 unique local slots in CET and CEST.
-for (const [date, utcStart] of [
-  ["2026-11-17", "05:00:00Z"], // CET (UTC+1)
-  ["2027-07-17", "04:00:00Z"]  // CEST (UTC+2)
+// CET and CEST each map exactly 40 local 06:00–06:39 minutes to shard IDs 0..39.
+for (const [date, utcStart, cron] of [
+  ["2026-11-18", "05:00:00Z", "0-39 5 * * *"],
+  ["2027-07-18", "04:00:00Z", "0-39 4 * * *"]
 ]) {
-  const slots = Array.from({ length: 80 }, (_, minute) => {
+  const slots = Array.from({ length: 40 }, (_, minute) => {
     const instant = new Date(date + "T" + utcStart);
     instant.setUTCMinutes(instant.getUTCMinutes() + minute);
+    assert.equal(getExpectedMonitorCron(instant), cron);
     return getMonitorShardIndex(instant);
   });
-  assert.deepEqual(slots, Array.from({ length: 80 }, (_, index) => index),
-    date + " must map to all 80 local shard slots exactly once");
+  assert.deepEqual(slots, Array.from({ length: 40 }, (_, index) => index));
+  assert.equal(new Set(slots).size, 40);
   const before = new Date(date + "T" + utcStart);
   before.setUTCMinutes(before.getUTCMinutes() - 1);
   const after = new Date(date + "T" + utcStart);
-  after.setUTCMinutes(after.getUTCMinutes() + 80);
+  after.setUTCMinutes(after.getUTCMinutes() + 40);
   assert.equal(getMonitorShardIndex(before), -1);
   assert.equal(getMonitorShardIndex(after), -1);
 }
+assert.equal(getMonitorShardIndex("2026-11-18T04:00:00Z"), -1);
+assert.equal(getMonitorShardIndex("2027-07-18T05:00:00Z"), -1);
 assert.equal(getMonitorShardIndex(new Date("invalid")), -1);
-
-// The finalizer/recovery window is 07:30-08:59 local time in both CET and CEST.
-for (const [date, utcStart] of [
-  ["2026-11-17", "06:30:00Z"], // 07:30 CET
-  ["2027-07-17", "05:30:00Z"]  // 07:30 CEST
-]) {
-  for (let minute = 0; minute < 90; minute++) {
-    const instant = new Date(date + "T" + utcStart);
-    instant.setUTCMinutes(instant.getUTCMinutes() + minute);
-    assert.equal(isMonitorFinalizerTime(instant), true, "finalizer minute " + minute + " must be active");
-  }
-  const before = new Date(date + "T" + utcStart);
-  before.setUTCMinutes(before.getUTCMinutes() - 1);
-  const after = new Date(date + "T" + utcStart);
-  after.setUTCMinutes(after.getUTCMinutes() + 90);
-  assert.equal(isMonitorFinalizerTime(before), false);
-  assert.equal(isMonitorFinalizerTime(after), false);
-}
-assert.equal(isMonitorFinalizerTime(new Date("invalid")), false);
 
 function makeDb() {
   const snapshots = new Map();

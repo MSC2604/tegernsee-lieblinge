@@ -1,41 +1,97 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getMonitorShardIndex, isMonitorFinalizerTime } from "./restaurant-monitor-sharding.mjs";
+import worker from "../worker.js";
+import {
+  getExpectedMonitorCron,
+  getMonitorShardIndex,
+  isBaselinePassComplete
+} from "./restaurant-monitor-sharding.mjs";
 
-test("maps all 80 shard slots to the same Berlin local schedule in CET and CEST", () => {
-  assert.equal(getMonitorShardIndex("2026-01-15T05:00:00Z"), 0); // CET 06:00
-  assert.equal(getMonitorShardIndex("2026-01-15T06:19:00Z"), 79); // CET 07:19
-  assert.equal(getMonitorShardIndex("2026-07-15T04:00:00Z"), 0); // CEST 06:00
-  assert.equal(getMonitorShardIndex("2026-07-15T05:19:00Z"), 79); // CEST 07:19
-});
-
-test("starts finalization at 07:30 Berlin time and keeps recovery open through 08:59", () => {
-  assert.equal(isMonitorFinalizerTime("2026-01-15T06:29:00Z"), false); // CET 07:29
-  assert.equal(isMonitorFinalizerTime("2026-01-15T06:30:00Z"), true);  // CET 07:30
-  assert.equal(isMonitorFinalizerTime("2026-01-15T07:59:00Z"), true);  // CET 08:59
-  assert.equal(isMonitorFinalizerTime("2026-01-15T08:00:00Z"), false); // CET 09:00
-  assert.equal(isMonitorFinalizerTime("2026-07-15T05:30:00Z"), true);  // CEST 07:30
-  assert.equal(isMonitorFinalizerTime("2026-07-15T06:59:00Z"), true);  // CEST 08:59
-  assert.equal(isMonitorFinalizerTime("2026-07-15T07:00:00Z"), false); // CEST 09:00
-});
-
-test("finalizer recovery slots do not overlap the 80 shard assignments", () => {
-  for (const instant of [
-    "2026-01-15T06:30:00Z",
-    "2026-01-15T07:00:00Z",
-    "2026-07-15T05:30:00Z",
-    "2026-07-15T06:00:00Z"
+test("maps exactly 40 local 06:00–06:39 slots to the CET and CEST UTC triggers", () => {
+  for (const [date, utcStart, expectedCron] of [
+    ["2026-11-18", "05:00:00Z", "0-39 5 * * *"], // CET
+    ["2027-07-18", "04:00:00Z", "0-39 4 * * *"]  // CEST
   ]) {
-    assert.equal(getMonitorShardIndex(instant), -1);
-    assert.equal(isMonitorFinalizerTime(instant), true);
+    const slots = Array.from({ length: 40 }, (_, minute) => {
+      const instant = new Date(date + "T" + utcStart);
+      instant.setUTCMinutes(instant.getUTCMinutes() + minute);
+      assert.equal(getExpectedMonitorCron(instant), expectedCron);
+      return getMonitorShardIndex(instant);
+    });
+    assert.deepEqual(slots, Array.from({ length: 40 }, (_, index) => index));
+    assert.equal(new Set(slots).size, 40);
+    const before = new Date(date + "T" + utcStart);
+    before.setUTCMinutes(before.getUTCMinutes() - 1);
+    const after = new Date(date + "T" + utcStart);
+    after.setUTCMinutes(after.getUTCMinutes() + 40);
+    assert.equal(getMonitorShardIndex(before), -1);
+    assert.equal(getMonitorShardIndex(after), -1);
+    assert.equal(getExpectedMonitorCron(before), "");
+    assert.equal(getExpectedMonitorCron(after), "");
   }
 });
 
+test("skips the UTC trigger that does not map to local 06:00–06:39", () => {
+  assert.equal(getMonitorShardIndex("2026-11-18T04:00:00Z"), -1); // 05:00 CET
+  assert.equal(getExpectedMonitorCron("2026-11-18T04:00:00Z"), "");
+  assert.equal(getMonitorShardIndex("2027-07-18T05:00:00Z"), -1); // 07:00 CEST
+  assert.equal(getExpectedMonitorCron("2027-07-18T05:00:00Z"), "");
+  assert.equal(getMonitorShardIndex("2026-11-18T05:40:00Z"), -1);
+  assert.equal(getMonitorShardIndex("2027-07-18T04:40:00Z"), -1);
+  assert.equal(getMonitorShardIndex(new Date("invalid")), -1);
+});
 
-test("a full initial shard pass completes baseline despite unreachable configured websites", async () => {
-  const { isBaselinePassComplete } = await import("./restaurant-monitor-sharding.mjs");
-  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "", baselineOnly: true, shardsCompleted: 80, shardCount: 80 }), true);
-  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "", baselineOnly: true, shardsCompleted: 79, shardCount: 80 }), false);
-  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "", baselineOnly: false, shardsCompleted: 80, shardCount: 80 }), false);
-  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "2026-11-16T08:00:00Z", baselineOnly: false, shardsCompleted: 0, shardCount: 80 }), true);
+test("baseline completes only after all 40 sections in a baseline-only pass", () => {
+  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "", baselineOnly: true, shardsCompleted: 40, shardCount: 40 }), true);
+  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "", baselineOnly: true, shardsCompleted: 39, shardCount: 40 }), false);
+  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "", baselineOnly: false, shardsCompleted: 40, shardCount: 40 }), false);
+  assert.equal(isBaselinePassComplete({ baselineCompleteAt: "2026-11-18T06:40:00Z", baselineOnly: false, shardsCompleted: 0, shardCount: 40 }), true);
+});
+
+test("GET /health verifies required settings and a read-only Turso SELECT 1", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestCount = 0;
+  globalThis.fetch = async (url, options) => {
+    requestCount++;
+    assert.match(String(url), /\/v3\/pipeline$/);
+    assert.equal(options.method, "POST");
+    const body = JSON.parse(options.body);
+    assert.equal(body.requests[0].stmt.sql, "SELECT 1 AS ok");
+    return new Response(JSON.stringify({
+      results: [{ response: { result: { rows: [[{ value: 1 }]] } } }]
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const response = await worker.fetch(new Request("https://worker.example/health"), {
+      TURSO_DATABASE_URL: "libsql://test-db.example",
+      TURSO_AUTH_TOKEN: "test-token",
+      ADMIN_PASSWORD: "test-admin",
+      BREVO_API_KEY: "test-brevo",
+      BREVO_FROM_EMAIL: "verified@example.org"
+    }, {});
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true, service: "tegernsee-restaurants-api", database: "ok" });
+    assert.equal(requestCount, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("GET /health fails closed when a required production setting is absent", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestCount = 0;
+  globalThis.fetch = async () => { requestCount++; throw new Error("must not call database"); };
+  try {
+    const response = await worker.fetch(new Request("https://worker.example/health"), {
+      TURSO_DATABASE_URL: "libsql://test-db.example",
+      TURSO_AUTH_TOKEN: "test-token",
+      ADMIN_PASSWORD: "test-admin",
+      BREVO_FROM_EMAIL: "verified@example.org"
+    }, {});
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { ok: false, service: "tegernsee-restaurants-api", database: "not_configured" });
+    assert.equal(requestCount, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

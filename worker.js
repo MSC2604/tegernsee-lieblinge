@@ -1,7 +1,7 @@
 import { sendRestaurantWebsiteDigest, sendRestaurantWebsiteTestEmail } from "./worker/restaurant-monitor-email.mjs";
 import { fetchRestaurantCardHash } from "./worker/restaurant-card-fetch.mjs";
 import { runRestaurantWebsiteMonitor } from "./worker/restaurant-monitor-runner.mjs";
-import { selectMonitorShard, getMonitorShardIndex, isMonitorFinalizerTime, isBaselinePassComplete } from "./worker/restaurant-monitor-sharding.mjs";
+import { selectMonitorShard, getMonitorShardIndex, getExpectedMonitorCron, isBaselinePassComplete } from "./worker/restaurant-monitor-sharding.mjs";
 
 async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledInstant = new Date()) {
     const missingMailSettings = [];
@@ -33,9 +33,8 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
     }
     const arg = value => ({ type: "text", value: value == null ? "" : String(value) });
     const cell = value => value == null ? "" : (typeof value === "object" && "value" in value ? value.value : value);
-    const SHARD_COUNT = 80;
-    const isFinalizer = shardIndex === SHARD_COUNT;
-    if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex > SHARD_COUNT) throw new Error('Ungültiger Prüfabschnitt: ' + shardIndex);
+    const SHARD_COUNT = 40;
+    if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= SHARD_COUNT) throw new Error('Ungültiger Prüfabschnitt: ' + shardIndex);
     db.batch = async statements => {
       if (!Array.isArray(statements) || !statements.length) return null;
       const requests = statements.map(item => ({ type: 'execute', stmt: { sql: item.sql, args: item.args || [], want_rows: false } }));
@@ -91,11 +90,11 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
     const rows = query?.results?.[0]?.response?.result?.rows || [];
     const allCardEntries = rows.map(row => ({ restaurantId: String(cell(row[0]) || ""), kind: String(cell(row[1]) || ""), url: String(cell(row[2]) || "") }))
       .filter(x => x.restaurantId && x.url);
-    const entries = isFinalizer ? [] : selectMonitorShard(allCardEntries, shardIndex, SHARD_COUNT);
+    const entries = selectMonitorShard(allCardEntries, shardIndex, SHARD_COUNT);
     console.log('[CRON] Kartenlinks für vorhandene Restaurants:', JSON.stringify({
       total: allCardEntries.length,
       assignedToShard: entries.length,
-      shard: isFinalizer ? 'finalizer' : shardIndex + 1,
+      shard: shardIndex + 1,
       shardCount: SHARD_COUNT
     }));
 
@@ -195,7 +194,7 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
       ...allSources.filter(item => item.website).map(item => ({ id:item.id, name:item.name, website:item.website, sourceType:"official" })),
       ...allSources.filter(item => item.externer_eintrag).map(item => ({ id:item.id, name:item.name, website:item.externer_eintrag, sourceType:"external" }))
     ];
-    const websiteSources = isFinalizer ? [] : selectMonitorShard(allWebsiteSources, shardIndex, SHARD_COUNT);
+    const websiteSources = selectMonitorShard(allWebsiteSources, shardIndex, SHARD_COUNT);
     const officialWebsiteCount = allSources.filter(item => String(item.website || '').trim()).length;
     const monitorStartedAt = new Date().toISOString();
     const monitorReport = await runRestaurantWebsiteMonitor({ db, restaurants: websiteSources, baselineOnly });
@@ -207,58 +206,34 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
       ...monitorReport.errors.map(issue => ({ name: issue.name || 'Restaurant', url: issue.url || '', detail: issue.error || 'Website-Prüfung fehlgeschlagen.' })),
       ...cardIssues.map(issue => ({ name: issue.name, url: issue.url, detail: (issue.kind === 'speisekarte' ? 'Speisekarte' : 'Getränkekarte') + ': ' + issue.detail }))
     ];
-    const shardSummary = { restaurantsChecked: monitorReport.restaurants, externalEntriesChecked: monitorReport.externalEntries, pagesChecked: monitorReport.pages, cardsChecked: entries.length, changes: monitorReport.proposals, errors: dailyErrors.length, officialHomepageSnapshots, monitorStartedAt, monitorFinishedAt };
-    if (!isFinalizer) {
-      await db('INSERT INTO restaurant_monitor_shards (run_date, shard, summary_json, errors_json, completed_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(run_date, shard) DO UPDATE SET summary_json=excluded.summary_json, errors_json=excluded.errors_json, completed_at=excluded.completed_at', [arg(runDate), arg(shardIndex), arg(JSON.stringify(shardSummary)), arg(JSON.stringify(dailyErrors)), arg(monitorFinishedAt)]);
-      console.log('[CRON] Restaurant-Prüfabschnitt gespeichert:', JSON.stringify({ runDate, shard: shardIndex + 1, totalShards: SHARD_COUNT, restaurants: shardSummary.restaurantsChecked, externalEntries: shardSummary.externalEntriesChecked, pages: shardSummary.pagesChecked, cards: shardSummary.cardsChecked, errors: shardSummary.errors }));
-      return { completed: true, shard: shardIndex + 1, totalShards: SHARD_COUNT, pendingEmail: true };
-    }
-    console.log('[CRON] Separater Tagesabschluss gestartet:', JSON.stringify({ runDate, scheduledAt: scheduledInstant.toISOString() }));
+    const shardSummary = { restaurantsChecked: monitorReport.restaurants, externalEntriesChecked: monitorReport.externalEntries, pagesChecked: monitorReport.pages, subpagesChecked: Math.max(0, monitorReport.pages - monitorReport.homepageSnapshots), homepageSnapshots: monitorReport.homepageSnapshots, configuredWebsiteSources: websiteSources.length, cardsChecked: entries.length, changes: monitorReport.proposals, errors: dailyErrors.length, officialHomepageSnapshots, monitorStartedAt, monitorFinishedAt };
+    await db('INSERT INTO restaurant_monitor_shards (run_date, shard, summary_json, errors_json, completed_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(run_date, shard) DO UPDATE SET summary_json=excluded.summary_json, errors_json=excluded.errors_json, completed_at=excluded.completed_at', [arg(runDate), arg(shardIndex), arg(JSON.stringify(shardSummary)), arg(JSON.stringify(dailyErrors)), arg(monitorFinishedAt)]);
+    console.log('[CRON] Restaurant-Prüfabschnitt gespeichert:', JSON.stringify({ runDate, shard: shardIndex + 1, totalShards: SHARD_COUNT, restaurants: shardSummary.restaurantsChecked, externalEntries: shardSummary.externalEntriesChecked, pages: shardSummary.pagesChecked, subpages: shardSummary.subpagesChecked, homepageSnapshots: shardSummary.homepageSnapshots, cards: shardSummary.cardsChecked, errors: shardSummary.errors }));
+
+    // Whichever section finishes last performs the daily merge. The primary key
+    // (run_date, shard) makes repeated invocations idempotent. A report is only
+    // created when the exact set of shard IDs 0..39 is present once each.
     const shardRowsResult = await db('SELECT shard, summary_json, errors_json, completed_at FROM restaurant_monitor_shards WHERE run_date=? ORDER BY shard', [arg(runDate)], true);
     const shardRows = shardRowsResult?.results?.[0]?.response?.result?.rows || [];
     const completedShardIds = new Set(shardRows.map(row => Number(cell(row[0]))));
-    const missingShardIds = Array.from({ length: SHARD_COUNT }, (_, index) => index).filter(index => !completedShardIds.has(index));
-    if (missingShardIds.length) {
-      await db(`CREATE TABLE IF NOT EXISTS restaurant_monitor_shard_recovery_claims (
-        run_date TEXT NOT NULL, shard INTEGER NOT NULL, claimed_at TEXT NOT NULL,
-        PRIMARY KEY (run_date, shard)
-      )`);
-      const missingShard = missingShardIds[0];
-      const claimTime = new Date().toISOString();
-      const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-      const claimResult = await db(
-        "INSERT INTO restaurant_monitor_shard_recovery_claims (run_date, shard, claimed_at) VALUES (?, ?, ?) ON CONFLICT(run_date, shard) DO UPDATE SET claimed_at=excluded.claimed_at WHERE restaurant_monitor_shard_recovery_claims.claimed_at < ? RETURNING shard",
-        [arg(runDate), arg(missingShard), arg(claimTime), arg(staleBefore)], true
-      );
-      const claimed = claimResult?.results?.[0]?.response?.result?.rows || [];
-      if (!claimed.length) {
-        console.log('[CRON] Nachholung läuft bereits; nächster Abschlussversuch folgt:', JSON.stringify({ runDate, shard: missingShard + 1 }));
-        return { completed: true, finalizer: true, pendingRecovery: true, waitingForShard: missingShard + 1 };
-      }
-      try {
-        console.log('[CRON] Fehlenden Prüfabschnitt automatisch nachholen:', JSON.stringify({ runDate, shard: missingShard + 1, remaining: missingShardIds.length }));
-        const recovered = await runScheduledRestaurantMonitoring(env, ctx, missingShard, scheduledInstant);
-        if (recovered?.completed !== true) {
-          throw new Error(recovered?.error || 'Nachholung des fehlenden Prüfabschnitts wurde nicht bestätigt.');
-        }
-      } finally {
-        await db(
-          "DELETE FROM restaurant_monitor_shard_recovery_claims WHERE run_date=? AND shard=?",
-          [arg(runDate), arg(missingShard)]
-        );
-      }
-      return { completed: true, finalizer: true, pendingRecovery: true, recoveredShard: missingShard + 1, remainingBeforeRecovery: missingShardIds.length };
+    const expectedShardIds = Array.from({ length: SHARD_COUNT }, (_, index) => index);
+    const missingShardIds = expectedShardIds.filter(index => !completedShardIds.has(index));
+    const unexpectedShardIds = [...completedShardIds].filter(index => !Number.isInteger(index) || index < 0 || index >= SHARD_COUNT);
+    if (shardRows.length !== SHARD_COUNT || completedShardIds.size !== SHARD_COUNT || missingShardIds.length || unexpectedShardIds.length) {
+      console.log('[CRON] Tagesbericht wartet auf genau 40 unterschiedliche Prüfabschnitte:', JSON.stringify({
+        runDate, storedRows: shardRows.length, distinctShards: completedShardIds.size,
+        missingShards: missingShardIds.map(index => index + 1), unexpectedShards: unexpectedShardIds
+      }));
+      return { completed: true, shard: shardIndex + 1, totalShards: SHARD_COUNT, pendingEmail: true, shardsCompleted: completedShardIds.size };
     }
-    if (shardRows.length !== SHARD_COUNT) {
-      throw new Error('Tägliche Prüfung unvollständig: ' + shardRows.length + ' statt ' + SHARD_COUNT + ' gespeicherte Abschnitte. E-Mail wird nicht versendet.');
-    }
+    console.log('[CRON] Alle 40 Prüfabschnitte gespeichert; Tagesbericht wird zusammengeführt:', JSON.stringify({ runDate, shardsCompleted: completedShardIds.size }));
     const summaries = shardRows.map((row, index) => {
       let value;
       try { value = JSON.parse(String(cell(row[1]) || '')); } catch { throw new Error('Prüfabschnitt ' + (Number(cell(row[0])) + 1) + ' enthält eine ungültige Zusammenfassung.'); }
       if (!value || typeof value !== 'object' || !String(cell(row[3]) || '').trim()) {
         throw new Error('Prüfabschnitt ' + (Number(cell(row[0])) + 1) + ' ist nicht vollständig gespeichert.');
       }
-      for (const key of ['restaurantsChecked', 'externalEntriesChecked', 'pagesChecked', 'cardsChecked', 'changes', 'errors', 'officialHomepageSnapshots']) {
+      for (const key of ['restaurantsChecked', 'externalEntriesChecked', 'pagesChecked', 'subpagesChecked', 'homepageSnapshots', 'configuredWebsiteSources', 'cardsChecked', 'changes', 'errors', 'officialHomepageSnapshots']) {
         if (!Number.isFinite(Number(value[key])) || Number(value[key]) < 0) {
           throw new Error('Prüfabschnitt ' + (Number(cell(row[0])) + 1) + ' enthält einen ungültigen Zähler (' + key + ').');
         }
@@ -273,20 +248,31 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
     });
     const sum = key => summaries.reduce((total, item) => total + (Number(item[key]) || 0), 0);
     const officialHomepageSnapshotsTotal = sum('officialHomepageSnapshots');
-    // Ein vollständiger 80-Shard-Durchlauf beendet die Baseline-Phase auch dann,
-    // wenn einzelne Websites nicht erreichbar waren. Diese Quellen erhalten beim
-    // ersten späteren erfolgreichen Abruf ihren eigenen Ausgangswert; sie dürfen
-    // nicht die Änderungsvergleiche aller anderen Restaurants dauerhaft blockieren.
-    const baselineComplete = isBaselinePassComplete({ baselineCompleteAt, baselineOnly, shardsCompleted: shardRows.length, shardCount: SHARD_COUNT });
+    // A complete 40-section pass ends the initial baseline even if individual
+    // websites were unreachable. Those sources remain explicit errors and get
+    // their own baseline on the first later successful fetch.
+    const baselineComplete = isBaselinePassComplete({ baselineCompleteAt, baselineOnly, shardsCompleted: completedShardIds.size, shardCount: SHARD_COUNT });
     if (baselineOnly && baselineComplete) {
       const finished = new Date().toISOString();
       await db("UPDATE restaurant_website_monitor_state SET baseline_complete_at=?, baseline_started_at=?, baseline_finished_at=? WHERE id=1 AND baseline_complete_at=''", [arg(finished), arg(summaries[0]?.monitorStartedAt || ""), arg(finished)]);
     }
-    const scanSummary = { totalRestaurantEntries, restaurantsWithoutWebsiteSource: Math.max(0, totalRestaurantEntries - allSources.length), restaurantsChecked: sum('restaurantsChecked'), externalEntriesChecked: sum('externalEntriesChecked'), pagesChecked: sum('pagesChecked'), cardsChecked: sum('cardsChecked'), changes: sum('changes'), errors: allErrors.length, baselineOnly, officialWebsiteCount, officialHomepageSnapshots: officialHomepageSnapshotsTotal, baselineComplete, runDate, shardsCompleted: shardRows.length };
+    const homepageSnapshotsTotal = sum('homepageSnapshots');
+    const configuredWebsiteSources = allWebsiteSources.length;
+    const baselineCoveragePercent = configuredWebsiteSources ? Number((homepageSnapshotsTotal / configuredWebsiteSources * 100).toFixed(1)) : 100;
+    const scanSummary = { totalRestaurantEntries, restaurantsWithoutWebsiteSource: Math.max(0, totalRestaurantEntries - allSources.length), restaurantsChecked: sum('restaurantsChecked'), externalEntriesChecked: sum('externalEntriesChecked'), pagesChecked: sum('pagesChecked'), subpagesChecked: sum('subpagesChecked'), cardsChecked: sum('cardsChecked'), changes: sum('changes'), errors: allErrors.length, baselineOnly, officialWebsiteCount, externalEntryCount: allSources.filter(item => String(item.externer_eintrag || '').trim()).length, officialHomepageSnapshots: officialHomepageSnapshotsTotal, homepageSnapshots: homepageSnapshotsTotal, configuredWebsiteSources, baselineCoveragePercent, baselineComplete, runDate, shardsCompleted: completedShardIds.size };
     console.log('Website-Prüfung:', JSON.stringify(scanSummary));
     let emailReport;
-    try { emailReport = await sendRestaurantWebsiteDigest({ db, env, summary: { ...scanSummary, errors: allErrors } }); console.log('Restaurant-Prüfbericht:', JSON.stringify(emailReport)); }
-    catch (error) { emailReport = { sent: false, reason: String(error?.message || error).slice(0, 500) }; console.error('Restaurant-Prüfbericht fehlgeschlagen:', emailReport.reason); }
+    try {
+      emailReport = await sendRestaurantWebsiteDigest({ db, env, summary: { ...scanSummary, errors: allErrors } });
+      if (emailReport?.duplicateSuppressed && emailReport?.sent !== true) {
+        console.log('[CRON] Ein paralleler Prüfabschnitt beansprucht den Tagesbericht bereits; kein zweiter Versandversuch gestartet:', JSON.stringify({ runDate }));
+        return { completed: true, scanCompleted: true, pendingEmail: true, summary: scanSummary };
+      }
+      console.log('Restaurant-Prüfbericht:', JSON.stringify(emailReport));
+    } catch (error) {
+      emailReport = { sent: false, acceptedByProvider: false, reason: String(error?.message || error).slice(0, 500) };
+      console.error('Restaurant-Prüfbericht fehlgeschlagen:', emailReport.reason);
+    }
     if (emailReport?.sent !== true || emailReport?.acceptedByProvider !== true) {
       const reason = String(emailReport?.reason || 'Brevo hat den täglichen Prüfbericht nicht bestätigt.').slice(0, 500);
       console.error('[CRON] Prüfung ausgeführt, aber E-Mail nicht versendet:', reason);
@@ -316,6 +302,40 @@ export default {
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    // Read-only production health endpoint. It checks required runtime settings
+    // and performs only SELECT 1; no restaurant or monitoring data is modified.
+    const requestUrl = new URL(request.url);
+    if (request.method === "GET" && requestUrl.pathname === "/health") {
+      const requiredSettings = [
+        env.TURSO_DATABASE_URL, env.TURSO_AUTH_TOKEN, env.ADMIN_PASSWORD,
+        env.BREVO_API_KEY, env.BREVO_FROM_EMAIL
+      ];
+      if (requiredSettings.some(value => !String(value || "").trim())) {
+        return json({ ok: false, service: "tegernsee-restaurants-api", database: "not_configured" }, 503);
+      }
+      try {
+        const healthDbUrl = env.TURSO_DATABASE_URL.replace(/^libsql:\/\//, "https://") + "/v3/pipeline";
+        const healthResponse = await fetch(healthDbUrl, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${env.TURSO_AUTH_TOKEN}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ baton: null, requests: [
+            { type: "execute", stmt: { sql: "SELECT 1 AS ok", args: [], want_rows: true } },
+            { type: "close" }
+          ] })
+        });
+        const healthData = await healthResponse.json();
+        const first = healthData?.results?.[0];
+        const rawValue = first?.response?.result?.rows?.[0]?.[0];
+        const value = rawValue && typeof rawValue === "object" && "value" in rawValue ? rawValue.value : rawValue;
+        if (!healthResponse.ok || first?.type === "error" || first?.error || first?.response?.error || Number(value) !== 1) {
+          throw new Error("Read-only database health check failed.");
+        }
+        return json({ ok: true, service: "tegernsee-restaurants-api", database: "ok" });
+      } catch {
+        return json({ ok: false, service: "tegernsee-restaurants-api", database: "unavailable" }, 503);
+      }
     }
 
     if (
@@ -2768,48 +2788,35 @@ console.log("Tavily usage account:", {
   async scheduled(controller, env, ctx) {
     const startedAt = new Date().toISOString();
     const scheduledMillis = controller?.scheduledTime;
-    const scheduledInstant = scheduledMillis != null && Number.isFinite(Number(scheduledMillis))
-      ? new Date(Number(scheduledMillis))
-      : new Date();
-    const berlinClock = Object.fromEntries(
+    const hasScheduledTime = scheduledMillis != null && Number.isFinite(Number(scheduledMillis));
+    const scheduledInstant = hasScheduledTime ? new Date(Number(scheduledMillis)) : new Date(NaN);
+    const expectedCron = hasScheduledTime ? getExpectedMonitorCron(scheduledInstant) : "";
+    const shardIndex = hasScheduledTime ? getMonitorShardIndex(scheduledInstant) : -1;
+    const berlinClock = hasScheduledTime ? Object.fromEntries(
       new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Europe/Berlin",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23"
+        timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit", hourCycle: "h23"
       }).formatToParts(scheduledInstant).map(part => [part.type, part.value])
-    );
-    // Run 80 small, sequential shards between 06:00 and 07:19 Europe/Berlin.
-    // The scheduled UTC windows are disjoint; map both CET and CEST to the same local slots.
-    let shardIndex = getMonitorShardIndex(scheduledInstant);
-    const finalizerRun = isMonitorFinalizerTime(scheduledInstant);
-    if (finalizerRun) shardIndex = 80;
-    if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex > 80) {
+    ) : {};
+    // Only the matching UTC trigger for local 06:00–06:39 may execute.
+    if (shardIndex < 0 || !expectedCron || controller?.cron !== expectedCron) {
       console.log("[CRON] Übersprungener UTC-Ausgleichslauf:", JSON.stringify({
-        cron: controller?.cron || "",
-        berlinTime: berlinClock.hour + ":" + berlinClock.minute,
-        startedAt
+        cron: controller?.cron || "", expectedCron,
+        berlinTime: berlinClock.hour && berlinClock.minute ? berlinClock.hour + ":" + berlinClock.minute : "",
+        scheduledTime: controller?.scheduledTime || null, startedAt
       }));
-      return { skipped: true, reason: "not_06:00_Europe/Berlin" };
+      return { skipped: true, reason: "not_the_matching_Europe/Berlin_06:00-06:39_trigger" };
     }
     console.log("[CRON] Restaurant-Monitor gestartet:", JSON.stringify({
-      cron: controller?.cron || "",
-      scheduledTime: controller?.scheduledTime || null,
+      cron: controller?.cron || "", scheduledTime: controller?.scheduledTime || null,
       berlinTime: berlinClock.hour + ":" + berlinClock.minute,
-      shard: shardIndex + 1,
-      totalShards: 80,
-      finalizer: finalizerRun,
-      startedAt
+      shard: shardIndex + 1, totalShards: 40, startedAt
     }));
     try {
       const result = await runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledInstant);
       if (result?.completed !== true) {
-        throw new Error(result?.error || "Restaurant-Prüfung oder E-Mail-Versand wurde nicht vollständig bestätigt.");
+        throw new Error(result?.error || "Restaurant-Prüfung oder Brevo-Versand wurde nicht vollständig bestätigt.");
       }
-      console.log("[CRON] Restaurant-Monitor abgeschlossen:", JSON.stringify({
-        finishedAt: new Date().toISOString(),
-        result
-      }));
+      console.log("[CRON] Restaurant-Monitor abgeschlossen:", JSON.stringify({ finishedAt: new Date().toISOString(), result }));
       return result;
     } catch (error) {
       console.error("[CRON] Restaurant-Monitor fehlgeschlagen:", JSON.stringify({
@@ -2819,5 +2826,7 @@ console.log("Tavily usage account:", {
       }));
       throw error;
     }
+  }
+
   }
 };

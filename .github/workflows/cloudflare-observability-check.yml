@@ -11,7 +11,7 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    # Verify the completed shard/finalizer window after both seasonal UTC schedules.
+    # Verify the completed 40-minute local shard window after both seasonal UTC schedules.
     - cron: "5 8 * * *"
     # Second verification window in case GitHub delays or misses the first scheduled run.
     - cron: "35 8 * * *"
@@ -50,11 +50,11 @@ jobs:
           fi
           echo "Cron schedule(s) actually stored in Cloudflare:"
           jq -r '.result.schedules[]?.cron // empty' "$RESPONSE"
-          if ! jq -e '.result.schedules | length == 2 and (map(.cron) | sort) == (["0-59 4,5 * * *", "0-59 6,7 * * *"] | sort)' "$RESPONSE" >/dev/null; then
-            echo "::error::Cloudflare Cron must contain the two consolidated UTC windows for 80 shards and the Europe/Berlin 07:30-08:59 finalizer/recovery window."
+          if ! jq -e '.result.schedules | length == 2 and (map(.cron) | sort) == (["0-39 4 * * *", "0-39 5 * * *"] | sort)' "$RESPONSE" >/dev/null; then
+            echo "::error::Cloudflare Cron must contain exactly 0-39 4 * * * and 0-39 5 * * *."
             exit 1
           fi
-          echo "Verified: two consolidated UTC windows cover all 80 shards and the separate 07:30-08:59 Europe/Berlin finalizer/recovery window within the Free plan limit."
+          echo "Verified: Cloudflare stores the exact two seasonal UTC triggers for 40 Berlin slots."
       - name: Verify that the Brevo API secret exists in the production Worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -76,18 +76,34 @@ jobs:
             exit 1
           fi
           echo "Verified: BREVO_API_KEY exists in the production Worker; its value is never read or displayed."
-      - name: Create a harmless Worker request to test log ingestion
+      - name: Verify the live Restaurant-App menu item
         shell: bash
         run: |
           set -euo pipefail
-          STATUS=$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" \
-            "https://tegernsee-restaurants-api.msc4021.workers.dev/?action=paymentResearchStatus")
-          echo "Read-only Worker health request HTTP status: $STATUS"
-          if [[ "$STATUS" != "200" ]]; then
-            echo "::error::The read-only Worker health request failed."
+          APP_HTML=$(mktemp)
+          STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --output "$APP_HTML" --write-out "%{http_code}" \
+            "https://msc2604.github.io/tegernsee-lieblinge/")
+          echo "GitHub Pages live app HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]] || ! grep -Fq "Änderungen auf Restaurant-Webseiten" "$APP_HTML"; then
+            echo "::error::The live app does not yet expose the website-change monitoring menu item."
             exit 1
           fi
-          echo "The request only reads the payment research status; it does not change restaurant data."
+          echo "Verified: the live app contains the admin menu item."
+
+      - name: Verify live Worker and read-only Turso health
+        shell: bash
+        run: |
+          set -euo pipefail
+          HEALTH_RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error --retry 3 --retry-delay 2 --output "$HEALTH_RESPONSE" --write-out "%{http_code}" \
+            "https://tegernsee-restaurants-api.msc4021.workers.dev/health")
+          echo "Read-only Worker health HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]] || ! jq -e '.ok == true and .service == "tegernsee-restaurants-api" and .database == "ok"' "$HEALTH_RESPONSE" >/dev/null; then
+            jq -c . "$HEALTH_RESPONSE" || true
+            echo "::error::The live Worker or its read-only Turso health check failed."
+            exit 1
+          fi
+          echo "Verified: production Worker is active and Turso answers SELECT 1."
           sleep 15
 
       - name: Discover available telemetry fields
@@ -201,7 +217,7 @@ jobs:
         run: |
           set -euo pipefail
           NOW_MS=$(date +%s000)
-          # Include the full daily shard and finalizer window, not only the last six hours.
+          # Include the complete 06:00-06:39 Europe/Berlin shard window, not only the last six hours.
           FROM_MS=$((NOW_MS - 86400000))
           BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
             queryId: "restaurant-worker-scheduled-diagnostic-v1",
@@ -239,7 +255,59 @@ jobs:
           }]' "$RESPONSE"
           SCHEDULED_EXCEPTIONS=$(jq '[.result.events.events[]? | select(.["$workers"].outcome == "exception")] | length' "$RESPONSE")
           echo "Scheduled invocation exceptions visible in this telemetry query: $SCHEDULED_EXCEPTIONS"
-          echo "A transient invocation exception is not treated as a final daily failure by itself. The checks below require a complete 80-shard summary and Brevo acceptance; those are the authoritative success criteria."
+          echo "A transient invocation exception is not treated as a final daily failure by itself. The checks below require exactly 40 distinct saved sections, a complete baseline summary and Brevo acceptance."
+      - name: Verify exactly 40 distinct saved section logs for today
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_RUN_DATE=$(TZ=Europe/Berlin date +%F)
+          NOW_MS=$(date +%s000)
+          FROM_MS=$((NOW_MS - 14400000))
+          BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
+            queryId: "restaurant-monitor-40-shard-log-audit-v1",
+            timeframe: {from: $from, to: $to},
+            dry: false,
+            view: "events",
+            limit: 100,
+            parameters: {
+              datasets: ["cloudflare-workers"],
+              filters: [{key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}],
+              needle: {value: "Restaurant-Prüfabschnitt gespeichert:", isRegex: false, matchCase: false}
+            }
+          }')
+          RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" \
+            --request POST \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
+            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data "$BODY")
+          echo "Saved-shard telemetry API HTTP status: $STATUS"
+          if [[ "$STATUS" != "200" ]]; then
+            jq -r '.errors[]?.message // "No API error details returned."' "$RESPONSE" || true
+            exit 1
+          fi
+          SHARD_AUDIT=$(jq -c --arg runDate "$EXPECTED_RUN_DATE" '
+            [.result.events.events[]?
+             | {message: (.[ "$metadata"].message // .source.message // .message // "")}
+             | select(.message | contains("Restaurant-Prüfabschnitt gespeichert:"))
+             | .message as $message
+             | (try ($message | split("Restaurant-Prüfabschnitt gespeichert: ") | last | fromjson) catch null) as $payload
+             | select($payload != null and $payload.runDate == $runDate)
+             | {shard: $payload.shard, totalShards: $payload.totalShards}]
+            | sort_by(.shard)
+          ' "$RESPONSE")
+          echo "Today's saved shard telemetry: $SHARD_AUDIT"
+          if ! jq -e 'length == 40 and (map(.shard) == [range(1; 41)]) and all(.[]; .totalShards == 40)' <<< "$SHARD_AUDIT" >/dev/null; then
+            echo "::error::Telemetry does not show exactly one saved log for each of the 40 shard IDs 1 through 40."
+            exit 1
+          fi
+          echo "Verified: exactly 40 distinct saved section logs, with no missing or duplicate section."
+
       - name: Inspect the latest scheduled website-monitor summary
         id: website_summary
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -288,7 +356,7 @@ jobs:
           LATEST_MESSAGE=$(jq -r '.message // ""' <<< "$LATEST_EVENT")
           SUMMARY_TIMESTAMP=$(jq -r '.timestamp // 0' <<< "$LATEST_EVENT")
           if [[ -z "$LATEST_MESSAGE" ]]; then
-            echo "::error::No website-monitor summary found after the scheduled 80-shard window."
+            echo "::error::No website-monitor summary found after the scheduled 40-minute window."
             exit 1
           fi
           SUMMARY_JSON="${LATEST_MESSAGE#*Website-Prüfung: }"
@@ -312,26 +380,41 @@ jobs:
           echo "Verified: $(jq -r '.totalRestaurantEntries' <<< "$SUMMARY_JSON") restaurant entries; $(jq -r '.restaurantsWithoutWebsiteSource' <<< "$SUMMARY_JSON") without website/external source."
           echo "timestamp=$SUMMARY_TIMESTAMP" >> "$GITHUB_OUTPUT"
           SHARDS_COMPLETED=$(jq -r '.shardsCompleted // 0' <<< "$SUMMARY_JSON")
-          if [[ "$SHARDS_COMPLETED" != "80" ]]; then
-            echo "::error::The daily summary confirms only $SHARDS_COMPLETED of 80 shards."
+          if [[ "$SHARDS_COMPLETED" != "40" ]]; then
+            echo "::error::The daily summary confirms only $SHARDS_COMPLETED of 40 shards."
             exit 1
           fi
-          echo "Verified: all 80 monitoring shards are included in the daily summary."
+          echo "Verified: the daily database summary contains all 40 unique sections."
           BASELINE_ONLY=$(jq -r '.baselineOnly // false' <<< "$SUMMARY_JSON")
           BASELINE_COMPLETE=$(jq -r '.baselineComplete // false' <<< "$SUMMARY_JSON")
           PROPOSALS=$(jq -r '.changes // -1' <<< "$SUMMARY_JSON")
-          if [[ "$BASELINE_ONLY" == "true" && "$PROPOSALS" != "0" ]]; then
-            echo "::error::Proposal-free baseline guarantee was violated."
+          HOMEPAGE_SNAPSHOTS=$(jq -r '.homepageSnapshots // -1' <<< "$SUMMARY_JSON")
+          CONFIGURED_SOURCES=$(jq -r '.configuredWebsiteSources // -1' <<< "$SUMMARY_JSON")
+          SUBPAGES=$(jq -r '.subpagesChecked // -1' <<< "$SUMMARY_JSON")
+          COVERAGE=$(jq -r '.baselineCoveragePercent // -1' <<< "$SUMMARY_JSON")
+          if [[ "$BASELINE_COMPLETE" != "true" ]]; then
+            echo "::error::The first baseline pass is not complete."
             exit 1
           fi
-          if [[ "$BASELINE_ONLY" == "true" && "$BASELINE_COMPLETE" == "true" ]]; then
-            echo "Initial baseline pass verified: all 80 shards completed and zero proposals were created. Unreachable sources will establish their own baseline on the next successful fetch."
-          elif [[ "$BASELINE_ONLY" == "true" ]]; then
-            echo "Initial baseline pass remains incomplete. Completed shards: $(jq -r '.shardsCompleted // 0' <<< "$SUMMARY_JSON") / 80. Homepage snapshots are diagnostic only and do not block the baseline."
-          elif [[ "$BASELINE_COMPLETE" == "true" ]]; then
-            echo "The initial baseline phase was completed in an earlier full 80-shard pass. Any source that was unreachable then can establish its own baseline on a later successful fetch."
+          if [[ "$BASELINE_ONLY" == "true" && "$PROPOSALS" != "0" ]]; then
+            echo "::error::The initial baseline created change proposals; this is not allowed."
+            exit 1
+          fi
+          if ! jq -e '
+            (.homepageSnapshots | type == "number" and . >= 0) and
+            (.configuredWebsiteSources | type == "number" and . >= 0) and
+            (.subpagesChecked | type == "number" and . >= 0) and
+            (.baselineCoveragePercent | type == "number" and . >= 0 and . <= 100) and
+            (.homepageSnapshots <= .configuredWebsiteSources)
+          ' <<< "$SUMMARY_JSON" >/dev/null; then
+            echo "::error::Baseline coverage or subpage counts are missing or invalid."
+            exit 1
+          fi
+          echo "Verified: baseline complete; homepage snapshots $HOMEPAGE_SNAPSHOTS/$CONFIGURED_SOURCES ($COVERAGE%); subpages $SUBPAGES."
+          if [[ "$BASELINE_ONLY" == "true" ]]; then
+            echo "Verified: this was the initial baseline-only pass and it created zero website change proposals."
           else
-            echo "The initial baseline pass is not yet complete."
+            echo "Verified: the initial baseline was completed earlier; regular comparisons are now enabled."
           fi
 
       - name: Verify that the daily report was accepted by Brevo

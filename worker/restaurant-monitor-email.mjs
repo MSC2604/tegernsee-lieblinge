@@ -55,6 +55,16 @@ export async function sendRestaurantWebsiteDigest({
     kind:String(cell(row[2])||""), url:String(cell(row[3])||"")
   }));
   const errors = Array.isArray(summary.errors) ? summary.errors : [];
+  const pagesChecked = Number(summary.pagesChecked) || 0;
+  const homepageSnapshots = Number(summary.homepageSnapshots) || 0;
+  const configuredWebsiteSources = Number(summary.configuredWebsiteSources) ||
+    ((Number(summary.restaurantsChecked) || 0) + (Number(summary.externalEntriesChecked) || 0));
+  const subpagesChecked = summary.subpagesChecked == null
+    ? Math.max(0, pagesChecked - homepageSnapshots)
+    : Math.max(0, Number(summary.subpagesChecked) || 0);
+  const baselineCoveragePercent = summary.baselineCoveragePercent == null
+    ? (configuredWebsiteSources ? Number((homepageSnapshots / configuredWebsiteSources * 100).toFixed(1)) : 100)
+    : Math.max(0, Math.min(100, Number(summary.baselineCoveragePercent) || 0));
   // Alte offene Vorschläge können aus früheren Läufen stammen, bevor die
   // Normalisierung aktiv war. Technische Darstellungsunterschiede auch beim
   // Versand ausblenden, ohne die gespeicherten Restaurantdaten anzufassen.
@@ -75,7 +85,9 @@ export async function sendRestaurantWebsiteDigest({
     "Ohne hinterlegte Website / externen Eintrag: " + (summary.restaurantsWithoutWebsiteSource == null ? "nicht ermittelt" : Number(summary.restaurantsWithoutWebsiteSource)),
     "Offizielle Restaurant-Webseiten geprüft: " + (Number(summary.restaurantsChecked)||0),
     "Externe Eintragsseiten geprüft: " + (Number(summary.externalEntriesChecked)||0),
-    "Webseiten und Unterseiten geprüft: " + (Number(summary.pagesChecked)||0),
+    "Webseiten und Unterseiten insgesamt geprüft: " + pagesChecked,
+    "Darunter Unterseiten geprüft: " + subpagesChecked,
+    "Baseline-Abdeckung (Startseiten-Snapshots): " + homepageSnapshots + " von " + configuredWebsiteSources + " Quell-URLs (" + baselineCoveragePercent + " %)",
     "Speise- und Getränkekarten-Links geprüft: " + (summary.cardsChecked == null ? "separate Kartenprüfung" : (Number(summary.cardsChecked)||0)),
     "Erkannte Änderungen: " + totalChanges, "Prüfprobleme: " + errors.length, "",
     totalChanges ? "Es wurden Änderungen erkannt. Bitte prüfe die Vorschläge in der App." : "Keine Änderungen festgestellt.",
@@ -98,7 +110,9 @@ export async function sendRestaurantWebsiteDigest({
       <li>Ohne hinterlegte Website / externen Eintrag: ${summary.restaurantsWithoutWebsiteSource == null ? "nicht ermittelt" : Number(summary.restaurantsWithoutWebsiteSource)}</li>
       <li>Offizielle Restaurant-Webseiten geprüft: ${Number(summary.restaurantsChecked)||0}</li>
       <li>Externe Eintragsseiten geprüft: ${Number(summary.externalEntriesChecked)||0}</li>
-      <li>Webseiten und Unterseiten geprüft: ${Number(summary.pagesChecked)||0}</li>
+      <li>Webseiten und Unterseiten insgesamt geprüft: ${pagesChecked}</li>
+      <li>Darunter Unterseiten geprüft: ${subpagesChecked}</li>
+      <li>Baseline-Abdeckung (Startseiten-Snapshots): ${homepageSnapshots} von ${configuredWebsiteSources} Quell-URLs (${baselineCoveragePercent} %)</li>
       <li>Speise- und Getränkekarten-Links geprüft: ${summary.cardsChecked == null ? "separate Kartenprüfung" : (Number(summary.cardsChecked)||0)}</li>
       <li>Erkannte Änderungen: ${totalChanges}</li><li>Prüfprobleme: ${errors.length}</li>
     </ul>

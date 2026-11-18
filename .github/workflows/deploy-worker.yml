@@ -37,6 +37,13 @@ jobs:
           set -euo pipefail
           node --test worker/*.test.mjs
 
+      - name: Verify the exact 40-slot Europe/Berlin Cron schedule
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fxq 'crons = ["0-39 4 * * *", "0-39 5 * * *"]' wrangler.toml
+          echo "Verified: exactly 40 local 06:00-06:39 monitoring slots in CET and CEST."
+
       - name: Verify Brevo sender and recipient configuration
         shell: bash
         run: |

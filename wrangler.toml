@@ -6,12 +6,10 @@ compatibility_date = "2026-10-16"
 BREVO_FROM_EMAIL = "msc4021@arcor.de"
 MONITOR_NOTIFICATION_EMAIL = "msc4021@arcor.de"
 
-# Cloudflare Cron is UTC-based. Two expressions cover all required UTC hours
-# while staying within the Free plan's five-trigger account limit.
-# Together they map to 80 shard slots (06:00-07:19 Berlin) and
-# finalizer/recovery (07:30-08:59 Berlin) in both CET and CEST.
+# Only the matching seasonal UTC trigger executes: 05:00-05:39 UTC in CET
+# or 04:00-04:39 UTC in CEST. The scheduled handler verifies cron and Berlin time.
 [triggers]
-crons = ["0-59 4,5 * * *", "0-59 6,7 * * *"]
+crons = ["0-39 4 * * *", "0-39 5 * * *"]
 
 # Cloudflare Workers Observability: persist logs and invocation events.
 [observability]

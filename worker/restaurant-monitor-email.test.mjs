@@ -105,7 +105,7 @@ assert.equal(belowProtectedInventorySendCalls, 0, "A report below the protected 
 const send = async () => sendRestaurantWebsiteDigest({
   db,
   env: { BREVO_API_KEY:"test-key", BREVO_FROM_EMAIL:"verified@example.org", MONITOR_NOTIFICATION_EMAIL:"recipient@example.org" },
-  summary: { totalRestaurantEntries:41, restaurantsWithoutWebsiteSource:3, restaurantsChecked:41, pagesChecked:90, cardsChecked:null, errors:[], runDate:"2026-11-" + String(++sendRunIndex).padStart(2,"0") },
+  summary: { totalRestaurantEntries:41, restaurantsWithoutWebsiteSource:3, restaurantsChecked:41, externalEntriesChecked:2, pagesChecked:90, subpagesChecked:49, homepageSnapshots:43, configuredWebsiteSources:44, baselineCoveragePercent:97.7, cardsChecked:null, errors:[], runDate:"2026-11-" + String(++sendRunIndex).padStart(2,"0") },
   fetchImpl: async (url, options) => {
     assert.equal(url, "https://api.brevo.com/v3/smtp/email");
     sentPayloads.push(JSON.parse(options.body));
@@ -124,6 +124,11 @@ assert.equal(cardUpdated,1);
 assert.equal(sentPayloads[0].to[0].email,"recipient@example.org");
 assert.match(sentPayloads[0].textContent,/Restaurants insgesamt im Datenbestand: 41/);
 assert.match(sentPayloads[0].textContent,/Ohne hinterlegte Website \/ externen Eintrag: 3/);
+assert.match(sentPayloads[0].textContent,/Offizielle Restaurant-Webseiten geprüft: 41/);
+assert.match(sentPayloads[0].textContent,/Externe Eintragsseiten geprüft: 2/);
+assert.match(sentPayloads[0].textContent,/Darunter Unterseiten geprüft: 49/);
+assert.match(sentPayloads[0].textContent,/Baseline-Abdeckung \(Startseiten-Snapshots\): 43 von 44 Quell-URLs \(97\.7 %\)/);
+assert.match(sentPayloads[0].textContent,/Speise- und Getränkekarten-Links geprüft: separate Kartenprüfung/);
 assert.match(sentPayloads[0].htmlContent,/Restaurants insgesamt im Datenbestand: 41/);
 assert.match(sentPayloads[0].htmlContent,/Ohne hinterlegte Website \/ externen Eintrag: 3/);
 assert.match(sentPayloads[0].htmlContent,/Gasthof &lt;See&gt;/);
