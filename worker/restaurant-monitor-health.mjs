@@ -62,7 +62,7 @@ function inspectRows(rows, expectedCount) {
   };
 }
 
-function baselineEvidence(baselineShardRows, manualBaselineReport) {
+function baselineEvidence(baselineShardRows, manualBaselineReport, baseline, inventory) {
   if (manualBaselineReport &&
       String(manualBaselineReport.startedAt || "") &&
       String(manualBaselineReport.finishedAt || "") &&
@@ -74,6 +74,7 @@ function baselineEvidence(baselineShardRows, manualBaselineReport) {
     const errorsCount = count(manualBaselineReport.errorsCount);
     return {
       source: "manual-run-report",
+      scope: "all-sources",
       totalConfiguredSources,
       totalSnapshots,
       missingSources,
@@ -90,8 +91,33 @@ function baselineEvidence(baselineShardRows, manualBaselineReport) {
   const rows = Array.isArray(baselineShardRows) ? baselineShardRows : [];
   const expectedCount = rows.length === 40 || rows.length === 80 ? rows.length : 0;
   if (!expectedCount) {
+    // The original baseline was completed on 2026-11-15, before scheduled
+    // sharding existed. At that time only the manual baseline path could set
+    // baseline_complete_at, and it did so only after all official homepages
+    // had a snapshot. The later daily runs have since overwritten checked_at.
+    const startedAt = String(baseline?.startedAt || "");
+    const officialSources = count(inventory?.officialSources);
+    const currentOfficialSnapshots = Math.min(officialSources, count(inventory?.officialSnapshots));
+    const legacyManualBaseline = startedAt && startedAt < "2026-11-16T00:00:00.000Z" &&
+      rows.length === 0 && !manualBaselineReport && officialSources > 0 &&
+      currentOfficialSnapshots === officialSources;
+    if (legacyManualBaseline) {
+      return {
+        source: "legacy-manual-state",
+        scope: "official-websites",
+        totalConfiguredSources: officialSources,
+        totalSnapshots: officialSources,
+        missingSources: 0,
+        coveragePercent: 100,
+        proposals: 0,
+        errorsCount: 0,
+        rows: 0,
+        distinctShards: 0,
+        coverageVerified: true
+      };
+    }
     return {
-      source: "unavailable", totalConfiguredSources: 0, totalSnapshots: 0,
+      source: "unavailable", scope: "none", totalConfiguredSources: 0, totalSnapshots: 0,
       missingSources: 0, coveragePercent: 0, proposals: 0, errorsCount: 0,
       rows: rows.length, distinctShards: new Set(rows.map(row => Number(row?.shard)).filter(Number.isInteger)).size,
       coverageVerified: false
@@ -103,6 +129,7 @@ function baselineEvidence(baselineShardRows, manualBaselineReport) {
   const missingSources = Math.max(0, totalConfiguredSources - totalSnapshots);
   return {
     source: "scheduled-shard-records",
+    scope: "all-sources",
     totalConfiguredSources,
     totalSnapshots,
     missingSources,
@@ -140,7 +167,7 @@ export function buildRestaurantMonitorHealth({
   const currentCoveragePercent = currentConfiguredSources
     ? Number((currentSnapshots / currentConfiguredSources * 100).toFixed(1))
     : 100;
-  const evidence = baselineEvidence(baselineShardRows, manualBaselineReport);
+  const evidence = baselineEvidence(baselineShardRows, manualBaselineReport, baseline, inventory);
   const today = inspectRows(shardRows, EXPECTED_SHARD_COUNT);
   const totalRestaurantEntries = count(inventory.totalRestaurantEntries);
   const sourceRows = count(inventory.sourceRows);
@@ -162,6 +189,7 @@ export function buildRestaurantMonitorHealth({
       proposalCountDuringPass,
       proposalFree: baselineComplete && proposalCountDuringPass === 0 && evidence.coverageVerified && evidence.proposals === 0,
       source: evidence.source,
+      scope: evidence.scope,
       totalConfiguredSources: evidence.totalConfiguredSources,
       totalSnapshots: evidence.totalSnapshots,
       missingSources: evidence.missingSources,

@@ -443,7 +443,7 @@ jobs:
             echo "::error::The original baseline is incomplete or change proposals were created during its baseline interval."
             exit 1
           fi
-          jq -r '"Verified: initial baseline from " + .baseline.source + " completed between " + .baseline.startedAt + " and " + .baseline.finishedAt + "; zero proposals during baseline; homepage snapshots " + (.baseline.totalSnapshots|tostring) + "/" + (.baseline.totalConfiguredSources|tostring) + " (" + (.baseline.coveragePercent|tostring) + "%); missing sources " + (.baseline.missingSources|tostring) + "; baseline check errors " + (.baseline.errorsCount|tostring) + "; current snapshot coverage " + (.baseline.currentSnapshots|tostring) + "/" + (.baseline.currentConfiguredSources|tostring) + " (" + (.baseline.currentCoveragePercent|tostring) + "%)"' "$RESPONSE"
+          jq -r '"Verified: initial baseline from " + .baseline.source + " (" + .baseline.scope + ") completed between " + .baseline.startedAt + " and " + .baseline.finishedAt + "; zero proposals during baseline; homepage snapshots " + (.baseline.totalSnapshots|tostring) + "/" + (.baseline.totalConfiguredSources|tostring) + " (" + (.baseline.coveragePercent|tostring) + "%); missing sources " + (.baseline.missingSources|tostring) + "; baseline check errors " + (.baseline.errorsCount|tostring) + "; current snapshot coverage " + (.baseline.currentSnapshots|tostring) + "/" + (.baseline.currentConfiguredSources|tostring) + " (" + (.baseline.currentCoveragePercent|tostring) + "%)"' "$RESPONSE"
           echo "Verified: the initial baseline is complete and proposal-free."
 
       - name: Verify that the daily report was accepted by Brevo

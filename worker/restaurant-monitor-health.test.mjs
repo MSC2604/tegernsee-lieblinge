@@ -90,6 +90,32 @@ const unverifiedBaseline = buildRestaurantMonitorHealth({
 assert.equal(unverifiedBaseline.baseline.coverageVerified, false);
 assert.equal(unverifiedBaseline.baseline.proposalFree, false);
 
+const legacyManualBaseline = buildRestaurantMonitorHealth({
+  baseline: {
+    completeAt: "2026-11-15T15:19:49.071Z",
+    startedAt: "2026-11-15T15:16:06.594Z",
+    finishedAt: "2026-11-15T15:19:49.071Z"
+  },
+  inventory, baselineShardRows: [], shardRows: rows, runDate: "2026-11-18"
+});
+assert.equal(legacyManualBaseline.baseline.source, "legacy-manual-state");
+assert.equal(legacyManualBaseline.baseline.scope, "official-websites");
+assert.equal(legacyManualBaseline.baseline.coverageVerified, true);
+assert.equal(legacyManualBaseline.baseline.proposalFree, true);
+assert.equal(legacyManualBaseline.baseline.coveragePercent, 100);
+
+const legacyMissingOfficial = buildRestaurantMonitorHealth({
+  baseline: {
+    completeAt: "2026-11-15T15:19:49.071Z",
+    startedAt: "2026-11-15T15:16:06.594Z",
+    finishedAt: "2026-11-15T15:19:49.071Z"
+  },
+  inventory: { ...inventory, officialSnapshots: 36 },
+  baselineShardRows: [], shardRows: rows, runDate: "2026-11-18"
+});
+assert.equal(legacyMissingOfficial.baseline.coverageVerified, false);
+assert.equal(legacyMissingOfficial.baseline.proposalFree, false);
+
 const proposalDuringBaseline = buildRestaurantMonitorHealth({
   baseline, inventory: { ...inventory, baselineProposalCount: 1 },
   manualBaselineReport: {
