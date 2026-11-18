@@ -2827,6 +2827,4 @@ console.log("Tavily usage account:", {
       throw error;
     }
   }
-
-  }
 };
