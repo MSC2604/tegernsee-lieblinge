@@ -426,7 +426,7 @@ jobs:
         run: |
           set -euo pipefail
           NOW_MS=$(date +%s000)
-          FROM_MS=$((NOW_MS - 604800000))
+          FROM_MS=$((NOW_MS - 2592000000))
           BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
             queryId: "restaurant-monitor-initial-baseline-v1",
             timeframe: {from: $from, to: $to},
@@ -439,7 +439,7 @@ jobs:
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
                 {key: "$metadata.type", operation: "eq", type: "string", value: "cf-worker"}
               ],
-              needle: {value: "\"baselineOnly\":true", isRegex: false, matchCase: false}
+              needle: {value: "baselineOnly", isRegex: false, matchCase: false}
             }
           }')
           RESPONSE=$(mktemp)
@@ -454,17 +454,19 @@ jobs:
             jq -r '.errors[]?.message // "No API error details returned."' "$RESPONSE" || true
             exit 1
           fi
-          BASELINE_RECORD=$(jq -c '
+          BASELINE_MATCHES=$(jq -c '
             [.result.events.events[]?
              | {timestamp: (.timestamp // .["$metadata"].endTime // 0),
                 message: (.["$metadata"].message // .source.message // .message // "")}
              | select(.message | contains("Website-Prüfung:"))
              | .message as $message
              | (try ($message | split("Website-Prüfung: ") | last | fromjson) catch null) as $payload
-             | select($payload != null and $payload.baselineOnly == true and $payload.baselineComplete == true and $payload.changes == 0)
+             | select($payload != null and $payload.baselineOnly == true)
              | {timestamp, summary: $payload}]
-            | sort_by(.timestamp) | last // {}
+            | sort_by(.timestamp)
           ' "$RESPONSE")
+          echo "Initial baseline-only events found: $(jq 'length' <<< "$BASELINE_MATCHES")"
+          BASELINE_RECORD=$(jq -c '[.[] | select(.summary.baselineComplete == true and .summary.changes == 0)] | last // {}' <<< "$BASELINE_MATCHES")
           if [[ -z "$BASELINE_RECORD" || "$BASELINE_RECORD" == "{}" ]]; then
             echo "::error::No complete initial baseline-only summary with zero change proposals was found in the available telemetry."
             exit 1
