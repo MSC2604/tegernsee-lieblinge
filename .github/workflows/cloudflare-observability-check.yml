@@ -430,18 +430,20 @@ jobs:
           if ! jq -e '
             .baseline.complete == true and
             .baseline.proposalFree == true and
+            .baseline.coverageVerified == true and
             .baseline.proposalCountDuringPass == 0 and
-            (.baseline.totalConfiguredSources | type == "number" and . >= 0) and
+            .baseline.baselineProposals == 0 and
+            (.baseline.totalConfiguredSources | type == "number" and . > 0) and
             (.baseline.totalSnapshots | type == "number" and . >= 0) and
-            (.baseline.coveragePercent | type == "number" and . >= 0 and . <= 100) and
-            (.baseline.officialMissing | type == "number" and . >= 0) and
-            (.baseline.externalMissing | type == "number" and . >= 0)
+            (.baseline.missingSources | type == "number" and . >= 0) and
+            (.baseline.missingSources <= .baseline.errorsCount) and
+            (.baseline.coveragePercent | type == "number" and . >= 0 and . <= 100)
           ' "$RESPONSE" >/dev/null; then
             jq -c '.baseline' "$RESPONSE" || true
             echo "::error::The original baseline is incomplete or change proposals were created during its baseline interval."
             exit 1
           fi
-          jq -r '"Verified: initial baseline completed at " + .baseline.completeAt + "; zero proposals during baseline; homepage snapshots " + (.baseline.totalSnapshots|tostring) + "/" + (.baseline.totalConfiguredSources|tostring) + " (" + (.baseline.coveragePercent|tostring) + "%); missing official sources " + (.baseline.officialMissing|tostring) + "; missing external sources " + (.baseline.externalMissing|tostring) + "; baseline check errors " + (.baseline.errorsCount|tostring)' "$RESPONSE"
+          jq -r '"Verified: initial baseline from " + .baseline.source + " completed between " + .baseline.startedAt + " and " + .baseline.finishedAt + "; zero proposals during baseline; homepage snapshots " + (.baseline.totalSnapshots|tostring) + "/" + (.baseline.totalConfiguredSources|tostring) + " (" + (.baseline.coveragePercent|tostring) + "%); missing sources " + (.baseline.missingSources|tostring) + "; baseline check errors " + (.baseline.errorsCount|tostring) + "; current snapshot coverage " + (.baseline.currentSnapshots|tostring) + "/" + (.baseline.currentConfiguredSources|tostring) + " (" + (.baseline.currentCoveragePercent|tostring) + "%)"' "$RESPONSE"
           echo "Verified: the initial baseline is complete and proposal-free."
 
       - name: Verify that the daily report was accepted by Brevo

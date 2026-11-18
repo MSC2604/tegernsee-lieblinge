@@ -477,22 +477,18 @@ export default {
           (SELECT COUNT(DISTINCT r.id) FROM restaurants r
             INNER JOIN restaurant_site_snapshots s
               ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT)
-              AND s.page_url=TRIM(r.website) AND s.checked_at >= ? AND s.checked_at <= ?
+              AND s.page_url=TRIM(r.website)
             WHERE TRIM(COALESCE(r.website, '')) <> ''),
           (SELECT COUNT(*) FROM restaurants WHERE TRIM(COALESCE(externer_eintrag, '')) <> ''),
           (SELECT COUNT(DISTINCT r.id) FROM restaurants r
             INNER JOIN restaurant_site_snapshots s
               ON CAST(s.restaurant_id AS TEXT)=CAST(r.id AS TEXT)
-              AND s.page_url=TRIM(r.externer_eintrag) AND s.checked_at >= ? AND s.checked_at <= ?
+              AND s.page_url=TRIM(r.externer_eintrag)
             WHERE TRIM(COALESCE(r.externer_eintrag, '')) <> ''),
           (SELECT COUNT(*) FROM restaurants
             WHERE TRIM(COALESCE(website, '')) <> '' OR TRIM(COALESCE(externer_eintrag, '')) <> ''),
           (SELECT COUNT(*) FROM restaurant_change_proposals WHERE detected_at >= ? AND detected_at <= ?)`,
-          [
-            textArg(baseline.startedAt), textArg(baseline.finishedAt),
-            textArg(baseline.startedAt), textArg(baseline.finishedAt),
-            textArg(baseline.startedAt), textArg(baseline.finishedAt)
-          ], true
+          [textArg(baseline.startedAt), textArg(baseline.finishedAt)], true
         );
         const inventoryRow = inventoryResult?.results?.[0]?.response?.result?.rows?.[0] || [];
         const inventory = {
@@ -532,6 +528,32 @@ export default {
         };
         const baselineShardRows = await readShardRows(baselineRunDate);
         const todayShardRows = await readShardRows(runDate);
+        let manualBaselineReport = null;
+        try {
+          const manualRunResult = await turso(
+            "SELECT started_at, finished_at, report_json FROM restaurant_website_monitor_runs WHERE id=1",
+            [], true
+          );
+          const manualRow = manualRunResult?.results?.[0]?.response?.result?.rows?.[0];
+          if (manualRow &&
+              String(rowValue(manualRow[0]) || "") === baseline.startedAt &&
+              String(rowValue(manualRow[1]) || "") === baseline.finishedAt) {
+            let report = {};
+            try { report = JSON.parse(String(rowValue(manualRow[2]) || "{}")); } catch {}
+            manualBaselineReport = {
+              startedAt: String(rowValue(manualRow[0]) || ""),
+              finishedAt: String(rowValue(manualRow[1]) || ""),
+              baselineOnly: report.baselineOnly === true,
+              baselineComplete: report.baselineComplete === true,
+              totalSources: Number(report.total) || 0,
+              homepageSnapshots: Number(report.homepageSnapshots) || 0,
+              proposals: Number(report.proposals) || 0,
+              errorsCount: Array.isArray(report.errors) ? report.errors.length : 0
+            };
+          }
+        } catch {
+          manualBaselineReport = null;
+        }
         let email = null;
         try {
           const emailResult = await turso(
@@ -547,7 +569,7 @@ export default {
           email = null;
         }
         const health = buildRestaurantMonitorHealth({
-          baseline, inventory, baselineShardRows, shardRows: todayShardRows, email, runDate
+          baseline, inventory, baselineShardRows, manualBaselineReport, shardRows: todayShardRows, email, runDate
         });
         return json({ ok: true, service: "tegernsee-restaurants-api", database: "ok", ...health });
       } catch (error) {

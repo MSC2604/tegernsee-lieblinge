@@ -62,10 +62,66 @@ function inspectRows(rows, expectedCount) {
   };
 }
 
+function baselineEvidence(baselineShardRows, manualBaselineReport) {
+  if (manualBaselineReport &&
+      String(manualBaselineReport.startedAt || "") &&
+      String(manualBaselineReport.finishedAt || "") &&
+      manualBaselineReport.baselineOnly === true &&
+      manualBaselineReport.baselineComplete === true) {
+    const totalConfiguredSources = count(manualBaselineReport.totalSources);
+    const totalSnapshots = Math.min(totalConfiguredSources, count(manualBaselineReport.homepageSnapshots));
+    const missingSources = Math.max(0, totalConfiguredSources - totalSnapshots);
+    const errorsCount = count(manualBaselineReport.errorsCount);
+    return {
+      source: "manual-run-report",
+      totalConfiguredSources,
+      totalSnapshots,
+      missingSources,
+      coveragePercent: totalConfiguredSources
+        ? Number((totalSnapshots / totalConfiguredSources * 100).toFixed(1)) : 100,
+      proposals: count(manualBaselineReport.proposals),
+      errorsCount,
+      rows: 0,
+      distinctShards: 0,
+      coverageVerified: totalConfiguredSources > 0 && missingSources <= errorsCount
+    };
+  }
+
+  const rows = Array.isArray(baselineShardRows) ? baselineShardRows : [];
+  const expectedCount = rows.length === 40 || rows.length === 80 ? rows.length : 0;
+  if (!expectedCount) {
+    return {
+      source: "unavailable", totalConfiguredSources: 0, totalSnapshots: 0,
+      missingSources: 0, coveragePercent: 0, proposals: 0, errorsCount: 0,
+      rows: rows.length, distinctShards: new Set(rows.map(row => Number(row?.shard)).filter(Number.isInteger)).size,
+      coverageVerified: false
+    };
+  }
+  const inspected = inspectRows(rows, expectedCount);
+  const totalConfiguredSources = inspected.sums.configuredWebsiteSources;
+  const totalSnapshots = Math.min(totalConfiguredSources, inspected.sums.homepageSnapshots);
+  const missingSources = Math.max(0, totalConfiguredSources - totalSnapshots);
+  return {
+    source: "scheduled-shard-records",
+    totalConfiguredSources,
+    totalSnapshots,
+    missingSources,
+    coveragePercent: totalConfiguredSources
+      ? Number((totalSnapshots / totalConfiguredSources * 100).toFixed(1)) : 100,
+    proposals: inspected.sums.changes,
+    errorsCount: inspected.errorsCount,
+    rows: inspected.rows,
+    distinctShards: inspected.distinct,
+    coverageVerified: inspected.complete && totalConfiguredSources > 0 &&
+      missingSources <= inspected.errorsCount
+  };
+}
+
 export function buildRestaurantMonitorHealth({
   baseline = {},
   inventory = {},
   baselineShardRows = [],
+  manualBaselineReport = null,
   shardRows = [],
   email = null,
   runDate = ""
@@ -79,14 +135,12 @@ export function buildRestaurantMonitorHealth({
   const officialSnapshots = Math.min(officialSources, count(inventory.officialSnapshots));
   const externalSources = count(inventory.externalSources);
   const externalSnapshots = Math.min(externalSources, count(inventory.externalSnapshots));
-  const totalConfiguredSources = officialSources + externalSources;
-  const totalSnapshots = officialSnapshots + externalSnapshots;
-  const coveragePercent = totalConfiguredSources
-    ? Number((totalSnapshots / totalConfiguredSources * 100).toFixed(1))
+  const currentConfiguredSources = officialSources + externalSources;
+  const currentSnapshots = officialSnapshots + externalSnapshots;
+  const currentCoveragePercent = currentConfiguredSources
+    ? Number((currentSnapshots / currentConfiguredSources * 100).toFixed(1))
     : 100;
-  const baselineShards = Array.isArray(baselineShardRows) ? baselineShardRows : [];
-  const baselineShardIds = [...new Set(baselineShards.map(row => Number(row?.shard)).filter(Number.isInteger))];
-  const baselineErrorsCount = baselineShards.reduce((total, row) => total + errorCount(row?.errors), 0);
+  const evidence = baselineEvidence(baselineShardRows, manualBaselineReport);
   const today = inspectRows(shardRows, EXPECTED_SHARD_COUNT);
   const totalRestaurantEntries = count(inventory.totalRestaurantEntries);
   const sourceRows = count(inventory.sourceRows);
@@ -106,20 +160,26 @@ export function buildRestaurantMonitorHealth({
       startedAt,
       finishedAt,
       proposalCountDuringPass,
+      proposalFree: baselineComplete && proposalCountDuringPass === 0 && evidence.coverageVerified && evidence.proposals === 0,
+      source: evidence.source,
+      totalConfiguredSources: evidence.totalConfiguredSources,
+      totalSnapshots: evidence.totalSnapshots,
+      missingSources: evidence.missingSources,
+      coveragePercent: evidence.coveragePercent,
+      coverageVerified: evidence.coverageVerified,
+      baselineProposals: evidence.proposals,
       officialSources,
-      officialSnapshots,
-      officialMissing: Math.max(0, officialSources - officialSnapshots),
+      currentOfficialSnapshots: officialSnapshots,
+      currentOfficialMissing: Math.max(0, officialSources - officialSnapshots),
       externalSources,
-      externalSnapshots,
-      externalMissing: Math.max(0, externalSources - externalSnapshots),
-      totalConfiguredSources,
-      totalSnapshots,
-      coveragePercent,
-      officialCoveragePercent: officialSources ? Number((officialSnapshots / officialSources * 100).toFixed(1)) : 100,
-      externalCoveragePercent: externalSources ? Number((externalSnapshots / externalSources * 100).toFixed(1)) : 100,
-      shardRows: baselineShards.length,
-      distinctShards: baselineShardIds.length,
-      errorsCount: baselineErrorsCount
+      currentExternalSnapshots: externalSnapshots,
+      currentExternalMissing: Math.max(0, externalSources - externalSnapshots),
+      currentConfiguredSources,
+      currentSnapshots,
+      currentCoveragePercent,
+      shardRows: evidence.rows,
+      distinctShards: evidence.distinctShards,
+      errorsCount: evidence.errorsCount
     },
     today: {
       runDate: String(runDate || ""),
