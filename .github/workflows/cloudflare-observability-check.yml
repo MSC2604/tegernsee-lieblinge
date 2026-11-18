@@ -356,6 +356,8 @@ jobs:
             --header "Content-Type: application/json" \
             --data "$EVENTS_BODY")
           echo "Scheduled monitor-events API HTTP status: $EVENTS_STATUS"
+          echo "Monitor summary query window: $EXPECTED_RUN_DATE from=$FROM_MS to=$NOW_MS"
+          echo "Scheduled monitor events returned: $(jq -r '.result.events.events | length' "$EVENTS_RESPONSE")"
           if [[ "$EVENTS_STATUS" != "200" ]]; then
             jq -r '.errors[]?.message // "No API error details returned."' "$EVENTS_RESPONSE" || true
             exit 1
@@ -370,6 +372,7 @@ jobs:
           LATEST_MESSAGE=$(jq -r '.message // ""' <<< "$LATEST_EVENT")
           SUMMARY_TIMESTAMP=$(jq -r '.timestamp // 0' <<< "$LATEST_EVENT")
           if [[ -z "$LATEST_MESSAGE" ]]; then
+            jq -c '[.result.events.events[]? | {timestamp, type: .["$metadata"].type, eventType: .["$workers"].eventType, message: (.["$metadata"].message // .source.message // .message // "")}] | .[:12]' "$EVENTS_RESPONSE" || true
             echo "::error::No website-monitor summary found after the scheduled 40-minute window."
             exit 1
           fi
@@ -496,6 +499,7 @@ jobs:
             --header "Content-Type: application/json" \
             --data "$EMAIL_BODY")
           echo "Scheduled email-report telemetry API HTTP status: $STATUS"
+          echo "Scheduled email telemetry events returned: $(jq -r '.result.events.events | length' "$EMAIL_RESPONSE")"
           if [[ "$STATUS" != "200" ]]; then
             jq -r '.errors[]?.message // "No API error details returned."' "$EMAIL_RESPONSE" || true
             exit 1
@@ -512,6 +516,12 @@ jobs:
             | sort_by(.timestamp) | last // {}
           ' "$EMAIL_RESPONSE")
           if [[ -z "$ACCEPTED_EMAIL_EVENT" || "$ACCEPTED_EMAIL_EVENT" == "{}" ]]; then
+            jq -c '[.result.events.events[]?
+              | {message: (.["$metadata"].message // .source.message // .message // "")}
+              | select(.message | contains("Restaurant-Prüfbericht:"))
+              | .message as $message
+              | (try ($message | split("Restaurant-Prüfbericht: ") | last | fromjson) catch null)
+              | select(. != null and .runDate == $EXPECTED_RUN_DATE)]' "$EMAIL_RESPONSE" || true
             echo "::error::No actual Brevo-accepted daily report (sent=true, acceptedByProvider=true, not duplicate-suppressed) was found for today's local date."
             exit 1
           fi
