@@ -5017,10 +5017,43 @@ function showHome(fromPhoneBack = false){
 
 }
 
-// Reagiert auf die Handy-/Browser-Rückwärtstaste, wenn Restaurantdetails offen sind.
-window.addEventListener("popstate", () => {
+// Die App erhält einen eigenen Start-Eintrag im Browserverlauf.
+ // Dadurch bleibt sie auch dann geöffnet, wenn sie z. B. über einen GitHub-Link
+ // gestartet wurde und hinter ihr noch eine externe Seite liegt.
+function ensureRestaurantAppRootHistoryEntry(){
+  try{
+    const state = history.state || {};
+    if(!state.tegernseeAppRoot){
+      history.pushState(
+        {...state, tegernseeAppRoot:true},
+        "",
+        window.location.href
+      );
+    }
+  }catch(error){
+    console.warn("App-Verlauf konnte nicht initialisiert werden.", error);
+  }
+}
+ensureRestaurantAppRootHistoryEntry();
+
+// Android-/Browser-Zurück: erst Details schließen, am App-Start bleiben.
+window.addEventListener("popstate", (event) => {
   if(currentPlace){
     showHome(true);
+    return;
+  }
+  // Wenn hinter der App eine externe Seite liegt, den App-Start-Eintrag
+  // sofort wiederherstellen, statt die Restaurant-App zu verlassen.
+  if(!event.state || !event.state.tegernseeAppRoot){
+    try{
+      history.pushState(
+        {...(event.state || {}), tegernseeAppRoot:true},
+        "",
+        window.location.href
+      );
+    }catch(error){
+      console.warn("App-Verlauf konnte nicht wiederhergestellt werden.", error);
+    }
   }
 });
 
@@ -6678,13 +6711,11 @@ if(locationPicker){
 
 
 /* --------------------------------------------------
-   AUTOMATISCHE AKTUALISIERUNG DER ANZEIGE
+   ÖFFNUNGSSTATUS
 -------------------------------------------------- */
 
-setInterval(
-  render,
-  60000
-);
+// Die Öffnungsanzeigen werden separat aktualisiert. Die vollständige
+// Restaurantliste wird nicht mehr jede Minute neu aufgebaut.
 
 
 /* KARTENMENÜ UND RESTAURANTSKARTE */
