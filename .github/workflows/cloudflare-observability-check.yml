@@ -347,7 +347,7 @@ jobs:
           NOW_MS=$(date +%s000)
           FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           EVENTS_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
-            queryId: "restaurant-website-monitor-scheduled-events-v5",
+            queryId: "restaurant-website-monitor-scheduled-events-v6",
             timeframe: {from: $from, to: $to},
             dry: false,
             view: "events",
@@ -355,9 +355,9 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
-              ]
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
+              ],
+              needle: {value: "baselineComplete", isRegex: false, matchCase: false}
             }
           }')
           EVENTS_RESPONSE=$(mktemp)
@@ -498,7 +498,7 @@ jobs:
           NOW_MS=$(date +%s000)
           FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           EMAIL_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
-            queryId: "restaurant-website-monitor-email-v5",
+            queryId: "restaurant-website-monitor-email-v6",
             timeframe: {from: $from, to: $to},
             dry: false,
             view: "events",
@@ -506,9 +506,9 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
-              ]
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
+              ],
+              needle: {value: "acceptedByProvider", isRegex: false, matchCase: false}
             }
           }')
           EMAIL_RESPONSE=$(mktemp)
