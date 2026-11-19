@@ -230,7 +230,8 @@ jobs:
               filters: [
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
                 {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
-              ]
+              ],
+              needle: {value: "Website-Prüfung:", isRegex: false, matchCase: false}
             }
           }')
           RESPONSE=$(mktemp)
@@ -335,7 +336,7 @@ jobs:
           NOW_MS=$(date +%s000)
           FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           EVENTS_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
-            queryId: "restaurant-website-monitor-scheduled-events-v2",
+            queryId: "restaurant-website-monitor-scheduled-events-v3",
             timeframe: {from: $from, to: $to},
             dry: false,
             view: "events",
@@ -345,7 +346,8 @@ jobs:
               filters: [
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
                 {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
-              ]
+              ],
+              needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false}
             }
           }')
           EVENTS_RESPONSE=$(mktemp)
@@ -388,7 +390,15 @@ jobs:
             (.restaurantsWithoutWebsiteSource | type == "number") and
             (.totalRestaurantEntries >= 41) and
             (.restaurantsWithoutWebsiteSource >= 0) and
-            (.restaurantsWithoutWebsiteSource <= .totalRestaurantEntries)
+            (.restaurantsWithoutWebsiteSource <= .totalRestaurantEntries) and
+            (.officialWebsiteCount | type == "number" and . >= 0) and
+            (.externalEntryCount | type == "number" and . >= 0) and
+            (.pagesChecked | type == "number" and . >= 0) and
+            (.subpagesChecked | type == "number" and . >= 0) and
+            (.cardsChecked | type == "number" and . >= 0) and
+            (.changes | type == "number" and . >= 0) and
+            (.errors | type == "number" and . >= 0) and
+            (.baselineComplete == true)
           ' <<< "$SUMMARY_JSON" >/dev/null; then
             echo "::error::The daily summary has missing/invalid restaurant inventory counts or reports fewer than the 41 protected entries."
             exit 1
@@ -478,7 +488,7 @@ jobs:
           NOW_MS=$(date +%s000)
           FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           EMAIL_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
-            queryId: "restaurant-website-monitor-email-v2",
+            queryId: "restaurant-website-monitor-email-v3",
             timeframe: {from: $from, to: $to},
             dry: false,
             view: "events",
@@ -516,12 +526,12 @@ jobs:
             | sort_by(.timestamp) | last // {}
           ' "$EMAIL_RESPONSE")
           if [[ -z "$ACCEPTED_EMAIL_EVENT" || "$ACCEPTED_EMAIL_EVENT" == "{}" ]]; then
-            jq -c '[.result.events.events[]?
+            jq -c --arg runDate "$EXPECTED_RUN_DATE" '[.result.events.events[]?
               | {message: (.["$metadata"].message // .source.message // .message // "")}
               | select(.message | contains("Restaurant-Prüfbericht:"))
               | .message as $message
               | (try ($message | split("Restaurant-Prüfbericht: ") | last | fromjson) catch null)
-              | select(. != null and .runDate == $EXPECTED_RUN_DATE)]' "$EMAIL_RESPONSE" || true
+              | select(. != null and .runDate == $runDate)]' "$EMAIL_RESPONSE" || true
             echo "::error::No actual Brevo-accepted daily report (sent=true, acceptedByProvider=true, not duplicate-suppressed) was found for today's local date."
             exit 1
           fi
