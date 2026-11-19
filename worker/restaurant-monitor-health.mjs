@@ -182,7 +182,6 @@ export function buildRestaurantMonitorHealth({
   return {
     baseline: {
       complete: baselineComplete,
-      proposalFree: baselineComplete && proposalCountDuringPass === 0,
       completeAt,
       startedAt,
       finishedAt,
