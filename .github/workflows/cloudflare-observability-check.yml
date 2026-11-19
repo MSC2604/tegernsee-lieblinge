@@ -16,6 +16,11 @@ on:
     # Second verification window in case GitHub delays or misses the first scheduled run.
     - cron: "35 8 * * *"
 
+# Keep duplicate deployment/schedule checks from generating a notification storm.
+concurrency:
+  group: cloudflare-observability-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   check-observability:
     runs-on: ubuntu-latest
@@ -512,37 +517,68 @@ jobs:
             }
           }')
           EMAIL_RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$EMAIL_RESPONSE" --write-out "%{http_code}" \
-            --request POST \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
-            --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            --header "Content-Type: application/json" \
-            --data "$EMAIL_BODY")
-          echo "Scheduled email-report telemetry API HTTP status: $STATUS"
-          echo "Scheduled email telemetry events returned: $(jq -r '.result.events.events | length' "$EMAIL_RESPONSE")"
-          if [[ "$STATUS" != "200" ]]; then
-            jq -r '.errors[]?.message // "No API error details returned."' "$EMAIL_RESPONSE" || true
-            exit 1
-          fi
-          ACCEPTED_EMAIL_EVENT=$(jq -c --arg runDate "$EXPECTED_RUN_DATE" '
-            [.result.events.events[]?
-             | {timestamp: (.timestamp // .["$metadata"].endTime // 0),
-                message: (.["$metadata"].message // .source.message // .message // "")}
-             | select(.message | contains("Restaurant-Prüfbericht:"))
-             | .message as $message
-             | (try ($message | split("Restaurant-Prüfbericht: ") | last | fromjson) catch null) as $payload
-             | select($payload != null and $payload.runDate == $runDate and $payload.sent == true and $payload.acceptedByProvider == true and ($payload.duplicateSuppressed // false) != true)
-             | {timestamp, result: $payload}]
-            | sort_by(.timestamp) | last // {}
-          ' "$EMAIL_RESPONSE")
+          STATUS=""
+          ACCEPTED_EMAIL_EVENT="{}"
+          # Cloudflare telemetry ingestion is eventually consistent. Re-query for up to 90 seconds
+          # before treating a missing event as a real delivery problem.
+          for attempt in 1 2 3 4 5 6; do
+            STATUS=$(curl --silent --show-error --retry 3 --retry-delay 2 --retry-max-time 30 --output "$EMAIL_RESPONSE" --write-out "%{http_code}" \
+              --request POST \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
+              --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              --header "Content-Type: application/json" \
+              --data "$EMAIL_BODY")
+            echo "Scheduled email-report telemetry API HTTP status (attempt $attempt/6): $STATUS"
+            if [[ "$STATUS" != "200" ]]; then
+              jq -r '.errors[]?.message // "No API error details returned."' "$EMAIL_RESPONSE" || true
+              if [[ "$attempt" -eq 6 ]]; then
+                echo "::error::Cloudflare telemetry API remained unavailable after retries."
+                exit 1
+              fi
+            else
+              EVENT_COUNT=$(jq -r '.result.events.events | length' "$EMAIL_RESPONSE")
+              echo "Scheduled email telemetry events returned: $EVENT_COUNT"
+              ACCEPTED_EMAIL_EVENT=$(jq -c --arg runDate "$EXPECTED_RUN_DATE" '
+                [.result.events.events[]?
+                 | {timestamp: (.timestamp // .["$metadata"].endTime // 0),
+                    message: (.["$metadata"].message // .source.message // .message // "")}
+                 | select(.message | contains("Restaurant-Prüfbericht:"))
+                 | .message as $message
+                 | (try ($message | split("Restaurant-Prüfbericht: ") | last | fromjson) catch null) as $payload
+                 | select($payload != null and $payload.runDate == $runDate and $payload.sent == true and $payload.acceptedByProvider == true and ($payload.duplicateSuppressed // false) != true)
+                 | {timestamp, result: $payload}]
+                | sort_by(.timestamp) | last // {}
+              ' "$EMAIL_RESPONSE")
+              if [[ -n "$ACCEPTED_EMAIL_EVENT" && "$ACCEPTED_EMAIL_EVENT" != "{}" ]]; then
+                break
+              fi
+            fi
+            if [[ "$attempt" -lt 6 ]]; then
+              echo "No accepted-email telemetry event yet; waiting 15 seconds before rechecking."
+              sleep 15
+            fi
+          done
           if [[ -z "$ACCEPTED_EMAIL_EVENT" || "$ACCEPTED_EMAIL_EVENT" == "{}" ]]; then
+            # Do not raise a false alarm when the durable monitor state already records the
+            # report as sent; the following audit independently validates the persisted state.
+            STATE_RESPONSE=$(mktemp)
+            STATE_STATUS=$(curl --silent --show-error --retry 3 --retry-delay 2 --output "$STATE_RESPONSE" --write-out "%{http_code}" \
+              "https://tegernsee-restaurants-api.msc4021.workers.dev/monitor-health")
+            if [[ "$STATE_STATUS" == "200" ]] && jq -e --arg runDate "$EXPECTED_RUN_DATE" '
+              .ok == true and .database == "ok" and
+              .today.runDate == $runDate and .today.email.recordedAsSent == true and
+              (.today.email.sentAt | type == "string" and length > 0)
+            ' "$STATE_RESPONSE" >/dev/null; then
+              echo "::warning::Cloudflare telemetry has not indexed the Brevo acceptance event yet; the read-only production status endpoint confirms today's report is durably recorded as sent. This is treated as telemetry delay, not a delivery failure."
+              exit 0
+            fi
             jq -c --arg runDate "$EXPECTED_RUN_DATE" '[.result.events.events[]?
               | {message: (.["$metadata"].message // .source.message // .message // "")}
               | select(.message | contains("Restaurant-Prüfbericht:"))
               | .message as $message
               | (try ($message | split("Restaurant-Prüfbericht: ") | last | fromjson) catch null)
               | select(. != null and .runDate == $runDate)]' "$EMAIL_RESPONSE" || true
-            echo "::error::No actual Brevo-accepted daily report (sent=true, acceptedByProvider=true, not duplicate-suppressed) was found for today's local date."
+            echo "::error::No confirmed Brevo acceptance event was found and the production status endpoint does not confirm today's report as sent."
             exit 1
           fi
           EMAIL_TIMESTAMP=$(jq -r '.timestamp // 0' <<< "$ACCEPTED_EMAIL_EVENT")
