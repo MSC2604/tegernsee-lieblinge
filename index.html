@@ -3605,7 +3605,9 @@ async function performLoadData(){
     // Die zentrale Datenbank wird dabei weder verändert noch beschrieben.
     if(Array.isArray(restaurants) && restaurants.length > 0){
       status.textContent =
-        "⚠️ Aktualisierung fehlgeschlagen · zuletzt geladene " +
+        (error?.name === "AbortError"
+          ? "⚠️ Zeitüberschreitung · zuletzt geladene "
+          : "⚠️ Aktualisierung fehlgeschlagen · zuletzt geladene ") +
         restaurants.length +
         " Restaurants werden weiterhin angezeigt.";
       render();
