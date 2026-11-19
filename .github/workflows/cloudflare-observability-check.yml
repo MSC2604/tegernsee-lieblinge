@@ -42,7 +42,7 @@ jobs:
             exit 1
           fi
           RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/tegernsee-restaurants-api/schedules" --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+          STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$RESPONSE" --write-out "%{http_code}" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/tegernsee-restaurants-api/schedules" --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
           echo "Cloudflare Cron schedules API HTTP status: $STATUS"
           if [[ "$STATUS" != "200" ]]; then
             jq -r '.errors[]?.message // "No API error details returned."' "$RESPONSE" || true
@@ -63,7 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" \
+          STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$RESPONSE" --write-out "%{http_code}" \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/tegernsee-restaurants-api/secrets" \
             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
           echo "Cloudflare Worker secrets API HTTP status: $STATUS"
@@ -107,6 +107,7 @@ jobs:
           sleep 15
 
       - name: Discover available telemetry fields
+        continue-on-error: true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -114,7 +115,7 @@ jobs:
         run: |
           set -euo pipefail
           KEYS_RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --output "$KEYS_RESPONSE" --write-out "%{http_code}" \
+          STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$KEYS_RESPONSE" --write-out "%{http_code}" \
             --request POST \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/keys" \
             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -144,7 +145,7 @@ jobs:
             type: "string"
           }')
           VALUES_RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --output "$VALUES_RESPONSE" --write-out "%{http_code}" \
+          STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$VALUES_RESPONSE" --write-out "%{http_code}" \
             --request POST \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/values" \
             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -191,7 +192,7 @@ jobs:
             }
           }')
           COUNT_RESPONSE=$(mktemp)
-          COUNT_STATUS=$(curl --silent --show-error --output "$COUNT_RESPONSE" --write-out "%{http_code}" \
+          COUNT_STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$COUNT_RESPONSE" --write-out "%{http_code}" \
             --request POST \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -235,7 +236,7 @@ jobs:
             }
           }')
           RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" \
+          STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$RESPONSE" --write-out "%{http_code}" \
             --request POST \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -295,7 +296,7 @@ jobs:
             }
           }')
           RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --output "$RESPONSE" --write-out "%{http_code}" \
+          STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$RESPONSE" --write-out "%{http_code}" \
             --request POST \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -350,7 +351,7 @@ jobs:
             }
           }')
           EVENTS_RESPONSE=$(mktemp)
-          EVENTS_STATUS=$(curl --silent --show-error --output "$EVENTS_RESPONSE" --write-out "%{http_code}" \
+          EVENTS_STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$EVENTS_RESPONSE" --write-out "%{http_code}" \
             --request POST \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
@@ -501,7 +502,7 @@ jobs:
             }
           }')
           EMAIL_RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --output "$EMAIL_RESPONSE" --write-out "%{http_code}" \
+          STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$EMAIL_RESPONSE" --write-out "%{http_code}" \
             --request POST \
             "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
