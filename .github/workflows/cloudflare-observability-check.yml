@@ -336,7 +336,7 @@ jobs:
           NOW_MS=$(date +%s000)
           FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           EVENTS_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
-            queryId: "restaurant-website-monitor-scheduled-events-v3",
+            queryId: "restaurant-website-monitor-scheduled-events-v4",
             timeframe: {from: $from, to: $to},
             dry: false,
             view: "events",
@@ -344,8 +344,7 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
               ],
               needle: {value: "Website-Prüfung:", isRegex: false, matchCase: false}
             }
@@ -488,7 +487,7 @@ jobs:
           NOW_MS=$(date +%s000)
           FROM_MS=$(TZ=Europe/Berlin date -d "$EXPECTED_RUN_DATE 00:00:00" +%s000)
           EMAIL_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
-            queryId: "restaurant-website-monitor-email-v3",
+            queryId: "restaurant-website-monitor-email-v4",
             timeframe: {from: $from, to: $to},
             dry: false,
             view: "events",
@@ -496,8 +495,7 @@ jobs:
             parameters: {
               datasets: ["cloudflare-workers"],
               filters: [
-                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
-                {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
+                {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}
               ],
               needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false}
             }
