@@ -3516,7 +3516,7 @@ function normalizeRestaurant(r){
    DATEN LADEN
 -------------------------------------------------- */
 
-async function loadData(){
+async function performLoadData(){
 
   const status =
     document.getElementById(
@@ -3528,20 +3528,24 @@ async function loadData(){
     status.textContent =
       "Zentrale Daten werden geladen …";
 
-    const response =
-      await fetch(
-        API_URL +
-        "?t=" +
-        Date.now(),
+    // Hängende Verbindungen dürfen den Start oder die Aktualisierung
+    // nicht unbegrenzt blockieren.
+    const controller = new AbortController();
+    const requestTimeout = window.setTimeout(() => controller.abort(), 20000);
+    let response;
+    try{
+      response = await fetch(
+        API_URL + "?t=" + Date.now(),
         {
           method:"GET",
           cache:"no-store",
-          headers:{
-            "Accept":
-              "application/json"
-          }
+          headers:{"Accept":"application/json"},
+          signal:controller.signal
         }
       );
+    }finally{
+      window.clearTimeout(requestTimeout);
+    }
 
     if(!response.ok){
 
@@ -3593,6 +3597,10 @@ async function loadData(){
 
     console.error(error);
 
+    if(error?.name === "AbortError"){
+      status.textContent = "⚠️ Zeitüberschreitung beim Laden. Bitte Verbindung prüfen und erneut versuchen.";
+    }
+
     // Bei einem Aktualisierungsfehler bereits geladene Daten behalten.
     // Die zentrale Datenbank wird dabei weder verändert noch beschrieben.
     if(Array.isArray(restaurants) && restaurants.length > 0){
@@ -3632,6 +3640,17 @@ async function loadData(){
 
 }
 
+
+// Parallele Start-/Aktualisierungsaufrufe teilen sich denselben Ladevorgang.
+// Das verhindert doppelte API-Abfragen und konkurrierende Kachel-Neuaufbauten.
+function loadData(){
+  if(restaurantDataPromise) return restaurantDataPromise;
+  const pending = performLoadData().finally(() => {
+    if(restaurantDataPromise === pending) restaurantDataPromise = null;
+  });
+  restaurantDataPromise = pending;
+  return pending;
+}
 
 /* --------------------------------------------------
    ÖFFNUNGSSTATUS
