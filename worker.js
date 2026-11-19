@@ -282,6 +282,8 @@ async function runScheduledRestaurantMonitoring(env, ctx, shardIndex, scheduledI
     return { completed: true, summary: scanSummary, email: emailReport };
   }
 
+let restaurantApiSchemaPromise = null;
+
 export default {
   async fetch(request, env, ctx) {
     const corsHeaders = {
@@ -1418,6 +1420,10 @@ console.log("Tavily usage account:", {
     // --------------------------------------------------
 
     try {
+      // Datenbankschema pro Worker-Isolat nur einmal prüfen/migrieren.
+      // So werden normale Leseaufrufe nicht jedes Mal durch DDL/PRAGMA ausgebremst.
+      if (!restaurantApiSchemaPromise) {
+        restaurantApiSchemaPromise = (async () => {
       // Gemeinsame Metadaten für Speise- und Getränkekarten.
       await turso(`CREATE TABLE IF NOT EXISTS restaurant_cards (
         restaurant_id TEXT NOT NULL,
@@ -1530,6 +1536,47 @@ console.log("Tavily usage account:", {
         refresh_token_encrypted TEXT NOT NULL,
         connected_at TEXT NOT NULL
       )`);
+
+      await turso(`CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        restaurant_id TEXT NOT NULL,
+        field_name TEXT NOT NULL,
+        old_value TEXT NOT NULL DEFAULT '',
+        new_value TEXT NOT NULL DEFAULT '',
+        source_url TEXT NOT NULL,
+        detected_at TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending', 'accepted', 'rejected')),
+        reviewed_at TEXT NOT NULL DEFAULT '',
+        notified_at TEXT NOT NULL DEFAULT '',
+        UNIQUE (restaurant_id, field_name, old_value, new_value)
+      )`);
+      await turso(`CREATE TABLE IF NOT EXISTS restaurant_card_checks (
+        restaurant_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        url TEXT NOT NULL DEFAULT '',
+        checked_at TEXT NOT NULL DEFAULT '',
+        changed_at TEXT NOT NULL DEFAULT '',
+        content_hash TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT '',
+        detail TEXT NOT NULL DEFAULT '',
+        notified_at TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY (restaurant_id, kind)
+      )`);
+      const cardCheckColumns = await turso("PRAGMA table_info(restaurant_card_checks)", [], true);
+      const cardCheckColumnNames = (cardCheckColumns?.results?.[0]?.response?.result?.rows || [])
+        .map(row => String(rowValue(row[1]) || ""));
+      if (!cardCheckColumnNames.includes("notified_at")) {
+        await turso("ALTER TABLE restaurant_card_checks ADD COLUMN notified_at TEXT NOT NULL DEFAULT ''");
+      }
+        })();
+      }
+      try {
+        await restaurantApiSchemaPromise;
+      } catch (schemaError) {
+        restaurantApiSchemaPromise = null;
+        throw schemaError;
+      }
 
       if (request.method === "GET") {
         const url = new URL(request.url);
@@ -1717,24 +1764,6 @@ console.log("Tavily usage account:", {
         }
 
         if (action === "cards") {
-          // Ensure the status table exists before the cards endpoint joins it.
-          await turso(`CREATE TABLE IF NOT EXISTS restaurant_card_checks (
-            restaurant_id TEXT NOT NULL,
-            kind TEXT NOT NULL,
-            url TEXT NOT NULL,
-            checked_at TEXT NOT NULL DEFAULT '',
-            changed_at TEXT NOT NULL DEFAULT '',
-            content_hash TEXT NOT NULL DEFAULT '',
-            status TEXT NOT NULL DEFAULT '',
-            detail TEXT NOT NULL DEFAULT '',
-            notified_at TEXT NOT NULL DEFAULT '',
-            PRIMARY KEY (restaurant_id, kind)
-          )`);
-          try {
-            await turso("ALTER TABLE restaurant_card_checks ADD COLUMN notified_at TEXT NOT NULL DEFAULT ''");
-          } catch (error) {
-            if (!/duplicate column/i.test(String(error?.message || error))) throw error;
-          }
           const restaurantId = (url.searchParams.get("restaurantId") || "").trim();
           if (!restaurantId) return json({ error: "Restaurant-ID fehlt." }, 400);
           const result = await turso(
@@ -2513,32 +2542,6 @@ console.log("Tavily usage account:", {
         }
 
         if (body.action === "getRestaurantWebsiteChanges") {
-          await turso(`CREATE TABLE IF NOT EXISTS restaurant_change_proposals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            restaurant_id TEXT NOT NULL,
-            field_name TEXT NOT NULL,
-            old_value TEXT NOT NULL DEFAULT '',
-            new_value TEXT NOT NULL DEFAULT '',
-            source_url TEXT NOT NULL,
-            detected_at TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'pending'
-              CHECK (status IN ('pending', 'accepted', 'rejected')),
-            reviewed_at TEXT NOT NULL DEFAULT '',
-            notified_at TEXT NOT NULL DEFAULT '',
-            UNIQUE (restaurant_id, field_name, old_value, new_value)
-          )`);
-          await turso(`CREATE TABLE IF NOT EXISTS restaurant_card_checks (
-            restaurant_id TEXT NOT NULL,
-            kind TEXT NOT NULL,
-            url TEXT NOT NULL DEFAULT '',
-            checked_at TEXT NOT NULL DEFAULT '',
-            changed_at TEXT NOT NULL DEFAULT '',
-            content_hash TEXT NOT NULL DEFAULT '',
-            status TEXT NOT NULL DEFAULT '',
-            detail TEXT NOT NULL DEFAULT '',
-            notified_at TEXT NOT NULL DEFAULT '',
-            PRIMARY KEY (restaurant_id, kind)
-          )`);
           const result = await turso(`SELECT p.id, p.restaurant_id, r.name, p.field_name,
             p.old_value, p.new_value, p.source_url, p.detected_at, p.status
             FROM restaurant_change_proposals p
