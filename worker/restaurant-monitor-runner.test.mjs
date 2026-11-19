@@ -296,6 +296,19 @@ assert.equal(httpsUpgrade.errors.length, 0);
 assert.ok([...httpsUpgradeState.snapshots.keys()].some(key => key.endsWith("|http://postillion.example/")),
   "Homepage baseline must use the configured website URL even after HTTPS upgrade");
 
+// If both HTTP and HTTPS fail, report the final secure attempt and its real cause.
+const httpsFailure = await runRestaurantWebsiteMonitor({
+  db: makeDb().db,
+  restaurants: [{ id: 81, name: "Testbetrieb", website: "http://retry.example/" }],
+  fetchImpl: async url => {
+    if (String(url).startsWith("http://")) throw new TypeError("HTTP transport aborted");
+    return new Response("Unavailable", { status: 503 });
+  }
+});
+assert.equal(httpsFailure.errors.length, 1);
+assert.equal(httpsFailure.errors[0].url, "https://retry.example/");
+assert.match(httpsFailure.errors[0].error, /HTTP 503/);
+
 // A secure retry must not hide a genuine contact change, but ignores tracking/query text.
 const contactNormalization = findRestaurantChanges(
   { externe_links: "E-Mail: mailto:info%40firstalm%2Ede?subject=Servus\nTelefon: tel:+49%208029%20%E2%80%93%20386" },
