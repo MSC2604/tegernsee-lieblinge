@@ -1452,7 +1452,11 @@ console.log("Tavily usage account:", {
       const galleryColumns = await turso("PRAGMA table_info(restaurant_gallery_images)", [], true);
       const galleryColumnNames = (galleryColumns?.results?.[0]?.response?.result?.rows || []).map(row => String(rowValue(row[1]) || ""));
       if (!galleryColumnNames.includes("caption")) {
-        await turso("ALTER TABLE restaurant_gallery_images ADD COLUMN caption TEXT NOT NULL DEFAULT ''");
+        try {
+          await turso("ALTER TABLE restaurant_gallery_images ADD COLUMN caption TEXT NOT NULL DEFAULT ''");
+        } catch (error) {
+          if (!/duplicate column name/i.test(String(error?.message || error))) throw error;
+        }
       }
 
       await turso(`CREATE TABLE IF NOT EXISTS title_image_settings (
@@ -1567,14 +1571,19 @@ console.log("Tavily usage account:", {
       const cardCheckColumnNames = (cardCheckColumns?.results?.[0]?.response?.result?.rows || [])
         .map(row => String(rowValue(row[1]) || ""));
       if (!cardCheckColumnNames.includes("notified_at")) {
-        await turso("ALTER TABLE restaurant_card_checks ADD COLUMN notified_at TEXT NOT NULL DEFAULT ''");
+        try {
+          await turso("ALTER TABLE restaurant_card_checks ADD COLUMN notified_at TEXT NOT NULL DEFAULT ''");
+        } catch (error) {
+          if (!/duplicate column name/i.test(String(error?.message || error))) throw error;
+        }
       }
         })();
       }
+      const activeSchemaPromise = restaurantApiSchemaPromise;
       try {
-        await restaurantApiSchemaPromise;
+        await activeSchemaPromise;
       } catch (schemaError) {
-        restaurantApiSchemaPromise = null;
+        if (restaurantApiSchemaPromise === activeSchemaPromise) restaurantApiSchemaPromise = null;
         throw schemaError;
       }
 
