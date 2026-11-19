@@ -7983,6 +7983,11 @@ function closeRestaurantGalleryLightbox(){const box=document.getElementById("res
 const restaurantGalleryCounts=new Map();
 let restaurantGalleryCountsLoaded=false;
 let restaurantGalleryCountsPromise=null;
+function invalidateRestaurantGalleryCounts(){
+  restaurantGalleryCountsLoaded=false;
+  restaurantGalleryCountsPromise=null;
+  restaurantGalleryCounts.clear();
+}
 async function loadRestaurantGalleryIndicators(){
   const cards=document.getElementById("cards");if(!cards)return;
   try{
@@ -8202,6 +8207,7 @@ async function uploadRestaurantGalleryFiles(){
       const result=await response.json();if(!response.ok||!result.success||!result.verified)throw new Error(result.error||"Ein Bild wurde nicht bestätigt.");
     }
     pendingRestaurantGalleryFiles=[];document.getElementById("restaurantGalleryPending").innerHTML="";button.style.display="none";
+    invalidateRestaurantGalleryCounts();
     await loadRestaurantGallery(editId);status.textContent="Alle ausgewählten Bilder wurden gespeichert und überprüft.";
     if(currentPlace)loadRestaurantPhotoGallery(currentPlace.id);
   }catch(error){status.textContent="Upload nicht vollständig: "+(error.message||"Fehler");}
@@ -8214,6 +8220,7 @@ async function deleteRestaurantGalleryImage(imageId){
   try{
     const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+password},body:JSON.stringify({action:"deleteGalleryImage",restaurantId:editId,imageId})});
     const result=await response.json();if(!response.ok||!result.success)throw new Error(result.error||"Löschen fehlgeschlagen.");
+    invalidateRestaurantGalleryCounts();
     await loadRestaurantGallery(editId);if(currentPlace)loadRestaurantPhotoGallery(currentPlace.id);
   }catch(error){if(status)status.textContent=error.message||"Löschen fehlgeschlagen.";}
 }
