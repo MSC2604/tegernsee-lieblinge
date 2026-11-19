@@ -5038,16 +5038,13 @@ function showHome(fromPhoneBack = false){
 
 }
 
-// Nur bei einem Aufruf von einer anderen Website (z. B. GitHub)
-// wird ein zusätzlicher Start-Eintrag gesetzt. Beim Start über das App-Icon
-// bleibt die normale Android-Zurück-/Beenden-Funktion erhalten.
+// Wenn vor dem App-Start bereits eine Browserseite im Verlauf liegt
+// (z. B. GitHub), wird ein eigener App-Start-Eintrag gesetzt. Ein echter
+// Kaltstart über das installierte App-Icon hat normalerweise history.length === 1
+// und behält damit die normale Android-Zurück-/Beenden-Funktion.
 let protectExternalAppEntry = false;
 try{
-  protectExternalAppEntry = Boolean(
-    document.referrer &&
-    new URL(document.referrer).origin !== window.location.origin &&
-    history.length > 1
-  );
+  protectExternalAppEntry = history.length > 1;
 }catch(_){}
 
 function ensureRestaurantAppRootHistoryEntry(){
