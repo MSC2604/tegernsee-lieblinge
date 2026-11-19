@@ -178,8 +178,10 @@ export async function runRestaurantWebsiteMonitor({
         try {
           homepage = await fetchOfficialHtml(secureRoot.href, secureRoot.origin, fetchImpl);
           root = secureRoot;
-        } catch {
-          report.errors.push({ restaurantId:id, name:String(restaurant.name || ""), sourceType, url:root.href, error: String(error?.message || error).slice(0, 220) });
+        } catch (secureError) {
+          // Report the final HTTPS failure, not the original HTTP failure;
+          // otherwise the daily report can show a misleading root cause.
+          report.errors.push({ restaurantId:id, name:String(restaurant.name || ""), sourceType, url:secureRoot.href, error: String(secureError?.message || secureError).slice(0, 220) });
           return;
         }
       } else {
