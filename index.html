@@ -7981,14 +7981,27 @@ function closeRestaurantGalleryLightbox(){const box=document.getElementById("res
   });
 })();
 const restaurantGalleryCounts=new Map();
+let restaurantGalleryCountsLoaded=false;
+let restaurantGalleryCountsPromise=null;
 async function loadRestaurantGalleryIndicators(){
   const cards=document.getElementById("cards");if(!cards)return;
   try{
-    const response=await fetch(galleryApiUrl({action:"galleryCounts"}));
-    if(!response.ok)throw new Error("Galerie-Hinweise konnten nicht geladen werden.");
-    const rows=await response.json();
-    restaurantGalleryCounts.clear();
-    if(Array.isArray(rows))rows.forEach(item=>{if(item?.restaurantId&&Number(item.count)>0)restaurantGalleryCounts.set(String(item.restaurantId),Number(item.count));});
+    // Galerie-Zähler nur einmal erfolgreich laden. Beim Suchen/Filtern werden
+    // die Kacheln neu aufgebaut; die bereits geladenen Zähler reichen dafür aus.
+    if(!restaurantGalleryCountsLoaded){
+      if(!restaurantGalleryCountsPromise){
+        restaurantGalleryCountsPromise=(async()=>{
+          const response=await fetch(galleryApiUrl({action:"galleryCounts"}),{cache:"no-store"});
+          if(!response.ok)throw new Error("Galerie-Hinweise konnten nicht geladen werden.");
+          const rows=await response.json();
+          restaurantGalleryCounts.clear();
+          if(Array.isArray(rows))rows.forEach(item=>{if(item?.restaurantId&&Number(item.count)>0)restaurantGalleryCounts.set(String(item.restaurantId),Number(item.count));});
+          restaurantGalleryCountsLoaded=true;
+        })();
+      }
+      try{await restaurantGalleryCountsPromise;}
+      finally{restaurantGalleryCountsPromise=null;}
+    }
     cards.querySelectorAll("[data-gallery-restaurant-id]").forEach(photo=>{
       const id=photo.dataset.galleryRestaurantId;
       if(!restaurantGalleryCounts.has(id)||photo.querySelector(".card-gallery-indicator"))return;
