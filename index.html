@@ -4468,11 +4468,7 @@ function reserveTable(
 
   if(!url) return;
 
-  window.open(
-    url,
-    "_blank",
-    "noopener"
-  );
+  window.location.assign(url);
 
 }
 
@@ -5038,6 +5034,22 @@ function showHome(fromPhoneBack = false){
 
 }
 
+// Externe Webseiten im selben Fenster öffnen. So bleibt die App direkt
+// hinter der externen Seite im Browserverlauf und Android-Zurück führt zurück
+// zur Restaurantliste statt zu einer zuvor geöffneten GitHub-Seite.
+document.addEventListener("click", (event) => {
+  const link = event.target && event.target.closest
+    ? event.target.closest("a[target=\"_blank\"]")
+    : null;
+  if(!link || link.hasAttribute("download")) return;
+  let destination;
+  try{ destination = new URL(link.href, window.location.href); }catch(_){ return; }
+  if(destination.protocol !== "http:" && destination.protocol !== "https:") return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  window.location.assign(destination.href);
+}, true);
+
 // Wenn vor dem App-Start bereits eine Browserseite im Verlauf liegt
 // (z. B. GitHub), wird ein eigener App-Start-Eintrag gesetzt. Ein echter
 // Kaltstart über das installierte App-Icon hat normalerweise history.length === 1
@@ -5427,13 +5439,8 @@ function routeTo(
       .join(", ")
     );
 
-  window.open(
-
-    "https://www.google.com/maps/search/?api=1&query=" +
-    destination,
-
-    "_blank"
-
+  window.location.assign(
+    "https://www.google.com/maps/search/?api=1&query=" + destination
   );
 
 }
@@ -5443,7 +5450,7 @@ function openWebsite(website){
   if(!website) return;
   const value = String(website).trim();
   const url = /^https?:\/\//i.test(value) ? value : "https://" + value;
-  window.open(url, "_blank", "noopener,noreferrer");
+  window.location.assign(url);
 }
 
 
