@@ -5017,10 +5017,20 @@ function showHome(fromPhoneBack = false){
 
 }
 
-// Die App erhält einen eigenen Start-Eintrag im Browserverlauf.
- // Dadurch bleibt sie auch dann geöffnet, wenn sie z. B. über einen GitHub-Link
- // gestartet wurde und hinter ihr noch eine externe Seite liegt.
+// Nur bei einem Aufruf von einer anderen Website (z. B. GitHub)
+// wird ein zusätzlicher Start-Eintrag gesetzt. Beim Start über das App-Icon
+// bleibt die normale Android-Zurück-/Beenden-Funktion erhalten.
+let protectExternalAppEntry = false;
+try{
+  protectExternalAppEntry = Boolean(
+    document.referrer &&
+    new URL(document.referrer).origin !== window.location.origin &&
+    history.length > 1
+  );
+}catch(_){}
+
 function ensureRestaurantAppRootHistoryEntry(){
+  if(!protectExternalAppEntry) return;
   try{
     const state = history.state || {};
     if(!state.tegernseeAppRoot){
@@ -5042,9 +5052,8 @@ window.addEventListener("popstate", (event) => {
     showHome(true);
     return;
   }
-  // Wenn hinter der App eine externe Seite liegt, den App-Start-Eintrag
-  // sofort wiederherstellen, statt die Restaurant-App zu verlassen.
-  if(!event.state || !event.state.tegernseeAppRoot){
+  // Nur einen externen Einstieg abfangen, nicht das Beenden der installierten App.
+  if(protectExternalAppEntry && (!event.state || !event.state.tegernseeAppRoot)){
     try{
       history.pushState(
         {...(event.state || {}), tegernseeAppRoot:true},
