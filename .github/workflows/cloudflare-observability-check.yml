@@ -138,26 +138,36 @@ jobs:
           set -euo pipefail
           NOW_MS=$(date +%s000)
           FROM_MS=$((NOW_MS - 86400000))
-          VALUES_BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
-            datasets: ["cloudflare-workers"],
-            key: "$metadata.service",
+          BODY=$(jq -n --argjson from "$FROM_MS" --argjson to "$NOW_MS" '{
+            queryId: "restaurant-worker-service-presence-v1",
             timeframe: {from: $from, to: $to},
-            type: "string"
+            dry: false,
+            view: "events",
+            limit: 1,
+            parameters: {
+              datasets: ["cloudflare-workers"],
+              filters: [{key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"}]
+            }
           }')
-          VALUES_RESPONSE=$(mktemp)
-          STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$VALUES_RESPONSE" --write-out "%{http_code}" \
+          RESPONSE=$(mktemp)
+          STATUS=$(curl --silent --show-error --retry 5 --retry-delay 2 --retry-max-time 45 --output "$RESPONSE" --write-out "%{http_code}" \
             --request POST \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/values" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/observability/telemetry/query" \
             --header "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             --header "Content-Type: application/json" \
-            --data "$VALUES_BODY")
-          echo "Telemetry service-values API HTTP status: $STATUS"
+            --data "$BODY")
+          echo "Telemetry service-presence API HTTP status: $STATUS"
           if [[ "$STATUS" != "200" ]]; then
-            jq -r '.errors[]?.message // "No API error details returned."' "$VALUES_RESPONSE" || true
+            jq -r '.errors[]?.message // "No API error details returned."' "$RESPONSE" || true
             exit 1
           fi
-          jq -r '"Services found in the last 24 hours: " + ((.result // []) | length | tostring),
-            "Tegernsee Worker service found: " + (if any(.result[]?; .value == "tegernsee-restaurants-api") then "yes" else "no" end)' "$VALUES_RESPONSE"
+          EVENT_COUNT=$(jq -r '.result.events.events | length' "$RESPONSE")
+          echo "Worker telemetry events found in the last 24 hours: $EVENT_COUNT"
+          if [[ "$EVENT_COUNT" -lt 1 ]]; then
+            echo "::error::No telemetry events were found for the production Worker in the last 24 hours."
+            exit 1
+          fi
+          echo "Verified: the production Worker is present in Cloudflare telemetry."
 
       - name: Query recent Worker telemetry through the existing Cloudflare token
         env:
