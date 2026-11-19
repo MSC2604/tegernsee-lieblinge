@@ -347,7 +347,7 @@ jobs:
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
                 {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
               ],
-              needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false}
+              needle: {value: "Website-Prüfung:", isRegex: false, matchCase: false}
             }
           }')
           EVENTS_RESPONSE=$(mktemp)
@@ -498,7 +498,8 @@ jobs:
               filters: [
                 {key: "$metadata.service", operation: "eq", type: "string", value: "tegernsee-restaurants-api"},
                 {key: "$workers.eventType", operation: "eq", type: "string", value: "scheduled"}
-              ]
+              ],
+              needle: {value: "Restaurant-Prüfbericht:", isRegex: false, matchCase: false}
             }
           }')
           EMAIL_RESPONSE=$(mktemp)
