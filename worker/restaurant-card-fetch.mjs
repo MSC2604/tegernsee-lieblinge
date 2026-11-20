@@ -1,6 +1,6 @@
 // Bounded, retry-aware fetch for official restaurant menu documents.
 // Only hashes are stored; restaurant records and document files are never modified.
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES = 7 * 1024 * 1024;
 const TIMEOUT_MS = 10000;
 const MAX_ATTEMPTS = 2;
 
