@@ -88,7 +88,7 @@ export async function fetchRestaurantCardHash(rawUrl, fetchImpl = fetch) {
             total += part.value.byteLength;
             if (total > MAX_BYTES) {
               await reader.cancel();
-              return { status: "too_large", detail: "Quelle über 5 MB; Inhaltsvergleich aus Sicherheitsgründen übersprungen." };
+              return { status: "too_large", detail: "Quelle über 7 MB; Inhaltsvergleich aus Sicherheitsgründen übersprungen." };
             }
             chunks.push(part.value);
           }
