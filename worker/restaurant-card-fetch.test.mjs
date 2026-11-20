@@ -40,7 +40,7 @@ test("stops safely above the 7 MB document limit", async () => {
     new Response(tooLarge, { status: 200, headers: { "Content-Type": "application/pdf" } })
   );
   assert.equal(result.status, "too_large");
-  assert.match(result.detail, /über 5 MB/);
+  assert.match(result.detail, /über 7 MB/);
 });
 
 test("records persistent HTTP 429 after two attempts without inventing a hash", async () => {
