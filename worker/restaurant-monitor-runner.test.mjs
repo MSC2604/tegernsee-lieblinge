@@ -223,6 +223,37 @@ assert.equal(findRestaurantChanges(
   { betriebsferien: "9.11. – 18.12.26" }
 ).length, 0);
 
+// HTTP 429 is retried once, honoring a short Retry-After response.
+let rateLimitCalls = 0;
+const rateLimitResult = await runRestaurantWebsiteMonitor({
+  db: makeDb().db, restaurants,
+  fetchImpl: async () => {
+    rateLimitCalls++;
+    if (rateLimitCalls === 1) {
+      return new Response("rate limited", { status: 429, headers: { "Retry-After": "0" } });
+    }
+    return new Response("<html><body><h1>Gasthof</h1></body></html>", {
+      status: 200, headers: { "Content-Type": "text/html" }
+    });
+  }
+});
+assert.equal(rateLimitResult.pages, 1);
+assert.equal(rateLimitResult.errors.length, 0);
+assert.equal(rateLimitCalls, 2);
+
+// A persistent HTTP 429 is clearly reported instead of silently becoming a baseline.
+let persistent429Calls = 0;
+const persistent429 = await runRestaurantWebsiteMonitor({
+  db: makeDb().db, restaurants,
+  fetchImpl: async () => {
+    persistent429Calls++;
+    return new Response("rate limited", { status: 429, headers: { "Retry-After": "0" } });
+  }
+});
+assert.equal(persistent429Calls, 2);
+assert.equal(persistent429.pages, 0);
+assert.match(persistent429.errors[0].error, /HTTP 429 nach zwei Abrufversuchen/);
+
 // A short network failure is retried once before the monitor records an error.
 let retryCalls = 0;
 const retryResult = await runRestaurantWebsiteMonitor({
