@@ -25,8 +25,17 @@ test("keeps PDFs above 1 MB eligible for content comparison", async () => {
   assert.match(result.hash, /^[a-f0-9]{64}$/);
 });
 
-test("stops safely above the 5 MB document limit", async () => {
-  const tooLarge = "%PDF-1.7\n" + "x".repeat(5 * 1024 * 1024 + 1);
+test("keeps PDFs up to the app's 7 MB upload limit eligible for content comparison", async () => {
+  const largePdf = "%PDF-1.7\n" + "x".repeat(6 * 1024 * 1024);
+  const result = await fetchRestaurantCardHash("https://menu.example/large.pdf", async () =>
+    new Response(largePdf, { status: 200, headers: { "Content-Type": "application/pdf" } })
+  );
+  assert.equal(result.status, "ok");
+  assert.match(result.hash, /^[a-f0-9]{64}$/);
+});
+
+test("stops safely above the 7 MB document limit", async () => {
+  const tooLarge = "%PDF-1.7\n" + "x".repeat(7 * 1024 * 1024 + 1);
   const result = await fetchRestaurantCardHash("https://menu.example/huge.pdf", async () =>
     new Response(tooLarge, { status: 200, headers: { "Content-Type": "application/pdf" } })
   );
