@@ -15,6 +15,22 @@ const MAX_PAGES = 3; // Homepage plus höchstens zwei relevante Unterseiten pro 
 const TIMEOUT_MS = 15000;
 const FETCH_ATTEMPTS = 2;
 
+function retryableStatus(status) {
+  return [408, 425, 429].includes(status) || status >= 500;
+}
+
+function responseRetryDelay(response, attempt) {
+  const value = response?.headers?.get?.("Retry-After");
+  if (value) {
+    const seconds = Number(value);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 4000);
+    const dateDelay = Date.parse(value) - Date.now();
+    if (Number.isFinite(dateDelay) && dateDelay > 0) return Math.min(dateDelay, 4000);
+  }
+  return attempt * 1500;
+}
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 function textArg(value) {
   return { type: "text", value: value == null ? "" : String(value) };
 }
@@ -79,10 +95,18 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
           redirect: "manual",
           signal: controller.signal,
           headers: {
-            "User-Agent": "TegernseeRestaurantWebsiteMonitor/1.0",
+            "User-Agent": "TegernseeRestaurantWebsiteMonitor/1.1",
             "Accept": "text/html,application/xhtml+xml;q=0.9"
           }
         });
+        if (retryableStatus(response.status) && attempt < FETCH_ATTEMPTS) {
+          const delay = responseRetryDelay(response, attempt);
+          try { await response.body?.cancel(); } catch { /* retry response body is not needed */ }
+          clearTimeout(activeTimer);
+          await wait(delay);
+          response = null;
+          continue;
+        }
         break;
       } catch (error) {
         clearTimeout(activeTimer);
@@ -106,6 +130,9 @@ async function fetchOfficialHtml(rawUrl, origin, fetchImpl) {
       if (!response.ok) {
         if (response.status === 403) {
           throw new Error("Automatischer Abruf blockiert (HTTP 403). Die Website kann für Besucher trotzdem erreichbar sein; erneuter Versuch beim nächsten Prüflauf.");
+        }
+        if (retryableStatus(response.status)) {
+          throw new Error("Website antwortet mit HTTP " + response.status + " nach zwei Abrufversuchen.");
         }
         throw new Error("Website antwortet mit HTTP " + response.status + ".");
       }
