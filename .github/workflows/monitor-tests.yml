@@ -16,6 +16,8 @@ on:
     paths:
       - "worker/restaurant-monitor*.mjs"
       - "worker/restaurant-monitor-schema.sql"
+      - "worker/restaurant-card-fetch.mjs"
+      - "worker/restaurant-card-fetch.test.mjs"
       - "worker.js"
       - ".github/workflows/monitor-tests.yml"
   workflow_dispatch:
